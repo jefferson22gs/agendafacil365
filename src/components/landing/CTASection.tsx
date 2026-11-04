@@ -1,67 +1,51 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import { DEVELOPER_INFO, getSupportWhatsAppLink } from "@/config/contact";
+import { getSupportWhatsAppLink } from "@/config/contact";
+
+const trust = ["Sem taxa de adesão", "Suporte incluído", "Cancele quando quiser"];
 
 export const CTASection = () => {
   return (
-    <section id="contact" className="py-24 relative overflow-hidden">
+    <section id="contact" aria-labelledby="cta-title" className="scroll-mt-20 bg-background py-16 md:py-24">
       <div className="container px-4">
-        <div className="relative max-w-4xl mx-auto">
-          {/* Background Glow */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-gold-light/20 to-primary/20 rounded-3xl blur-3xl" />
+        <div className="mx-auto max-w-4xl rounded-2xl bg-brand-navy p-8 text-center text-white shadow-lg sm:p-12 md:p-16">
+          <h2 id="cta-title" className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            Pronto para organizar a agenda do seu negócio?
+          </h2>
 
-          {/* Card */}
-          <div className="relative glass-card rounded-3xl p-12 md:p-16 text-center border-primary/20">
-            {/* Decorative Elements */}
-            <div className="absolute top-4 left-4 w-20 h-20 bg-primary/10 rounded-full blur-xl" />
-            <div className="absolute bottom-4 right-4 w-32 h-32 bg-primary/10 rounded-full blur-xl" />
+          <p className="mx-auto mt-4 max-w-xl text-lg text-white/80">
+            Teste grátis por 21 dias, sem cartão de crédito.
+          </p>
 
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
-              <Sparkles size={16} className="text-primary" />
-              <span className="text-sm font-medium text-primary">Comece sua transformação digital</span>
-            </div>
-
-            {/* Heading */}
-            <h2 className="font-display text-4xl md:text-5xl font-bold mb-6">
-              Pronto para revolucionar{' '}
-              <br className="hidden md:block" />
-              <span className="text-gradient-gold">seu salão?</span>
-            </h2>
-
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-10">
-              Junte-se a mais de 2.500 salões que já transformaram sua gestão com o SysHair.
-              Teste grátis por 21 dias, sem cartão de crédito.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/checkout">
-                <Button variant="gold" size="xl" className="group">
-                  Começar agora
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                </Button>
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Button asChild variant="brand" size="xl" className="group">
+              <Link to="/register">
+                Criar conta e testar 21 dias
+                <ArrowRight className="transition-transform group-hover:translate-x-1" aria-hidden />
               </Link>
-              <a
-                href={getSupportWhatsAppLink('demo')}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="glass" size="xl">
-                  <Calendar size={18} className="mr-2" />
-                  Agendar demonstração
-                </Button>
+            </Button>
+            <Button
+              asChild
+              size="xl"
+              variant="outline"
+              className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white focus-visible:ring-white focus-visible:ring-offset-brand-navy"
+            >
+              <a href={getSupportWhatsAppLink('demo')} target="_blank" rel="noopener noreferrer">
+                <Calendar aria-hidden />
+                Agendar demonstração
               </a>
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="flex items-center justify-center gap-6 mt-10 text-sm text-muted-foreground">
-              <span>✓ Setup em 5 minutos</span>
-              <span>✓ Sem taxa de adesão</span>
-              <span>✓ Suporte incluído</span>
-            </div>
+            </Button>
           </div>
+
+          <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/80">
+            {trust.map((t) => (
+              <li key={t} className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-brand-sky" aria-hidden />
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

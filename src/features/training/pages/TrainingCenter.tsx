@@ -25,7 +25,7 @@ export default function TrainingCenter() {
   }, [query, category]);
   const viewed = ARTICLES.filter((a) => !!progress.get(`article:${a.id}`, a.version)).length;
 
-  if (!isAdminArea) return <AdminLayout><p>O treinamento é destinado à administração do salão.</p></AdminLayout>;
+  if (!isAdminArea) return <AdminLayout><p>O treinamento é destinado à administração do estabelecimento.</p></AdminLayout>;
 
   const reset = async () => {
     setResetting(true);
@@ -41,10 +41,10 @@ export default function TrainingCenter() {
               <GraduationCap className="text-primary" size={30} aria-hidden />
               <h1 className="font-display text-2xl sm:text-3xl font-bold">Central de Treinamento</h1>
             </div>
-            <p className="text-muted-foreground mt-2">Aprenda a usar o SysHair passo a passo. Comece pelo que precisa hoje.</p>
+            <p className="text-muted-foreground mt-2">Aprenda a usar o Agenda Fácil 365 passo a passo. Comece pelo que precisa hoje.</p>
           </div>
           <Button variant="outline" onClick={() => void startTour("overview")}>
-            <PlayCircle size={18} className="mr-2" aria-hidden /> Conheça o SysHair
+            <PlayCircle size={18} className="mr-2" aria-hidden /> Conheça o Agenda Fácil 365
           </Button>
         </header>
 
@@ -73,11 +73,11 @@ export default function TrainingCenter() {
               const read = progress.get(`article:${a.id}`, a.version);
               const tourDone = a.tourId && progress.get(a.tourId, a.version)?.status === "completed";
               return (
-                <Card key={a.id} className="glass-card h-full">
+                <Card key={a.id} className="h-full transition-shadow hover:shadow-md">
                   <CardContent className="p-5 flex flex-col h-full">
                     <div className="flex items-center justify-between gap-2 mb-3">
                       <Badge variant="secondary">{CATEGORIES.find((c) => c.id === a.category)?.title}</Badge>
-                      {(read || tourDone) && <CheckCircle2 size={18} className="text-green-600 flex-shrink-0" aria-label={tourDone ? "Tour concluído" : "Artigo visto"} />}
+                      {(read || tourDone) && <CheckCircle2 size={18} className="text-success flex-shrink-0" aria-label={tourDone ? "Tour concluído" : "Artigo visto"} />}
                     </div>
                     <Link to={`/admin/training/${a.id}`} className="font-semibold text-lg hover:text-primary focus-visible:outline-ring">{a.title}</Link>
                     <p className="text-sm text-muted-foreground mt-2 flex-1">{a.summary}</p>
@@ -103,7 +103,7 @@ export default function TrainingCenter() {
           <AlertDialog>
             <AlertDialogTrigger asChild><Button variant="outline" disabled={resetting}><RotateCcw size={16} className="mr-2" aria-hidden /> Reiniciar treinamento</Button></AlertDialogTrigger>
             <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Recomeçar o treinamento?</AlertDialogTitle><AlertDialogDescription>Isso reinicia apenas seus tours e boas-vindas. Os dados do salão, clientes e agendamentos não serão alterados. O checklist continua refletindo o que você já configurou.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogHeader><AlertDialogTitle>Recomeçar o treinamento?</AlertDialogTitle><AlertDialogDescription>Isso reinicia apenas seus tours e boas-vindas. Os dados do estabelecimento, clientes e agendamentos não serão alterados. O checklist continua refletindo o que você já configurou.</AlertDialogDescription></AlertDialogHeader>
               <AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={() => void reset()}>Reiniciar</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

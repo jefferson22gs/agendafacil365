@@ -90,6 +90,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SellersManagement } from "@/components/admin/SellersManagement";
 import { AISettingsManagement } from "@/components/admin/AISettingsManagement";
+import { StatCard } from "@/components/admin/StatCard";
+import { displayPlanName } from "@/config/brand";
 
 // Email do Super Admin (você!)
 const SUPER_ADMIN_EMAILS = [
@@ -370,16 +372,17 @@ const SuperAdmin = () => {
     };
 
     const getSubscriptionBadge = (status: string | undefined, plan: string | undefined) => {
+        // Status com variante semântica + texto; o nome do plano é só traduzido para exibição.
         if (status === "active") {
-            return <Badge className="bg-green-500/20 text-green-400">Ativo - {plan}</Badge>;
+            return <Badge variant="success" className="gap-1"><CheckCircle className="w-3 h-3" aria-hidden />Ativo - {displayPlanName(plan)}</Badge>;
         }
         if (status === "trial") {
-            return <Badge className="bg-yellow-500/20 text-yellow-400">Trial</Badge>;
+            return <Badge variant="warning" className="gap-1"><Clock className="w-3 h-3" aria-hidden />Trial</Badge>;
         }
         if (status === "canceled") {
-            return <Badge className="bg-red-500/20 text-red-400">Cancelado</Badge>;
+            return <Badge variant="danger" className="gap-1"><XCircle className="w-3 h-3" aria-hidden />Cancelado</Badge>;
         }
-        return <Badge className="bg-gray-500/20 text-gray-400">Free</Badge>;
+        return <Badge variant="secondary">Free</Badge>;
     };
 
     const handleLogout = async () => {
@@ -395,7 +398,7 @@ const SuperAdmin = () => {
             const isBlocked = selectedSalon.is_active === false;
             await supabase.from("salons").update({ is_active: !isBlocked }).eq("id", selectedSalon.id);
             toast({
-                title: isBlocked ? "Salão desbloqueado" : "Salão bloqueado",
+                title: isBlocked ? "Estabelecimento desbloqueado" : "Estabelecimento bloqueado",
                 description: `${selectedSalon.name} foi ${isBlocked ? "desbloqueado" : "bloqueado"} com sucesso.`,
             });
             setShowBlockDialog(false);
@@ -417,7 +420,7 @@ const SuperAdmin = () => {
                 city: editForm.city || selectedSalon.city,
                 state: editForm.state || selectedSalon.state,
             }).eq("id", selectedSalon.id);
-            toast({ title: "Salão atualizado", description: "Dados salvos com sucesso." });
+            toast({ title: "Estabelecimento atualizado", description: "Dados salvos com sucesso." });
             setShowEditDialog(false);
             await loadData();
         } catch (error) {
@@ -462,7 +465,7 @@ const SuperAdmin = () => {
                 status: "sent"
             }));
             await supabase.from("notifications").insert(notifications);
-            toast({ title: "Broadcast enviado", description: `Enviado para ${allSalons?.length || 0} salões` });
+            toast({ title: "Broadcast enviado", description: `Enviado para ${allSalons?.length || 0} estabelecimentos` });
             setShowBroadcastDialog(false);
             setBroadcastForm({ title: "", message: "" });
         } catch (error) {
@@ -573,7 +576,7 @@ const SuperAdmin = () => {
         setActionLoading(true);
         try {
             await supabase.from("salons").delete().eq("id", selectedSalon.id);
-            toast({ title: "Salão excluído", description: `${selectedSalon.name} foi removido.` });
+            toast({ title: "Estabelecimento excluído", description: `${selectedSalon.name} foi removido.` });
             setShowDeleteDialog(false);
             setShowSalonDetails(false);
             await loadData();
@@ -592,7 +595,7 @@ const SuperAdmin = () => {
                 salon_id: selectedSalon.id,
                 status: "past_due"
             }, { onConflict: "salon_id" });
-            toast({ title: "Inadimplente", description: "Salão marcado como inadimplente." });
+            toast({ title: "Inadimplente", description: "Estabelecimento marcado como inadimplente." });
             await loadData();
         } catch (error) {
             toast({ title: "Erro", description: "Falha ao atualizar.", variant: "destructive" });
@@ -703,7 +706,7 @@ const SuperAdmin = () => {
     const handleImpersonateUser = async () => {
         if (!selectedSalon?.owner_id || !selectedSalon) return;
         
-        if (!confirm(`Tem certeza que deseja entrar como administrador do salão "${selectedSalon.name}"?\n\nVocê terá acesso completo a este salão.\n\nSeus logs serão marcados como Super Admin.`)) {
+        if (!confirm(`Tem certeza que deseja entrar como administrador do estabelecimento "${selectedSalon.name}"?\n\nVocê terá acesso completo a este estabelecimento.\n\nSeus logs serão marcados como Super Admin.`)) {
             return;
         }
 
@@ -733,8 +736,9 @@ const SuperAdmin = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3" role="status">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+                <p className="text-sm text-muted-foreground">Carregando painel…</p>
             </div>
         );
     }
@@ -747,39 +751,39 @@ const SuperAdmin = () => {
         <div className="min-h-screen bg-background">
             {/* Header */}
             <header className="border-b border-border bg-surface-1 sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <Shield className="w-8 h-8 text-primary" />
-                        <div>
-                            <h1 className="font-display text-xl font-bold">SysHair Super Admin</h1>
+                <div className="container mx-auto px-4 py-3 sm:py-4 flex flex-wrap gap-3 justify-between items-center">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Shield className="w-8 h-8 text-primary shrink-0" aria-hidden />
+                        <div className="min-w-0">
+                            <h1 className="text-lg sm:text-xl font-semibold truncate">Agenda Fácil 365 · Super Admin</h1>
                             <p className="text-xs text-muted-foreground">Painel de Administração Master</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         <Button
-                            variant="default"
+                            variant="outline"
                             size="sm"
-                            className="bg-purple-600 hover:bg-purple-700"
                             onClick={() => setShowBroadcastDialog(true)}
                         >
-                            <Megaphone className="w-4 h-4 mr-2" />
-                            Broadcast
+                            <Megaphone className="w-4 h-4 sm:mr-2" aria-hidden />
+                            <span className="sr-only sm:not-sr-only">Broadcast</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={loadData}
                             disabled={refreshing}
+                            aria-label="Atualizar dados"
                         >
                             {refreshing ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
                             ) : (
-                                <RefreshCw className="w-4 h-4" />
+                                <RefreshCw className="w-4 h-4" aria-hidden />
                             )}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={handleLogout}>
-                            <LogOut className="w-4 h-4 mr-2" />
-                            Sair
+                            <LogOut className="w-4 h-4 sm:mr-2" aria-hidden />
+                            <span className="sr-only sm:not-sr-only">Sair</span>
                         </Button>
                     </div>
                 </div>
@@ -788,157 +792,54 @@ const SuperAdmin = () => {
             <main className="container mx-auto px-4 py-8 space-y-8">
                 {/* Tabs */}
                 <Tabs defaultValue="salons" className="w-full">
-                    <div className="flex items-center justify-between mb-6">
-                        <TabsList className="grid w-full max-w-md grid-cols-3">
-                            <TabsTrigger value="salons" className="flex items-center gap-2">
-                                <Building2 className="w-4 h-4" />
-                                Salões
+                    {/* Broadcast/atualizar/sair ficam só no cabeçalho (antes estavam duplicados aqui) */}
+                    <div className="mb-6">
+                        <TabsList className="grid w-full max-w-lg grid-cols-3">
+                            <TabsTrigger value="salons" className="flex items-center gap-2 min-w-0">
+                                <Building2 className="w-4 h-4 shrink-0 hidden sm:block" aria-hidden />
+                                <span className="truncate">Estabelecimentos</span>
                             </TabsTrigger>
-                            <TabsTrigger value="sellers" className="flex items-center gap-2">
-                                <Store className="w-4 h-4" />
-                                Vendedores
+                            <TabsTrigger value="sellers" className="flex items-center gap-2 min-w-0">
+                                <Store className="w-4 h-4 shrink-0 hidden sm:block" aria-hidden />
+                                <span className="truncate">Vendedores</span>
                             </TabsTrigger>
-                            <TabsTrigger value="ai-settings" className="flex items-center gap-2">
-                                <Brain className="w-4 h-4" />
+                            <TabsTrigger value="ai-settings" className="flex items-center gap-2 min-w-0">
+                                <Brain className="w-4 h-4 shrink-0 hidden sm:block" aria-hidden />
                                 IA
                             </TabsTrigger>
                         </TabsList>
-
-                        <div className="flex items-center gap-4">
-                            <Button
-                                variant="default"
-                                size="sm"
-                                className="bg-purple-600 hover:bg-purple-700"
-                                onClick={() => setShowBroadcastDialog(true)}
-                            >
-                                <Megaphone className="w-4 h-4 mr-2" />
-                                Broadcast
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={loadData}
-                                disabled={refreshing}
-                            >
-                                {refreshing ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="w-4 h-4" />
-                                )}
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={handleLogout}>
-                                <LogOut className="w-4 h-4 mr-2" />
-                                Sair
-                            </Button>
-                        </div>
                     </div>
 
                     {/* Salões Tab */}
                     <TabsContent value="salons" className="space-y-8">
                 {/* Stats Cards */}
                 {stats && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        <Card className="glass-card">
-                            <CardContent className="p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-primary/20">
-                                        <Building2 className="w-5 h-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold">{stats.totalSalons}</p>
-                                        <p className="text-xs text-muted-foreground">Salões</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="glass-card">
-                            <CardContent className="p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-green-500/20">
-                                        <CheckCircle className="w-5 h-5 text-green-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold">{stats.activeSalons}</p>
-                                        <p className="text-xs text-muted-foreground">Ativos</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="glass-card">
-                            <CardContent className="p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-yellow-500/20">
-                                        <Clock className="w-5 h-5 text-yellow-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold">{stats.trialSalons}</p>
-                                        <p className="text-xs text-muted-foreground">Trial</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="glass-card">
-                            <CardContent className="p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-blue-500/20">
-                                        <Calendar className="w-5 h-5 text-blue-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold">{stats.totalAppointments}</p>
-                                        <p className="text-xs text-muted-foreground">Agendamentos</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="glass-card">
-                            <CardContent className="p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-purple-500/20">
-                                        <Users className="w-5 h-5 text-purple-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold">{stats.totalClients}</p>
-                                        <p className="text-xs text-muted-foreground">Clientes</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="glass-card">
-                            <CardContent className="p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-orange-500/20">
-                                        <TrendingUp className="w-5 h-5 text-orange-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold">+{stats.newSalonsThisMonth}</p>
-                                        <p className="text-xs text-muted-foreground">Este mês</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+                        <StatCard icon={Building2} value={stats.totalSalons} label="Estabelecimentos" />
+                        <StatCard icon={CheckCircle} value={stats.activeSalons} label="Ativos" tone="success" />
+                        <StatCard icon={Clock} value={stats.trialSalons} label="Trial" tone="warning" />
+                        <StatCard icon={Calendar} value={stats.totalAppointments} label="Agendamentos" />
+                        <StatCard icon={Users} value={stats.totalClients} label="Clientes" />
+                        <StatCard icon={TrendingUp} value={`+${stats.newSalonsThisMonth}`} label="Novos este mês" tone="neutral" />
                     </div>
                 )}
 
                 {/* Filters */}
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden />
                                 <Input
                                     placeholder="Buscar por nome, slug, email ou cidade..."
+                                    aria-label="Buscar estabelecimentos"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10"
                                 />
                             </div>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="w-full md:w-48">
+                                <SelectTrigger className="w-full md:w-48" aria-label="Filtrar estabelecimentos">
                                     <SelectValue placeholder="Filtrar por..." />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -956,11 +857,11 @@ const SuperAdmin = () => {
                 </Card>
 
                 {/* Salons Table */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Building2 className="w-5 h-5" />
-                            Salões Cadastrados ({filteredSalons.length})
+                            <Building2 className="w-5 h-5 text-primary" aria-hidden />
+                            Estabelecimentos cadastrados ({filteredSalons.length})
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -968,13 +869,13 @@ const SuperAdmin = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Salão</TableHead>
+                                        <TableHead>Estabelecimento</TableHead>
                                         <TableHead>Proprietário</TableHead>
                                         <TableHead>Localização</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead>Recursos</TableHead>
                                         <TableHead className="text-right">Métricas</TableHead>
-                                        <TableHead></TableHead>
+                                        <TableHead><span className="sr-only">Ações</span></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1003,14 +904,14 @@ const SuperAdmin = () => {
                                             <TableCell>
                                                 <div className="flex gap-2">
                                                     {salon.whatsapp_connected && (
-                                                        <Badge variant="outline" className="text-green-400 border-green-400">
-                                                            <Smartphone className="w-3 h-3 mr-1" />
+                                                        <Badge variant="success">
+                                                            <Smartphone className="w-3 h-3 mr-1" aria-hidden />
                                                             WhatsApp
                                                         </Badge>
                                                     )}
                                                     {salon.chatbot_enabled && (
-                                                        <Badge variant="outline" className="text-blue-400 border-blue-400">
-                                                            <Bot className="w-3 h-3 mr-1" />
+                                                        <Badge variant="info">
+                                                            <Bot className="w-3 h-3 mr-1" aria-hidden />
                                                             IA
                                                         </Badge>
                                                     )}
@@ -1018,12 +919,14 @@ const SuperAdmin = () => {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-4 justify-end text-sm">
-                                                    <span title="Agendamentos">
-                                                        <Calendar className="w-4 h-4 inline mr-1" />
+                                                    <span title="Agendamentos" className="whitespace-nowrap">
+                                                        <Calendar className="w-4 h-4 inline mr-1" aria-hidden />
+                                                        <span className="sr-only">Agendamentos: </span>
                                                         {salon.appointments_count}
                                                     </span>
-                                                    <span title="Clientes">
-                                                        <Users className="w-4 h-4 inline mr-1" />
+                                                    <span title="Clientes" className="whitespace-nowrap">
+                                                        <Users className="w-4 h-4 inline mr-1" aria-hidden />
+                                                        <span className="sr-only">Clientes: </span>
                                                         {salon.clients_count}
                                                     </span>
                                                 </div>
@@ -1031,8 +934,8 @@ const SuperAdmin = () => {
                                             <TableCell>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <MoreVertical className="w-4 h-4" />
+                                                        <Button variant="ghost" size="icon" aria-label={`Ações para ${salon.name}`}>
+                                                            <MoreVertical className="w-4 h-4" aria-hidden />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-56">
@@ -1067,7 +970,7 @@ const SuperAdmin = () => {
                                                         <DropdownMenuItem onClick={() => {
                                                             setSelectedSalon(salon);
                                                             handleMarkOverdue();
-                                                        }} className="text-orange-500">
+                                                        }} className="text-warning">
                                                             <AlertOctagon className="w-4 h-4 mr-2" /> Marcar Inadimplente
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => {
@@ -1080,7 +983,7 @@ const SuperAdmin = () => {
                                                         <DropdownMenuItem onClick={() => {
                                                             setSelectedSalon(salon);
                                                             setShowBlockDialog(true);
-                                                        }} className={salon.is_active === false ? "text-green-500" : "text-yellow-500"}>
+                                                        }} className={salon.is_active === false ? "text-success" : "text-warning"}>
                                                             {salon.is_active === false ? (
                                                                 <><Play className="w-4 h-4 mr-2" /> Desbloquear</>
                                                             ) : (
@@ -1090,7 +993,7 @@ const SuperAdmin = () => {
                                                         <DropdownMenuItem onClick={() => {
                                                             setSelectedSalon(salon);
                                                             setShowDeleteDialog(true);
-                                                        }} className="text-red-500">
+                                                        }} className="text-destructive">
                                                             <Trash2 className="w-4 h-4 mr-2" /> Excluir
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -1169,14 +1072,15 @@ const SuperAdmin = () => {
                             <div className="border-t pt-4">
                                 <p className="text-sm font-medium mb-3">Recursos Ativos</p>
                                 <div className="flex flex-wrap gap-2">
-                                    <Badge variant={selectedSalon.public_booking_enabled ? "default" : "outline"}>
-                                        {selectedSalon.public_booking_enabled ? "✓" : "✗"} Booking Público
+                                    {/* Texto explícito (ativo/inativo) além do símbolo e da cor */}
+                                    <Badge variant={selectedSalon.public_booking_enabled ? "success" : "outline"}>
+                                        {selectedSalon.public_booking_enabled ? "✓" : "✗"} Booking Público: {selectedSalon.public_booking_enabled ? "ativo" : "inativo"}
                                     </Badge>
-                                    <Badge variant={selectedSalon.whatsapp_connected ? "default" : "outline"}>
-                                        {selectedSalon.whatsapp_connected ? "✓" : "✗"} WhatsApp
+                                    <Badge variant={selectedSalon.whatsapp_connected ? "success" : "outline"}>
+                                        {selectedSalon.whatsapp_connected ? "✓" : "✗"} WhatsApp: {selectedSalon.whatsapp_connected ? "conectado" : "desconectado"}
                                     </Badge>
-                                    <Badge variant={selectedSalon.chatbot_enabled ? "default" : "outline"}>
-                                        {selectedSalon.chatbot_enabled ? "✓" : "✗"} Chatbot IA
+                                    <Badge variant={selectedSalon.chatbot_enabled ? "success" : "outline"}>
+                                        {selectedSalon.chatbot_enabled ? "✓" : "✗"} Chatbot IA: {selectedSalon.chatbot_enabled ? "ativo" : "inativo"}
                                     </Badge>
                                 </div>
                             </div>
@@ -1200,12 +1104,12 @@ const SuperAdmin = () => {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {selectedSalon?.is_active === false ? "Desbloquear Salão?" : "Bloquear Salão?"}
+                            {selectedSalon?.is_active === false ? "Desbloquear estabelecimento?" : "Bloquear estabelecimento?"}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {selectedSalon?.is_active === false
                                 ? `Tem certeza que deseja desbloquear ${selectedSalon?.name}? O acesso será restaurado imediatamente.`
-                                : `Tem certeza que deseja bloquear ${selectedSalon?.name}? O proprietário e profisionais perderão acesso imediatamente.`
+                                : `Tem certeza que deseja bloquear ${selectedSalon?.name}? O proprietário e profissionais perderão acesso imediatamente.`
                             }
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1213,7 +1117,9 @@ const SuperAdmin = () => {
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleBlockSalon}
-                            className={selectedSalon?.is_active === false ? "bg-green-600" : "bg-red-600"}
+                            className={selectedSalon?.is_active === false
+                                ? "bg-success text-success-foreground hover:bg-success/90"
+                                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
                             disabled={actionLoading}
                         >
                             {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -1227,11 +1133,11 @@ const SuperAdmin = () => {
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Editar Salão: {selectedSalon?.name}</DialogTitle>
+                        <DialogTitle>Editar estabelecimento: {selectedSalon?.name}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="name">Nome do Salão</Label>
+                            <Label htmlFor="name">Nome do estabelecimento</Label>
                             <Input
                                 id="name"
                                 value={editForm.name}
@@ -1315,14 +1221,15 @@ const SuperAdmin = () => {
 
             {/* Broadcast Dialog */}
             <Dialog open={showBroadcastDialog} onOpenChange={setShowBroadcastDialog}>
-                <DialogContent className="max-w-md border-purple-500 border-2">
+                <DialogContent className="max-w-md border-warning border-2">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-purple-600">
-                            <Megaphone className="w-5 h-5" />
-                            Broadcast Geral (Todos os Salões)
+                        <DialogTitle className="flex items-center gap-2">
+                            <Megaphone className="w-5 h-5 text-primary" aria-hidden />
+                            Broadcast Geral (todos os estabelecimentos)
                         </DialogTitle>
-                        <CardDescription>
-                            Isso enviará uma notificação para TODOS os salões cadastrados. Use com cuidado.
+                        <CardDescription className="flex items-start gap-2 text-warning">
+                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+                            Isso enviará uma notificação para TODOS os estabelecimentos cadastrados. Use com cuidado.
                         </CardDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -1332,7 +1239,7 @@ const SuperAdmin = () => {
                                 id="bc-title"
                                 value={broadcastForm.title}
                                 onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-                                placeholder="Ex: Novidade no SysHair!"
+                                placeholder="Ex: Novidade no Agenda Fácil 365!"
                             />
                         </div>
                         <div className="grid gap-2">
@@ -1349,7 +1256,7 @@ const SuperAdmin = () => {
                     <div className="flex justify-end gap-3">
                         <Button variant="outline" onClick={() => setShowBroadcastDialog(false)}>Cancelar</Button>
                         <Button
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            variant="brand"
                             onClick={handleBroadcast}
                             disabled={actionLoading}
                         >
@@ -1376,16 +1283,18 @@ const SuperAdmin = () => {
                                 variant="outline"
                                 size="icon"
                                 onClick={() => setTrialDays(Math.max(1, trialDays - 1))}
+                                aria-label="Diminuir um dia"
                             >
                                 -
                             </Button>
-                            <div className="text-center font-bold text-2xl w-20">
+                            <div className="text-center font-bold text-2xl w-20 tabular-nums" aria-live="polite">
                                 {trialDays}
                             </div>
                             <Button
                                 variant="outline"
                                 size="icon"
                                 onClick={() => setTrialDays(trialDays + 1)}
+                                aria-label="Aumentar um dia"
                             >
                                 +
                             </Button>
@@ -1406,12 +1315,12 @@ const SuperAdmin = () => {
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" />
-                            Excluir Salão Permanentemente?
+                        <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5" aria-hidden />
+                            Excluir estabelecimento permanentemente?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Atenção: Esta ação não pode ser desfeita. Isso excluirá permanentemente o salão
+                            Atenção: Esta ação não pode ser desfeita. Isso excluirá permanentemente o estabelecimento
                             <strong> {selectedSalon?.name} </strong>
                             e todos os seus dados associados (agendamentos, clientes, configurações).
                         </AlertDialogDescription>
@@ -1420,11 +1329,11 @@ const SuperAdmin = () => {
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteSalon}
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             disabled={actionLoading}
                         >
                             {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Sim, Excluir Salão
+                            Sim, excluir estabelecimento
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

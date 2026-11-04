@@ -1,3 +1,4 @@
+import { displayPlanName, LEGACY_PLAN_NAME } from '@/config/brand';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -183,7 +184,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 currentPeriodEnd,
                 nextPaymentDate: currentPeriodEnd,
                 amount,
-                planName: sub.plan_name || 'SysHair Premium',
+                planName: displayPlanName(sub.plan_name),
                 planType,
                 createdAt: new Date(sub.created_at),
             };
@@ -217,7 +218,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                     is_trial: true,
                     trial_start_date: now.toISOString(),
                     trial_end_date: trialEndDate.toISOString(),
-                    plan_name: 'SysHair Premium',
+                    plan_name: LEGACY_PLAN_NAME, // valor persistido legado (ver docs/LEGACY_IDENTIFIERS.md)
                     amount: 39.90,
                 })
                 .select()
@@ -239,7 +240,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 currentPeriodEnd: null,
                 nextPaymentDate: null,
                 amount: 39.90,
-                planName: 'SysHair Premium',
+                planName: displayPlanName(LEGACY_PLAN_NAME),
                 planType: 'monthly',
                 createdAt: now,
             };

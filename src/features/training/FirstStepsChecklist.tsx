@@ -33,25 +33,25 @@ export function FirstStepsChecklist({ variant = "dashboard" }: Props) {
   const percent = Math.round((completed / total) * 100);
 
   return (
-    <Card className="glass-card" data-tour="first-steps">
+    <Card data-tour="first-steps">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-lg">Primeiros passos</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {allDone
-                ? "Seu salão está pronto para receber clientes."
-                : `${completed} de ${total} concluídos. ${percent >= 50 ? "Falta pouco!" : "Vamos deixar seu salão pronto."}`}
+                ? "Seu estabelecimento está pronto para receber clientes."
+                : `${completed} de ${total} concluídos. ${percent >= 50 ? "Falta pouco!" : "Vamos deixar seu estabelecimento pronto."}`}
             </p>
           </div>
           {variant === "dashboard" && (
             <button
               type="button"
               onClick={dismiss}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+              className="touch-target -m-2 rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Ocultar primeiros passos (continua disponível na Central de Treinamento)"
             >
-              <X size={18} />
+              <X size={18} aria-hidden />
             </button>
           )}
         </div>
@@ -72,18 +72,18 @@ export function FirstStepsChecklist({ variant = "dashboard" }: Props) {
                   <div
                     className={cn(
                       "flex items-center gap-3 rounded-lg p-2",
-                      isNext && "bg-secondary/60",
+                      isNext && "bg-primary/5 ring-1 ring-primary/20",
                     )}
                   >
                     {task.done ? (
-                      <CheckCircle2 size={20} className="text-green-600 flex-shrink-0" aria-label="Concluído" />
+                      <CheckCircle2 size={20} className="text-success flex-shrink-0" aria-label="Concluído" />
                     ) : (
                       <Circle size={20} className="text-muted-foreground flex-shrink-0" aria-label="Pendente" />
                     )}
                     <button
                       type="button"
                       onClick={() => navigate(task.route)}
-                      className="flex-1 min-w-0 text-left"
+                      className="flex-1 min-w-0 min-h-[44px] text-left rounded-md focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <p className={cn("text-sm font-medium", task.done && "text-muted-foreground line-through")}>{task.title}</p>
                       {!task.done && <p className="text-xs text-muted-foreground">{task.description}</p>}

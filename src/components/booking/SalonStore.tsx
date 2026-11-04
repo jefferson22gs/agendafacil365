@@ -242,7 +242,7 @@ export const SalonStore = ({
                               </>
                             ) : (
                               <Button
-                                variant="gold"
+                                variant="brand"
                                 size="sm"
                                 className="h-7 text-xs"
                                 onClick={() => onAddToCart(product)}

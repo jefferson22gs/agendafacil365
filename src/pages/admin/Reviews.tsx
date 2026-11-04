@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Star, MessageSquare, User, Send } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
 
 interface Review {
   id: string;
@@ -101,12 +102,13 @@ const ReviewsPage = () => {
 
   const renderStars = (rating: number) => {
     return (
-      <div className="flex gap-0.5">
+      <div className="flex gap-0.5" role="img" aria-label={`${rating} de 5 estrelas`}>
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
             size={16}
-            className={star <= rating ? 'text-primary fill-primary' : 'text-muted-foreground'}
+            aria-hidden
+            className={star <= rating ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'}
           />
         ))}
       </div>
@@ -116,8 +118,9 @@ const ReviewsPage = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando…</p>
         </div>
       </AdminLayout>
     );
@@ -128,21 +131,16 @@ const ReviewsPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div data-tour="reviews-header">
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            Avaliações
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie as avaliações dos seus clientes
-          </p>
+          <PageHeader className="mb-0" title="Avaliações" description="Leia e responda as avaliações dos seus clientes." />
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-tour="reviews-summary">
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
-                  <Star size={24} className="text-primary-foreground fill-primary-foreground" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Star size={24} className="fill-current" aria-hidden />
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-foreground">
@@ -154,11 +152,11 @@ const ReviewsPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                  <MessageSquare size={24} className="text-white" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <MessageSquare size={24} />
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-foreground">
@@ -170,11 +168,11 @@ const ReviewsPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                  <Send size={24} className="text-white" />
+                <div className="w-12 h-12 rounded-xl bg-success/10 text-success flex items-center justify-center">
+                  <Send size={24} />
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-foreground">
@@ -189,19 +187,13 @@ const ReviewsPage = () => {
 
         {/* Reviews List */}
         {reviews.length === 0 ? (
-          <Card className="glass-card" data-tour="reviews-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Star size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">Nenhuma avaliação ainda</p>
-              <p className="text-sm text-muted-foreground">
-                As avaliações dos clientes aparecerão aqui
-              </p>
-            </CardContent>
-          </Card>
+          <div data-tour="reviews-empty">
+            <EmptyState icon={Star} title="Nenhuma avaliação ainda" description="As avaliações dos clientes aparecerão aqui." />
+          </div>
         ) : (
           <div className="space-y-4" data-tour="reviews-list">
             {reviews.map((review) => (
-              <Card key={review.id} className="glass-card">
+              <Card key={review.id} className="">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -258,7 +250,7 @@ const ReviewsPage = () => {
                           Cancelar
                         </Button>
                         <Button
-                          variant="gold"
+                          variant="brand"
                           size="sm"
                           data-tour="reviews-reply-send"
                           onClick={() => handleSubmitResponse(review.id)}

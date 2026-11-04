@@ -13,7 +13,8 @@ import { Send, MessageCircle, Bell, Users, Gift, Megaphone, Clock, CheckCircle, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Trash2, Plus, Save, Sparkles, Wand2 } from "lucide-react";
+import { Trash2, Plus, Save, Sparkles, Wand2, Info } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Client {
     id: string;
@@ -305,8 +306,9 @@ const Marketing = () => {
     if (loading) {
         return (
             <AdminLayout>
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <div className="flex flex-col items-center justify-center min-h-[400px] gap-3" role="status">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+                    <p className="text-sm text-muted-foreground">Carregando marketing…</p>
                 </div>
             </AdminLayout>
         );
@@ -316,8 +318,7 @@ const Marketing = () => {
         <AdminLayout>
         <div className="space-y-6">
             <div data-tour="marketing-header">
-                <h1 className="text-3xl font-bold text-foreground">Marketing & Notificações</h1>
-                <p className="text-muted-foreground">Envie mensagens para seus clientes</p>
+                <PageHeader className="mb-0" title="Marketing & Notificações" description="Envie mensagens para seus clientes por WhatsApp ou notificação push." />
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
@@ -327,7 +328,7 @@ const Marketing = () => {
                     <Card data-tour="marketing-composer">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Megaphone size={20} />
+                                <Megaphone size={20} className="text-primary" aria-hidden />
                                 Compor Mensagem
                             </CardTitle>
                             <CardDescription>
@@ -336,7 +337,7 @@ const Marketing = () => {
                         </CardHeader>
                         <CardContent>
                             <Tabs value={messageType} onValueChange={(v) => setMessageType(v as any)}>
-                                <TabsList className="grid grid-cols-3 mb-4" data-tour="marketing-type-tabs">
+                                <TabsList className="grid w-full grid-cols-3 mb-4" data-tour="marketing-type-tabs">
                                     <TabsTrigger value="promotional" className="flex items-center gap-2" data-tour="marketing-promotional-tab">
                                         <Gift size={16} />
                                         Promoção
@@ -375,7 +376,7 @@ const Marketing = () => {
                                             <Label className="text-sm text-muted-foreground mb-2 block">Meus Templates Salvos</Label>
                                             <div className="flex flex-wrap gap-2">
                                                 {dbTemplates.map((template) => (
-                                                    <div key={template.id} className="flex items-center gap-1 bg-secondary/30 rounded-md pr-1">
+                                                    <div key={template.id} className="flex items-center gap-1 surface-2 border border-border rounded-md pr-1">
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -389,11 +390,11 @@ const Marketing = () => {
                                                         </Button>
                                                         <button
                                                             onClick={() => handleDeleteTemplate(template.id)}
-                                                            className="p-1 hover:text-destructive transition-colors"
+                                                            className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors"
                                                             title="Excluir template"
-                                                            aria-label="Excluir template"
+                                                            aria-label={`Excluir template ${template.name}`}
                                                         >
-                                                            <Trash2 size={14} />
+                                                            <Trash2 size={14} aria-hidden />
                                                         </button>
                                                     </div>
                                                 ))}
@@ -420,16 +421,16 @@ const Marketing = () => {
                                             value={message}
                                             onChange={(e) => setMessage(e.target.value)}
                                             placeholder="Digite sua mensagem aqui... Use {nome} para personalizar com o nome do cliente."
-                                            className="w-full min-h-[150px] p-3 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground resize-none"
+                                            className="w-full min-h-[150px] p-3 rounded-[10px] bg-background border border-input text-foreground placeholder:text-muted-foreground resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                             maxLength={1000}
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            💡 Use <code className="bg-secondary px-1 rounded">{'{nome}'}</code> para personalizar com o nome do cliente
+                                            Dica: use <code className="bg-secondary px-1 rounded">{'{nome}'}</code> para personalizar com o nome do cliente
                                         </p>
                                     </div>
 
                                     {/* AI Tools & Save Template */}
-                                    <div className="flex gap-2 justify-end">
+                                    <div className="flex flex-wrap gap-2 justify-end">
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -458,8 +459,9 @@ const Marketing = () => {
                                                 </DialogHeader>
                                                 <div className="space-y-4 py-4">
                                                     <div className="space-y-2">
-                                                        <Label>Nome do Template</Label>
+                                                        <Label htmlFor="marketing-template-name">Nome do Template</Label>
                                                         <Input
+                                                            id="marketing-template-name"
                                                             data-tour="marketing-template-name"
                                                             value={newTemplateName}
                                                             onChange={(e) => setNewTemplateName(e.target.value)}
@@ -484,28 +486,29 @@ const Marketing = () => {
                                     {/* Send Via */}
                                     <div className="space-y-2" data-tour="marketing-channels">
                                         <Label>Enviar via</Label>
-                                        <div className="flex gap-4">
-                                            <label className="flex items-center gap-2 cursor-pointer">
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                            <label className="flex min-h-[44px] items-center gap-2 cursor-pointer">
                                                 <Checkbox
                                                     checked={sendVia.whatsapp}
                                                     onCheckedChange={(checked) => setSendVia({ ...sendVia, whatsapp: !!checked })}
                                                 />
-                                                <MessageCircle size={16} className="text-green-500" />
+                                                <MessageCircle size={16} className="text-primary" aria-hidden />
                                                 <span>WhatsApp</span>
                                             </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
+                                            <label className="flex min-h-[44px] items-center gap-2 cursor-pointer">
                                                 <Checkbox
                                                     checked={sendVia.push}
                                                     onCheckedChange={(checked) => setSendVia({ ...sendVia, push: !!checked })}
                                                     disabled={!pushSupported || pushSubscriptionsCount === 0}
                                                 />
-                                                <Bell size={16} className="text-blue-500" />
+                                                <Bell size={16} className="text-primary" aria-hidden />
                                                 <span>Push {pushSubscriptionsCount > 0 ? `(${pushSubscriptionsCount} dispositivos)` : '(0 dispositivos)'}</span>
                                             </label>
                                         </div>
                                         {pushSubscriptionsCount === 0 && (
-                                            <p className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded-lg">
-                                                ⚠️ Nenhum cliente permitiu notificações push ainda. Os clientes precisam acessar a página de agendamento ({salon?.name && <span className="text-primary">/s/{salon.name.toLowerCase().replace(/\s+/g, '')}</span>}) e clicar em "Ativar notificações".
+                                            <p className="flex items-start gap-2 text-xs text-foreground border border-warning/30 bg-warning/10 p-2 rounded-lg">
+                                                <Info size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden />
+                                                Nenhum cliente permitiu notificações push ainda.Os clientes precisam acessar a página de agendamento ({salon?.name && <span className="text-primary">/s/{salon.name.toLowerCase().replace(/\s+/g, '')}</span>}) e clicar em "Ativar notificações".
                                             </p>
                                         )}
                                     </div>
@@ -516,6 +519,7 @@ const Marketing = () => {
 
                     {/* Send Button */}
                     <Button
+                        variant="brand"
                         onClick={handleSendNotification}
                         data-tour="marketing-send"
                         disabled={sending || selectedClients.length === 0 || !message.trim()}
@@ -541,7 +545,7 @@ const Marketing = () => {
                     <Card className="h-fit" data-tour="marketing-clients">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Users size={20} />
+                                <Users size={20} className="text-primary" aria-hidden />
                                 Selecionar Clientes
                             </CardTitle>
                             <CardDescription>
@@ -550,7 +554,7 @@ const Marketing = () => {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Select All */}
-                            <label className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg cursor-pointer hover:bg-secondary transition-colors" data-tour="marketing-select-all">
+                            <label className="flex items-center gap-2 p-3 surface-2 border border-border rounded-lg cursor-pointer hover:bg-secondary transition-colors" data-tour="marketing-select-all">
                                 <Checkbox
                                     checked={selectAll}
                                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
@@ -570,7 +574,7 @@ const Marketing = () => {
                                             key={client.id}
                                             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedClients.includes(client.id)
                                                 ? 'bg-primary/10 border border-primary/30'
-                                                : 'bg-secondary/30 hover:bg-secondary/50'
+                                                : 'border border-transparent hover:bg-secondary/60'
                                                 } ${!client.phone ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             <Checkbox
@@ -586,7 +590,7 @@ const Marketing = () => {
                                                 </p>
                                             </div>
                                             {selectedClients.includes(client.id) && (
-                                                <CheckCircle size={16} className="text-primary flex-shrink-0" />
+                                                <CheckCircle size={16} className="text-primary flex-shrink-0" aria-hidden />
                                             )}
                                         </label>
                                     ))

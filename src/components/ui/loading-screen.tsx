@@ -1,19 +1,25 @@
-import { Loader2 } from 'lucide-react';
+import { Logo } from '@/components/icons/Logo';
 
 interface LoadingScreenProps {
   message?: string;
 }
 
+// Spinner discreto em volta do símbolo da marca; respeita prefers-reduced-motion.
 export const LoadingScreen = ({ message = 'Carregando...' }: LoadingScreenProps) => {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-      <div className="relative">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-primary-foreground animate-spin" />
-        </div>
-        <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+    <div
+      role="status"
+      aria-live="polite"
+      className="min-h-screen bg-background flex flex-col items-center justify-center gap-4"
+    >
+      <div className="relative flex h-16 w-16 items-center justify-center">
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin motion-reduce:animate-none"
+        />
+        <Logo showText={false} size="sm" variant="auto" decorative />
       </div>
-      <p className="text-muted-foreground text-sm animate-pulse">{message}</p>
+      <p className="text-muted-foreground text-sm">{message}</p>
     </div>
   );
 };

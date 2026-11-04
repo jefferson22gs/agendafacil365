@@ -1,27 +1,24 @@
-import { Crown, Scissors, User } from "lucide-react";
+import { Briefcase, Check, User, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 
 const profiles = [
   {
-    icon: Crown,
-    title: "Para Donos de Salão",
-    role: "Admin",
-    description: "Controle total do seu negócio. Dashboard completo, gestão financeira, equipe e muito mais.",
+    icon: Briefcase,
+    title: "Para donos de negócio",
+    role: "Administrador",
+    description: "Controle total do seu negócio: painel completo, gestão financeira, equipe e muito mais.",
     features: [
-      "Dashboard com métricas em tempo real",
+      "Painel com métricas em tempo real",
       "Gestão de profissionais e comissões",
       "Controle financeiro completo",
       "Cupons e promoções",
       "Relatórios detalhados",
     ],
-    gradient: "from-primary via-gold-light to-primary",
-    delay: "0s",
   },
   {
-    icon: Scissors,
-    title: "Para Profissionais",
-    role: "Barbeiro / Cabeleireiro",
+    icon: UserCog,
+    title: "Para profissionais",
+    role: "Cabeleireiro, barbeiro, esteticista e outros",
     description: "Visualize sua agenda, histórico de clientes e acompanhe suas comissões de forma simples.",
     features: [
       "Agenda pessoal organizada",
@@ -30,87 +27,56 @@ const profiles = [
       "Atendimento rápido",
       "Notificações em tempo real",
     ],
-    gradient: "from-blue-500 to-cyan-500",
-    delay: "0.1s",
   },
   {
     icon: User,
-    title: "Para Clientes",
-    role: "Experiência Premium",
-    description: "Agende em segundos, receba lembretes e tenha um perfil de beleza personalizado.",
+    title: "Para clientes",
+    role: "Agendamento online",
+    description: "Agende sem precisar ligar, receba lembretes e acompanhe seu histórico de atendimentos.",
     features: [
-      "Agendamento em 30 segundos",
+      "Agendamento online rápido",
       "Escolha de profissional",
       "Cupons de desconto",
       "Lembretes automáticos",
-      "Histórico de cortes",
+      "Histórico de atendimentos",
     ],
-    gradient: "from-purple-500 to-pink-500",
-    delay: "0.2s",
   },
 ];
 
 export const ProfilesSection = () => {
   return (
-    <section id="about" className="py-24 relative">
+    <section id="about" className="scroll-mt-20 bg-background py-16 md:py-24">
       <div className="container px-4">
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Uma experiência para{' '}
-            <span className="text-gradient-gold">cada perfil</span>
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            Uma experiência para cada perfil
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Interfaces personalizadas para cada tipo de usuário
-          </p>
+          <p className="mt-4 text-lg text-muted-foreground">Telas pensadas para cada tipo de usuário.</p>
         </div>
 
-        {/* Profiles Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {profiles.map((profile) => (
-            <div
-              key={profile.title}
-              className="group relative glass-card rounded-3xl p-8 hover:border-primary/30 transition-all duration-500 animate-fade-in-up"
-              style={{ animationDelay: profile.delay }}
-            >
-              {/* Gradient Top Border */}
-              <div className={`absolute top-0 left-8 right-8 h-1 bg-gradient-to-r ${profile.gradient} rounded-full`} />
-
-              {/* Icon */}
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${profile.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                <profile.icon className="w-8 h-8 text-white" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+          {profiles.map(({ icon: Icon, title, role, description, features }) => (
+            <article key={title} className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                <Icon className="h-6 w-6 text-primary" aria-hidden />
               </div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{role}</p>
+              <h3 className="text-xl font-semibold text-foreground">{title}</h3>
+              <p className="mt-2 text-muted-foreground">{description}</p>
 
-              {/* Role Badge */}
-              <div className="inline-flex px-3 py-1 rounded-full bg-secondary text-xs font-medium text-secondary-foreground mb-4">
-                {profile.role}
-              </div>
-
-              {/* Content */}
-              <h3 className="font-display text-2xl font-bold text-foreground mb-3">
-                {profile.title}
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                {profile.description}
-              </p>
-
-              {/* Features List */}
-              <ul className="space-y-3 mb-8">
-                {profile.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm text-foreground">
-                    <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${profile.gradient}`} />
+              <ul className="mb-8 mt-6 space-y-3">
+                {features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3 text-sm text-foreground">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                     {feature}
                   </li>
                 ))}
               </ul>
 
-              {/* CTA */}
-              <Link to="/checkout">
-                <Button variant="gold-outline" className="w-full">
-                  Saiba mais
-                </Button>
-              </Link>
-            </div>
+              <Button asChild variant="brand-outline" className="mt-auto h-11 w-full">
+                <a href="#pricing">Ver planos</a>
+              </Button>
+            </article>
           ))}
         </div>
       </div>

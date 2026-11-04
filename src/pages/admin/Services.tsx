@@ -10,7 +10,8 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Scissors, Clock, DollarSign } from "lucide-react";
+import { Plus, Edit2, Trash2, ClipboardList, Clock, DollarSign, Building2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/page-header";
 import { Tables } from "@/integrations/supabase/types";
 
 type Service = Tables<"services">;
@@ -71,7 +72,7 @@ const Services = () => {
 
   const handleSubmit = async () => {
     if (!salonId) {
-      toast.error("Configure seu salão primeiro");
+      toast.error("Configure seu estabelecimento primeiro");
       return;
     }
 
@@ -165,8 +166,9 @@ const Services = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando…</p>
         </div>
       </AdminLayout>
     );
@@ -175,12 +177,16 @@ const Services = () => {
   if (!salonId) {
     return (
       <AdminLayout>
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <p className="text-muted-foreground mb-4">Configure seu salão primeiro para gerenciar serviços</p>
-          <Button variant="gold" onClick={() => window.location.href = '/admin/settings'}>
-            Configurar Salão
-          </Button>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="Configure seu estabelecimento primeiro"
+          description="Cadastre o estabelecimento para gerenciar serviços."
+          action={
+            <Button variant="brand" onClick={() => window.location.href = '/admin/settings'}>
+              Configurar estabelecimento
+            </Button>
+          }
+        />
       </AdminLayout>
     );
   }
@@ -188,17 +194,17 @@ const Services = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between" data-tour="services-header">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">Serviços</h1>
-            <p className="text-muted-foreground mt-1">Gerencie os serviços oferecidos</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between" data-tour="services-header">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Serviços</h2>
+            <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Defina preço e duração de cada serviço oferecido.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold" data-tour="services-new-button">
+              <Button variant="brand" data-tour="services-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Serviço
               </Button>
@@ -281,7 +287,7 @@ const Services = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit} data-tour="services-save">
+                <Button variant="brand" onClick={handleSubmit} data-tour="services-save">
                   {editingService ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
@@ -290,25 +296,21 @@ const Services = () => {
         </div>
 
         {services.length === 0 ? (
-          <Card className="glass-card" data-tour="services-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Scissors size={48} className="text-muted-foreground mb-4" />
-              <p className="font-medium text-foreground text-center">
-                Nenhum serviço cadastrado ainda
-              </p>
-              <p className="text-sm text-muted-foreground text-center mt-1 max-w-sm">
-                Cadastre os serviços que seus clientes poderão agendar, com preço e duração.
-              </p>
-              <TrainingEmptyActions tourId="services" className="mt-4" />
-            </CardContent>
-          </Card>
+          <div data-tour="services-empty">
+            <EmptyState
+              icon={ClipboardList}
+              title="Nenhum serviço cadastrado ainda"
+              description="Cadastre os serviços que seus clientes poderão agendar, com preço e duração."
+              action={<TrainingEmptyActions tourId="services" />}
+            />
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="services-list">
             {services.map((service) => (
-              <Card key={service.id} className="glass-card">
+              <Card key={service.id}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-gold-light/20 flex items-center justify-center text-3xl">
+                    <div className="w-14 h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-3xl">
                       {service.icon || "✂️"}
                     </div>
                     <div className="flex gap-2">
@@ -332,7 +334,7 @@ const Services = () => {
                       </Button>
                     </div>
                   </div>
-                  <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">
                     {service.name}
                   </h3>
                   {service.description && (

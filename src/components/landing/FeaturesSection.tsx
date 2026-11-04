@@ -1,141 +1,116 @@
 import {
   Calendar,
   Users,
-  Scissors,
+  UserCog,
   BarChart3,
   Bell,
   Gift,
   Smartphone,
   Shield,
-  Clock,
-  MessageSquare,
   Sparkles,
   Share2,
   Bot,
-  ImagePlus
+  ImagePlus,
 } from "lucide-react";
 
 const features = [
   {
     icon: Calendar,
-    title: "Agendamento Inteligente",
-    description: "Seus clientes agendam em segundos. Confirmação automática via WhatsApp.",
-    gradient: "from-blue-500 to-cyan-500",
+    title: "Agendamento online",
+    description: "Seus clientes agendam pelo link do negócio, com confirmação automática via WhatsApp.",
   },
   {
     icon: Bot,
-    title: "Chatbot IA WhatsApp",
+    title: "Chatbot IA no WhatsApp",
     description: "Atendimento automático 24/7 que responde dúvidas e agenda clientes sozinho.",
-    gradient: "from-green-500 to-emerald-500",
     isNew: true,
   },
   {
     icon: ImagePlus,
     title: "Status com IA",
-    description: "Agende posts para Status do WhatsApp com legendas geradas por Inteligência Artificial.",
-    gradient: "from-purple-500 to-pink-500",
+    description: "Agende posts para o Status do WhatsApp com legendas geradas por Inteligência Artificial.",
     isNew: true,
   },
   {
     icon: Share2,
-    title: "Página Pública",
+    title: "Página pública",
     description: "Cada profissional tem sua página exclusiva para compartilhar com clientes.",
-    gradient: "from-orange-500 to-red-500",
     isNew: true,
   },
   {
     icon: Users,
-    title: "Gestão de Clientes",
-    description: "Histórico completo, preferências e perfil de beleza de cada cliente.",
-    gradient: "from-cyan-500 to-blue-500",
+    title: "Gestão de clientes",
+    description: "Histórico completo, preferências e perfil de cada cliente.",
   },
   {
-    icon: Scissors,
-    title: "Controle de Profissionais",
-    description: "Agenda individual, comissões automáticas e performance em tempo real.",
-    gradient: "from-rose-500 to-pink-500",
+    icon: UserCog,
+    title: "Controle de profissionais",
+    description: "Agenda individual, comissões automáticas e desempenho em tempo real.",
   },
   {
     icon: BarChart3,
-    title: "Dashboard Financeiro",
+    title: "Painel financeiro",
     description: "Faturamento, ticket médio e serviços mais vendidos em um só lugar.",
-    gradient: "from-amber-500 to-orange-500",
   },
   {
     icon: Bell,
-    title: "Automações Inteligentes",
+    title: "Automações",
     description: "Lembretes automáticos e sugestões de retorno para fidelizar clientes.",
-    gradient: "from-yellow-500 to-orange-500",
   },
   {
     icon: Gift,
-    title: "Cupons & Promoções",
+    title: "Cupons e promoções",
     description: "Crie cupons personalizados para horários ociosos e novos clientes.",
-    gradient: "from-pink-500 to-rose-500",
   },
 ];
 
 const highlights = [
-  { icon: Smartphone, text: "100% Mobile" },
-  { icon: Shield, text: "Dados Seguros" },
-  { icon: Clock, text: "Setup em 5min" },
-  { icon: Sparkles, text: "IA Integrada" },
+  { icon: Smartphone, text: "Funciona no celular" },
+  { icon: Shield, text: "Dados seguros" },
+  { icon: Sparkles, text: "IA integrada" },
 ];
 
 export const FeaturesSection = () => {
   return (
-    <section id="features" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-surface-1" />
-
-      <div className="container relative z-10 px-4">
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Tudo que você precisa em{' '}
-            <span className="text-gradient-gold">um só lugar</span>
+    <section id="features" className="scroll-mt-20 bg-surface-1 py-16 md:py-24">
+      <div className="container px-4">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            Tudo que o seu negócio precisa em um só lugar
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Funcionalidades pensadas para transformar a gestão do seu salão
+          <p className="mt-4 text-lg text-muted-foreground">
+            Recursos pensados para quem trabalha com horário marcado.
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {features.map((feature, index) => (
-            <div
-              key={feature.title}
-              className="group glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
-              style={{ animationDelay: `${index * 0.1}s` }}
+        <ul className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+          {features.map(({ icon: Icon, title, description, isNew }) => (
+            <li
+              key={title}
+              className="relative rounded-2xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
             >
-              {feature.isNew && (
-                <div className="absolute top-3 right-3 px-2 py-1 bg-gradient-to-r from-primary to-amber-500 text-white text-xs font-bold rounded-full animate-pulse">
-                  NOVO
-                </div>
+              {isNew && (
+                <span className="absolute right-4 top-4 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  Novo
+                </span>
               )}
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                <feature.icon className="w-6 h-6 text-white" />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                <Icon className="h-5 w-5 text-primary" aria-hidden />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2 text-foreground">
-                {feature.title}
-              </h3>
-              <p className="text-muted-foreground">
-                {feature.description}
-              </p>
-            </div>
+              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        {/* Highlights */}
-        <div className="flex flex-wrap items-center justify-center gap-8">
-          {highlights.map((item) => (
-            <div key={item.text} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <item.icon className="w-5 h-5 text-primary" />
-              </div>
-              <span className="font-medium text-foreground">{item.text}</span>
-            </div>
+        <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+          {highlights.map(({ icon: Icon, text }) => (
+            <li key={text} className="flex items-center gap-3">
+              <Icon className="h-5 w-5 text-primary" aria-hidden />
+              <span className="font-medium text-foreground">{text}</span>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );

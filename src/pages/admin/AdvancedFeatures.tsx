@@ -8,6 +8,7 @@ import { RealReferralProgram } from "@/components/admin/RealReferralProgram";
 import { RealBIPredictive } from "@/components/admin/RealBIPredictive";
 import { Lookbook } from "@/components/admin/Lookbook";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHeader } from "@/components/ui/page-header";
 import {
     Trophy,
     Clock,
@@ -50,8 +51,9 @@ const AdvancedFeatures = () => {
     if (loading) {
         return (
             <AdminLayout>
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                <div className="flex flex-col items-center justify-center min-h-[400px] gap-3" role="status">
+                    <RefreshCw className="w-8 h-8 animate-spin text-primary" aria-hidden />
+                    <p className="text-sm text-muted-foreground">Carregando recursos…</p>
                 </div>
             </AdminLayout>
         );
@@ -62,12 +64,11 @@ const AdvancedFeatures = () => {
             <div className="space-y-6">
                 {/* Header */}
                 <div data-tour="advanced-header">
-                    <h1 className="font-display text-3xl font-bold text-foreground">
-                        Recursos Avançados
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Ferramentas inteligentes com dados reais do seu salão
-                    </p>
+                    <PageHeader
+                        className="mb-0"
+                        title="Recursos Avançados"
+                        description="Ferramentas inteligentes com dados reais do seu estabelecimento."
+                    />
                 </div>
 
                 {/* Tabs */}
@@ -77,7 +78,7 @@ const AdvancedFeatures = () => {
                             value="bi"
                             data-tour="advanced-bi-tab"
                             aria-label="BI & IA"
-                            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            className="flex min-h-[44px] items-center gap-2 border border-border bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Brain size={16} />
                             <span className="hidden sm:inline">BI & IA</span>
@@ -86,7 +87,7 @@ const AdvancedFeatures = () => {
                             value="loyalty"
                             data-tour="advanced-loyalty-tab"
                             aria-label="Fidelidade"
-                            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            className="flex min-h-[44px] items-center gap-2 border border-border bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Trophy size={16} />
                             <span className="hidden sm:inline">Fidelidade</span>
@@ -95,7 +96,7 @@ const AdvancedFeatures = () => {
                             value="waitlist"
                             data-tour="advanced-waitlist-tab"
                             aria-label="Fila de Espera"
-                            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            className="flex min-h-[44px] items-center gap-2 border border-border bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Clock size={16} />
                             <span className="hidden sm:inline">Fila de Espera</span>
@@ -104,7 +105,7 @@ const AdvancedFeatures = () => {
                             value="referral"
                             data-tour="advanced-referral-tab"
                             aria-label="Indicações"
-                            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            className="flex min-h-[44px] items-center gap-2 border border-border bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Share2 size={16} />
                             <span className="hidden sm:inline">Indicações</span>
@@ -113,7 +114,7 @@ const AdvancedFeatures = () => {
                             value="lookbook"
                             data-tour="advanced-lookbook-tab"
                             aria-label="Lookbook"
-                            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            className="flex min-h-[44px] items-center gap-2 border border-border bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Image size={16} />
                             <span className="hidden sm:inline">Lookbook</span>
@@ -122,7 +123,7 @@ const AdvancedFeatures = () => {
                             value="goals"
                             data-tour="advanced-goals-tab"
                             aria-label="Metas"
-                            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            className="flex min-h-[44px] items-center gap-2 border border-border bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Target size={16} />
                             <span className="hidden sm:inline">Metas</span>
@@ -135,7 +136,7 @@ const AdvancedFeatures = () => {
                                 <RealBIPredictive salonId={salonId} />
                             ) : (
                                 <p className="text-center text-muted-foreground py-8">
-                                    Salão não encontrado
+                                    Estabelecimento não encontrado
                                 </p>
                             )}
                         </TabsContent>
@@ -145,7 +146,7 @@ const AdvancedFeatures = () => {
                                 <RealLoyaltySystem salonId={salonId} />
                             ) : (
                                 <p className="text-center text-muted-foreground py-8">
-                                    Salão não encontrado
+                                    Estabelecimento não encontrado
                                 </p>
                             )}
                         </TabsContent>
@@ -155,7 +156,7 @@ const AdvancedFeatures = () => {
                                 <RealWaitlistManager salonId={salonId} />
                             ) : (
                                 <p className="text-center text-muted-foreground py-8">
-                                    Salão não encontrado
+                                    Estabelecimento não encontrado
                                 </p>
                             )}
                         </TabsContent>
@@ -165,7 +166,7 @@ const AdvancedFeatures = () => {
                                 <RealReferralProgram salonId={salonId} />
                             ) : (
                                 <p className="text-center text-muted-foreground py-8">
-                                    Salão não encontrado
+                                    Estabelecimento não encontrado
                                 </p>
                             )}
                         </TabsContent>
@@ -179,7 +180,7 @@ const AdvancedFeatures = () => {
                                 <RealGoalsManager salonId={salonId} />
                             ) : (
                                 <p className="text-center text-muted-foreground py-8">
-                                    Salão não encontrado
+                                    Estabelecimento não encontrado
                                 </p>
                             )}
                         </TabsContent>

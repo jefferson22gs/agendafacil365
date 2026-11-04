@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Edit2, Trash2, Gift, Percent, DollarSign, Calendar, Users } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
 
 type Coupon = Tables<"coupons">;
 
@@ -191,8 +193,9 @@ const Coupons = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando cupons…</p>
         </div>
       </AdminLayout>
     );
@@ -201,12 +204,16 @@ const Coupons = () => {
   if (!salonId) {
     return (
       <AdminLayout>
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <p className="text-muted-foreground mb-4">Configure seu salão primeiro para gerenciar cupons</p>
-          <Button variant="gold" onClick={() => window.location.href = '/admin/settings'}>
-            Configurar Salão
-          </Button>
-        </div>
+        <EmptyState
+          icon={Gift}
+          title="Configure seu estabelecimento primeiro"
+          description="Depois de cadastrar o estabelecimento você poderá criar cupons de desconto."
+          action={
+            <Button variant="brand" onClick={() => window.location.href = '/admin/settings'}>
+              Configurar estabelecimento
+            </Button>
+          }
+        />
       </AdminLayout>
     );
   }
@@ -214,17 +221,18 @@ const Coupons = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div data-tour="coupons-header">
-            <h1 className="font-display text-3xl font-bold text-foreground">Cupons</h1>
-            <p className="text-muted-foreground mt-1">Gerencie cupons de desconto</p>
-          </div>
+        <div data-tour="coupons-header">
+          <PageHeader
+            className="mb-0"
+            title="Cupons"
+            description="Crie códigos de desconto com regras de valor, validade e limite de uso."
+            actions={
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold" data-tour="coupons-new-button">
+              <Button variant="brand" data-tour="coupons-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Cupom
               </Button>
@@ -330,35 +338,32 @@ const Coupons = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit} data-tour="coupons-save">
+                <Button variant="brand" onClick={handleSubmit} data-tour="coupons-save">
                   {editingCoupon ? "Salvar" : "Criar"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+            }
+          />
         </div>
 
         {coupons.length === 0 ? (
-          <Card className="glass-card" data-tour="coupons-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Gift size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-center">
-                Nenhum cupom cadastrado ainda
-              </p>
-            </CardContent>
-          </Card>
+          <div data-tour="coupons-empty">
+            <EmptyState icon={Gift} title="Nenhum cupom cadastrado ainda" description="Use “Novo Cupom” para criar o primeiro código de desconto." />
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="coupons-list">
             {coupons.map((coupon) => (
-              <Card key={coupon.id} className={`glass-card ${isExpired(coupon.valid_until) ? 'opacity-60' : ''}`}>
+              <Card key={coupon.id} className={isExpired(coupon.valid_until) ? 'opacity-75' : undefined}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                         coupon.type === 'percentage' 
-                          ? 'bg-primary/20 text-primary'
-                          : 'bg-success/20 text-success'
-                      }`}>
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-success/10 text-success'
+                      }`} aria-hidden>
                         {coupon.type === 'percentage' ? <Percent size={24} /> : <DollarSign size={24} />}
                       </div>
                     </div>
@@ -397,7 +402,7 @@ const Coupons = () => {
                   </div>
 
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    {coupon.min_purchase && coupon.min_purchase > 0 && (
+                    {!!coupon.min_purchase && coupon.min_purchase > 0 && (
                       <div className="flex items-center gap-2">
                         <DollarSign size={14} />
                         Mínimo: R$ {coupon.min_purchase.toFixed(2)}
@@ -416,22 +421,15 @@ const Coupons = () => {
                       </div>
                     )}
                     {coupon.is_new_clients_only && (
-                      <div className="text-xs text-primary">
-                        ★ Apenas novos clientes
-                      </div>
+                      <Badge variant="info">Apenas novos clientes</Badge>
                     )}
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      isExpired(coupon.valid_until)
-                        ? 'bg-destructive/20 text-destructive'
-                        : coupon.is_active 
-                          ? 'bg-success/20 text-success' 
-                          : 'bg-muted text-muted-foreground'
-                    }`}>
+                    {/* Status sempre com texto; expirado tem prioridade sobre ativo/inativo */}
+                    <Badge variant={isExpired(coupon.valid_until) ? 'danger' : coupon.is_active ? 'success' : 'secondary'}>
                       {isExpired(coupon.valid_until) ? 'Expirado' : coupon.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
+                    </Badge>
                     <Switch
                       data-tour="coupons-active"
                       aria-label="Ativar ou desativar cupom"

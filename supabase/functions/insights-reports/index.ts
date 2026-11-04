@@ -54,7 +54,7 @@ serve(async (req) => {
       const res = await deliver(ctx, {
         kind: "test", period: { start: "2000-01-01", endExclusive: "2000-01-02", label: "" },
         dedupeKey: `verify:${rec.id}:${Date.now()}`, metrics: {},
-        text: `SysHair Insights — ${salon.name}\n\nSeu código de verificação: ${code}\n\nResponda esta conversa com o código para começar a receber relatórios. Válido por 15 minutos.`,
+        text: `Agenda Fácil 365 Insights — ${salon.name}\n\nSeu código de verificação: ${code}\n\nResponda esta conversa com o código para começar a receber relatórios. Válido por 15 minutos.`,
         recipient: { id: rec.id, phone },
       });
       if (res.status === "skipped") throw new WhatsAppError("instance_missing", 409);

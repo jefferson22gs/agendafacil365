@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/page-header";
 import { 
   TrendingUp, 
   TrendingDown,
@@ -44,10 +45,11 @@ const timeLabels: Record<string, string> = {
   evening: 'Noite'
 };
 
-const churnColors: Record<string, string> = {
-  low: 'bg-success/20 text-success',
-  medium: 'bg-warning/20 text-warning',
-  high: 'bg-destructive/20 text-destructive'
+// Variante semântica do Badge por risco de abandono (texto sempre acompanha a cor).
+const churnVariant: Record<string, "success" | "warning" | "danger"> = {
+  low: 'success',
+  medium: 'warning',
+  high: 'danger'
 };
 
 export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
@@ -94,7 +96,7 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
 
   if (loading) {
     return (
-      <Card className="glass-card" data-tour="dashboard-client-metrics">
+      <Card data-tour="dashboard-client-metrics">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp size={20} className="text-primary" />
@@ -114,7 +116,7 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
 
   if (metrics.length === 0) {
     return (
-      <Card className="glass-card" data-tour="dashboard-client-metrics">
+      <Card data-tour="dashboard-client-metrics">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp size={20} className="text-primary" />
@@ -122,19 +124,19 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <User size={48} className="text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Nenhuma métrica de cliente disponível ainda
-            </p>
-          </div>
+          <EmptyState
+            icon={User}
+            title="Nenhuma métrica de cliente ainda"
+            description="As previsões aparecem depois que houver histórico de atendimentos."
+            className="border-0 bg-transparent py-8"
+          />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="glass-card" data-tour="dashboard-client-metrics">
+    <Card data-tour="dashboard-client-metrics">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp size={20} className="text-primary" />
@@ -152,7 +154,7 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
                 <p className="font-medium text-foreground">{metric.client?.name || 'Cliente'}</p>
                 <p className="text-xs text-muted-foreground">{metric.client?.phone}</p>
               </div>
-              <Badge className={churnColors[metric.churn_risk] || churnColors.low}>
+              <Badge variant={churnVariant[metric.churn_risk] || churnVariant.low}>
                 {metric.churn_risk === 'high' && <AlertCircle size={12} className="mr-1" />}
                 {metric.churn_risk === 'low' && <CheckCircle size={12} className="mr-1" />}
                 Risco {metric.churn_risk === 'low' ? 'baixo' : metric.churn_risk === 'medium' ? 'médio' : 'alto'}

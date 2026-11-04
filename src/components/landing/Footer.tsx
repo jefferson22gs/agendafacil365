@@ -1,184 +1,134 @@
 import { Logo } from "@/components/icons/Logo";
-import { Instagram, MessageCircle, ExternalLink, Heart } from "lucide-react";
+import { Instagram, MessageCircle, ExternalLink } from "lucide-react";
+import { BRAND } from "@/config/brand";
 import { DEVELOPER_INFO, getSupportWhatsAppLink } from "@/config/contact";
 
-const footerLinks = {
-  produto: [
-    { label: "Funcionalidades", href: "#features" },
-    { label: "Preços", href: "#pricing" },
-    { label: "FAQ", href: "#faq" },
-    { label: "Demonstração", href: "#video" },
-  ],
-  empresa: [
-    { label: "Sobre nós", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Contato", href: getSupportWhatsAppLink('support') },
-  ],
-  recursos: [
-    { label: "Central de ajuda", href: getSupportWhatsAppLink('support') },
-    { label: "WhatsApp Suporte", href: getSupportWhatsAppLink('support') },
-    { label: "Instagram", href: DEVELOPER_INFO.instagramLink },
-  ],
-  legal: [
-    { label: "Termos de uso", href: "#" },
-    { label: "Privacidade", href: "#" },
-    { label: "Cookies", href: "#" },
-  ],
-};
+// ponytail: Blog, Termos de uso, Privacidade e Cookies apontavam para "#" (sem rota). Removidos até existirem páginas.
+const footerColumns = [
+  {
+    title: "Produto",
+    links: [
+      { label: "Funcionalidades", href: "#features" },
+      { label: "Preços", href: "#pricing" },
+      { label: "Como funciona", href: "#how-it-works" },
+      { label: "FAQ", href: "#faq" },
+    ],
+  },
+  {
+    title: "Empresa",
+    links: [
+      { label: "Sobre", href: "#about" },
+      { label: "Contato", href: getSupportWhatsAppLink('support') },
+    ],
+  },
+  {
+    title: "Suporte",
+    links: [
+      { label: "WhatsApp Suporte", href: getSupportWhatsAppLink('support') },
+      { label: "Instagram", href: DEVELOPER_INFO.instagramLink },
+    ],
+  },
+  {
+    title: "Acesso",
+    links: [
+      { label: "Entrar", href: "/login" },
+      { label: "Criar conta", href: "/register" },
+    ],
+  },
+];
 
 const socialLinks = [
   { icon: Instagram, href: DEVELOPER_INFO.instagramLink, label: "Instagram" },
   { icon: MessageCircle, href: DEVELOPER_INFO.whatsappLink, label: "WhatsApp" },
 ];
 
+const linkClass =
+  "inline-flex min-h-11 items-center gap-1 rounded text-sm text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-0 md:py-1";
+
 export const Footer = () => {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="py-16 border-t border-border">
+    <footer className="border-t border-border bg-card pt-12 pb-8 md:pt-16">
       <div className="container px-4">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
-          {/* Logo & Description */}
+        <div className="mb-10 grid grid-cols-2 gap-8 md:grid-cols-6">
           <div className="col-span-2">
             <Logo className="mb-4" />
-            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-              O sistema mais completo para gestão de barbearias e salões de beleza do Brasil.
-            </p>
-            <div className="flex items-center gap-3">
-              {socialLinks.map((social) => (
+            <p className="mb-6 max-w-xs text-sm text-muted-foreground">{BRAND.description}</p>
+            <div className="flex items-center gap-2">
+              {socialLinks.map(({ icon: Icon, href, label }) => (
                 <a
-                  key={social.label}
-                  href={social.href}
+                  key={label}
+                  href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={social.label}
-                  className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"
+                  aria-label={`${label} (abre em nova aba)`}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-foreground transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <social.icon size={18} />
+                  <Icon size={18} aria-hidden />
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Product Links */}
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Produto</h4>
-            <ul className="space-y-3">
-              {footerLinks.produto.map((link) => (
-                <li key={link.label}>
-                  <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company Links */}
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Empresa</h4>
-            <ul className="space-y-3">
-              {footerLinks.empresa.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    target={link.href.startsWith('http') ? '_blank' : undefined}
-                    rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Resources Links */}
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Suporte</h4>
-            <ul className="space-y-3">
-              {footerLinks.recursos.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-                  >
-                    {link.label}
-                    <ExternalLink size={12} />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Legal</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.label}>
-                  <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {footerColumns.map((col) => (
+            <nav key={col.title} aria-label={col.title}>
+              <h2 className="mb-3 text-sm font-semibold text-foreground">{col.title}</h2>
+              <ul className="space-y-1 md:space-y-2">
+                {col.links.map((link) => {
+                  const external = link.href.startsWith("http");
+                  return (
+                    <li key={link.label}>
+                      <a
+                        href={link.href}
+                        target={external ? "_blank" : undefined}
+                        rel={external ? "noopener noreferrer" : undefined}
+                        className={linkClass}
+                      >
+                        {link.label}
+                        {external && <ExternalLink size={12} aria-hidden />}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          ))}
         </div>
 
-        {/* Developer Credit */}
-        <div className="py-6 border-t border-border mb-6">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
-            <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-center text-sm text-muted-foreground md:flex-row md:text-left">
+          <p>© {year} {BRAND.name}. Todos os direitos reservados.</p>
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
+            <p>
               Desenvolvido por{" "}
               <a
                 href={DEVELOPER_INFO.instagramLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary font-semibold hover:underline"
+                className="font-semibold text-primary hover:underline"
               >
                 {DEVELOPER_INFO.company}
               </a>
             </p>
-            <div className="flex items-center gap-3">
-              <a
-                href={DEVELOPER_INFO.whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-colors text-sm"
-              >
-                <MessageCircle size={14} />
-                {DEVELOPER_INFO.whatsappFormatted}
-              </a>
-              <a
-                href={DEVELOPER_INFO.instagramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 transition-colors text-sm"
-              >
-                <Instagram size={14} />
-                {DEVELOPER_INFO.instagram}
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Bar */}
-        <div className="pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © 2024 SysHair BelezaTech. Todos os direitos reservados.
-          </p>
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
-            Feito com <Heart size={14} className="text-red-500 fill-red-500" /> por{" "}
+            <a
+              href={DEVELOPER_INFO.whatsappLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-2 hover:text-foreground sm:min-h-0"
+            >
+              <MessageCircle size={14} aria-hidden />
+              {DEVELOPER_INFO.whatsappFormatted}
+            </a>
             <a
               href={DEVELOPER_INFO.instagramLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="inline-flex min-h-11 items-center gap-2 hover:text-foreground sm:min-h-0"
             >
-              {DEVELOPER_INFO.company}
+              <Instagram size={14} aria-hidden />
+              {DEVELOPER_INFO.instagram}
             </a>
-          </p>
+          </div>
         </div>
       </div>
     </footer>

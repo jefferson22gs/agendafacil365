@@ -50,10 +50,10 @@ export interface SubscriptionResponse {
     createdAt: Date;
 }
 
-// SysHair default plan
-export const SYSHAIR_PLAN: SubscriptionPlan = {
+// Plano padrão. `id` 'syshair-premium' é identificador técnico persistido/checkout: NÃO renomear.
+export const DEFAULT_PLAN: SubscriptionPlan = {
     id: 'syshair-premium',
-    name: 'SysHair Premium',
+    name: 'Agenda Fácil 365 Premium',
     price: 39.90,
     currency: 'BRL',
     interval: 'month',
@@ -105,7 +105,7 @@ class MercadoPagoService {
     async createSubscription(
         customer: Customer,
         paymentMethod: PaymentMethod,
-        plan: SubscriptionPlan = SYSHAIR_PLAN
+        plan: SubscriptionPlan = DEFAULT_PLAN
     ): Promise<SubscriptionResponse> {
         if (!this.config) {
             throw new Error('Mercado Pago not initialized. Call init() first.');
@@ -231,6 +231,6 @@ export const useMercadoPago = () => {
         pauseSubscription: mercadoPago.pauseSubscription.bind(mercadoPago),
         resumeSubscription: mercadoPago.resumeSubscription.bind(mercadoPago),
         getSubscriptionStatus: mercadoPago.getSubscriptionStatus.bind(mercadoPago),
-        plan: SYSHAIR_PLAN,
+        plan: DEFAULT_PLAN,
     };
 };

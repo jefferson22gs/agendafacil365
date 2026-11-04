@@ -4,26 +4,26 @@ export const dashboardTour: TourDef = {
   id: "dashboard",
   version: 1,
   title: "Conheça o Dashboard",
-  description: "Veja o resumo do dia, os números do salão e os atalhos do painel.",
+  description: "Veja o resumo do dia, os números do estabelecimento e os atalhos do painel.",
   category: "start",
   route: "/admin",
   steps: [
     {
       target: "dashboard-header",
-      title: "Seu resumo do salão",
-      body: "Esta é a tela inicial do painel. Ela reúne os agendamentos de hoje, os números do salão e atalhos para outras telas.",
+      title: "Seu resumo do dia",
+      body: "Esta é a tela inicial do painel, com a saudação \"Olá\" e o botão Novo agendamento. Ela reúne os agendamentos de hoje, os números do estabelecimento e atalhos para outras telas.",
     },
     {
       target: "dashboard-no-salon",
-      title: "Ainda não criou seu salão?",
-      body: "Use Configurar meu salão para preencher os dados do estabelecimento. Depois de salvar, volte aqui para acompanhar o movimento.",
-      fallbackBody: "Seu salão já está configurado. Se precisar atualizar nome, contato ou horários, abra Configurações pelo menu.",
+      title: "Ainda não criou seu estabelecimento?",
+      body: "Use Configurar estabelecimento para preencher os dados do estabelecimento. Depois de salvar, volte aqui para acompanhar o movimento.",
+      fallbackBody: "Seu estabelecimento já está configurado. Se precisar atualizar nome, contato ou horários, abra Configurações, no grupo Configurações e ajuda do menu.",
     },
     {
       target: "dashboard-stats",
       title: "Os números principais",
       body: "Os cartões mostram agendamentos de hoje, faturamento do mês, clientes cadastrados e um horário da agenda. O contador de hoje inclui todos os agendamentos do dia, não apenas os que ainda vão acontecer.",
-      tip: "Próximo horário mostra o primeiro agendamento do dia, mesmo que já tenha passado. O +0% do faturamento é fixo, não uma comparação real.",
+      tip: "Próximo horário mostra o primeiro agendamento do dia, mesmo que já tenha passado. O texto Concluídos no faturamento indica o critério usado, não uma comparação com outro período.",
     },
     {
       target: "dashboard-stats",
@@ -64,7 +64,7 @@ export const dashboardTour: TourDef = {
       target: "dashboard-quick-actions",
       title: "Atalhos para o trabalho",
       body: "Ações rápidas abre Agendamentos, Clientes, Dashboard Analítico, Pacotes ou Produtos. Novo agendamento abre a tela da agenda, sem salvar nada automaticamente.",
-      fallbackBody: "Os atalhos completos aparecem depois de configurar seu salão. Antes disso, a área oferece o botão Configurar salão.",
+      fallbackBody: "Os atalhos completos aparecem depois de configurar seu estabelecimento. Antes disso, a área oferece o botão Configurar estabelecimento.",
     },
     {
       title: "Próximo passo",

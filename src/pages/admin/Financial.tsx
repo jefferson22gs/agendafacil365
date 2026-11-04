@@ -16,6 +16,8 @@ import {
   Loader2,
   BarChart3
 } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { StatCard } from "@/components/admin/StatCard";
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -166,8 +168,9 @@ const Financial = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+          <p className="text-sm text-muted-foreground">Carregando financeiro…</p>
         </div>
       </AdminLayout>
     );
@@ -179,14 +182,11 @@ const Financial = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div data-tour="financial-header">
-            <h1 className="font-display text-3xl font-bold text-foreground">Financeiro</h1>
-            <p className="text-muted-foreground mt-1">
-              Acompanhe faturamento e comissões
-            </p>
+            <PageHeader className="mb-0" title="Financeiro" description="Faturamento e comissões calculados a partir dos atendimentos concluídos." />
           </div>
 
           {/* Month Selector */}
-          <div className="flex items-center gap-2" data-tour="financial-month">
+          <div className="flex items-center gap-2 self-start md:self-auto" data-tour="financial-month" role="group" aria-label="Mês de referência">
             <Button
               variant="outline"
               size="icon"
@@ -195,7 +195,7 @@ const Financial = () => {
             >
               <ChevronLeft size={18} />
             </Button>
-            <div className="px-4 py-2 bg-secondary rounded-lg min-w-[160px] text-center">
+            <div className="px-4 py-2 surface-2 border border-border rounded-lg min-w-[160px] text-center capitalize" aria-live="polite">
               <span className="font-medium text-foreground">
                 {format(selectedMonth, "MMMM yyyy", { locale: ptBR })}
               </span>
@@ -211,75 +211,17 @@ const Financial = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Indicadores do mês */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="glass-card" data-tour="financial-revenue">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                  <DollarSign size={24} className="text-white" />
-                </div>
-                <div className="flex items-center gap-1 text-sm font-medium text-success">
-                  <TrendingUp size={14} />
-                  Receita
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground mb-1">
-                R$ {financialData.totalRevenue.toFixed(2)}
-              </p>
-              <p className="text-sm text-muted-foreground">Faturamento Total</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card" data-tour="financial-appointments">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                  <Calendar size={24} className="text-white" />
-                </div>
-                <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
-                  {financialData.completedAppointments} concluídos
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground mb-1">
-                {financialData.totalAppointments}
-              </p>
-              <p className="text-sm text-muted-foreground">Total de Agendamentos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card" data-tour="financial-ticket">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <BarChart3 size={24} className="text-white" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground mb-1">
-                R$ {financialData.averageTicket.toFixed(2)}
-              </p>
-              <p className="text-sm text-muted-foreground">Ticket Médio</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card" data-tour="financial-net">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
-                  <TrendingUp size={24} className="text-primary-foreground" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground mb-1">
-                R$ {netRevenue.toFixed(2)}
-              </p>
-              <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-            </CardContent>
-          </Card>
+          <StatCard data-tour="financial-revenue" icon={DollarSign} tone="success" label="Faturamento Total" value={`R$ ${financialData.totalRevenue.toFixed(2)}`} hint="Receita" />
+          <StatCard data-tour="financial-appointments" icon={Calendar} label="Total de Agendamentos" value={financialData.totalAppointments} hint={`${financialData.completedAppointments} concluídos`} />
+          <StatCard data-tour="financial-ticket" icon={BarChart3} label="Ticket Médio" value={`R$ ${financialData.averageTicket.toFixed(2)}`} />
+          <StatCard data-tour="financial-net" icon={TrendingUp} label="Lucro Líquido" value={`R$ ${netRevenue.toFixed(2)}`} hint="Após comissões" />
         </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-tour="financial-summary">
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -288,14 +230,14 @@ const Financial = () => {
                     R$ {financialData.pendingRevenue.toFixed(2)}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-lg bg-warning/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center" aria-hidden>
                   <DollarSign size={20} className="text-warning" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -304,14 +246,14 @@ const Financial = () => {
                     R$ {totalCommissions.toFixed(2)}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
-                  <TrendingDown size={20} className="text-destructive" />
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center" aria-hidden>
+                  <TrendingDown size={20} className="text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -320,7 +262,7 @@ const Financial = () => {
                     {financialData.cancelledAppointments}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center" aria-hidden>
                   <Calendar size={20} className="text-muted-foreground" />
                 </div>
               </div>
@@ -329,7 +271,7 @@ const Financial = () => {
         </div>
 
         {/* Professional Commissions */}
-        <Card className="glass-card" data-tour="financial-commissions">
+        <Card data-tour="financial-commissions">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -340,21 +282,18 @@ const Financial = () => {
           </CardHeader>
           <CardContent>
             {professionalCommissions.length === 0 ? (
-              <div className="text-center py-8" data-tour="financial-empty">
-                <Users size={48} className="mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  Nenhum atendimento concluído neste período
-                </p>
+              <div data-tour="financial-empty">
+                <EmptyState icon={Users} title="Nenhum atendimento concluído neste período" description="As comissões aparecem quando houver atendimentos marcados como concluídos no mês." className="border-0 bg-transparent py-8" />
               </div>
             ) : (
               <div className="space-y-3">
                 {professionalCommissions.map((prof) => (
                   <div
                     key={prof.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-secondary/50"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-xl surface-2 border border-border/60"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
                         {prof.name.charAt(0)}
                       </div>
                       <div>
@@ -364,7 +303,7 @@ const Financial = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <p className="text-sm text-muted-foreground">
                         Faturou R$ {prof.totalRevenue.toFixed(2)}
                       </p>

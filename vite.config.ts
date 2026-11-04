@@ -11,20 +11,37 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    // og:image/og:url absolutos só quando a origem de produção for configurada (VITE_PUBLIC_APP_URL, só em Production).
+    // Preview/local ficam relativos. Sem <link rel=canonical> global: o index.html é servido para todas as rotas da SPA
+    // e apontaria /s/:slug para a home. ponytail: canonical por rota exige HTML por rota (prerender da landing) — fase B.
+    {
+      name: "public-origin-meta",
+      transformIndexHtml(html: string) {
+        const raw = process.env.VITE_PUBLIC_APP_URL;
+        if (!raw) return html;
+        const origin = new URL(raw).origin; // valor inválido falha o build em vez de publicar meta errada
+        return html
+          .replace("</head>", `    <meta property="og:url" content="${origin}/" />\n  </head>`)
+          .replaceAll('content="/og-image.png"', `content="${origin}/og-image.png"`);
+      },
+    },
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "apple-touch-icon.png", "pwa-192x192.png", "pwa-512x512.png"],
+      includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "pwa-192x192.png", "pwa-512x512.png", "pwa-maskable-512x512.png"],
       manifest: {
-        name: "SysHair - BelezaTech",
-        short_name: "SysHair",
-        description: "Sistema completo para gestão de salões de beleza e barbearias",
-        theme_color: "#c9a227",
-        background_color: "#0d1117",
+        // id/start_url/scope preservados ("/"): o PWA já instalado continua sendo o mesmo app.
+        id: "/",
+        name: "Agenda Fácil 365",
+        short_name: "Agenda Fácil",
+        description: "Agendamento online e gestão para negócios de serviços.",
+        lang: "pt-BR",
+        theme_color: "#2563EB",
+        background_color: "#F4F8FF",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
         start_url: "/",
-        categories: ["business", "productivity", "lifestyle"],
+        categories: ["business", "productivity"],
         icons: [
           {
             src: "pwa-192x192.png",
@@ -39,35 +56,23 @@ export default defineConfig(({ mode }) => ({
             purpose: "any"
           },
           {
-            src: "pwa-512x512.png",
+            src: "pwa-maskable-512x512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable"
-          },
-          {
-            src: "apple-touch-icon.png",
-            sizes: "180x180",
-            type: "image/png",
-            purpose: "apple touch icon"
-          }
-        ],
-        screenshots: [
-          {
-            src: "screenshot-wide.png",
-            sizes: "1280x720",
-            type: "image/png",
-            form_factor: "wide"
-          },
-          {
-            src: "screenshot-narrow.png",
-            sizes: "750x1334",
-            type: "image/png",
-            form_factor: "narrow"
           }
         ]
+        // ponytail: screenshots removidos (arquivos nunca existiram em public/). Adicionar capturas reais da UI nova quando houver.
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Workers próprios de push/FCM e o legado sw.js não entram no precache; /api/* nunca cai no fallback SPA.
+        globIgnores: ["**/firebase-messaging-sw.js", "**/sw-push.js", "**/brand/*.png"],
+        navigateFallbackDenylist: [/^\/api\//],
+        cleanupOutdatedCaches: true,
+        // Worker único no scope "/": os handlers FCM (push/notificationclick) entram no SW gerado,
+        // em vez de outro arquivo registrado no mesmo scope substituir o precache. Ver src/lib/serviceWorker.ts.
+        importScripts: ["firebase-messaging-sw.js"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

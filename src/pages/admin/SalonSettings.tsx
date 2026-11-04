@@ -14,6 +14,8 @@ import { Save, Upload, Building2, Link2, Copy, ExternalLink, Globe, Bell, Camera
 import { NotificationSettings } from "@/components/pwa/NotificationPrompt";
 import { useMarkLinkShared } from "@/features/training/useFirstSteps";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DEFAULT_TENANT_COLOR } from "@/config/brand";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface SalonData {
   id?: string;
@@ -59,7 +61,7 @@ const defaultSalon: SalonData = {
   opening_time: "09:00",
   closing_time: "19:00",
   working_days: [1, 2, 3, 4, 5, 6],
-  primary_color: "#D4AF37",
+  primary_color: DEFAULT_TENANT_COLOR,
   logo_url: "",
   slug: "",
   description: "",
@@ -136,7 +138,8 @@ const SalonSettings = () => {
           opening_time: data.opening_time || "09:00",
           closing_time: data.closing_time || "19:00",
           working_days: data.working_days || [1, 2, 3, 4, 5, 6],
-          primary_color: data.primary_color || "#D4AF37",
+          // Fallback só para cor ausente/vazia; cor já salva pelo estabelecimento é mantida como está.
+          primary_color: data.primary_color || DEFAULT_TENANT_COLOR,
           logo_url: data.logo_url || "",
           slug: data.slug || "",
           description: data.description || "",
@@ -163,7 +166,7 @@ const SalonSettings = () => {
       }
     } catch (error) {
       console.error("Error fetching salon:", error);
-      toast.error("Erro ao carregar dados do salão");
+      toast.error("Erro ao carregar dados do estabelecimento");
     } finally {
       setLoading(false);
     }
@@ -173,7 +176,7 @@ const SalonSettings = () => {
     if (!user) return;
 
     if (!salon.name.trim()) {
-      toast.error("Nome do salão é obrigatório");
+      toast.error("Nome do estabelecimento é obrigatório");
       return;
     }
 
@@ -215,7 +218,7 @@ const SalonSettings = () => {
 
         setSalon({ ...salon, id: data.id });
         setIsNew(false);
-        toast.success("Salão criado com sucesso!");
+        toast.success("Estabelecimento criado com sucesso!");
       } else {
         const { error } = await supabase
           .from('salons')
@@ -386,8 +389,9 @@ const SalonSettings = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando configurações…</p>
         </div>
       </AdminLayout>
     );
@@ -396,24 +400,23 @@ const SalonSettings = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between" data-tour="settings-header">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              {isNew ? "Configurar Salão" : "Configurações do Salão"}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {isNew ? "Configure seu salão para começar" : "Gerencie as informações do seu estabelecimento"}
-            </p>
-          </div>
-          <Button variant="gold" onClick={handleSave} disabled={saving} data-tour="settings-save">
-            <Save size={18} className="mr-2" />
-            {saving ? "Salvando..." : "Salvar"}
-          </Button>
+        <div data-tour="settings-header">
+          <PageHeader
+            className="mb-0"
+            title={isNew ? "Configurar estabelecimento" : "Configurações do estabelecimento"}
+            description={isNew ? "Cadastre os dados do seu estabelecimento para começar." : "Gerencie as informações, horários e a aparência do seu estabelecimento."}
+            actions={
+              <Button variant="brand" onClick={handleSave} disabled={saving} data-tour="settings-save">
+                <Save size={18} className="mr-2" aria-hidden />
+                {saving ? "Salvando..." : "Salvar"}
+              </Button>
+            }
+          />
         </div>
 
         {/* Link Público - Card em destaque */}
         {!isNew && salon.slug && (
-          <Card className="glass-card border-primary/30 bg-primary/5" data-tour="settings-public-link">
+          <Card className="border-primary/30 bg-primary/5" data-tour="settings-public-link">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe size={20} className="text-primary" />
@@ -425,7 +428,7 @@ const SalonSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-background border border-border rounded-lg px-4 py-3 font-mono text-sm truncate" data-tour="settings-public-link-url">
+                <div className="flex-1 min-w-0 bg-background border border-border rounded-lg px-4 py-3 font-mono text-sm truncate" data-tour="settings-public-link-url">
                   {getPublicLink()}
                 </div>
                 <Button variant="outline" size="icon" onClick={copyLink} title="Copiar link" aria-label="Copiar link" data-tour="settings-public-link-copy">
@@ -465,7 +468,7 @@ const SalonSettings = () => {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Informações Básicas */}
-          <Card className="glass-card" data-tour="settings-info">
+          <Card data-tour="settings-info">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 size={20} className="text-primary" />
@@ -475,7 +478,7 @@ const SalonSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2" data-tour="settings-name">
-                <Label htmlFor="name">Nome do Salão *</Label>
+                <Label htmlFor="name">Nome do estabelecimento *</Label>
                 <Input
                   id="name"
                   value={salon.name}
@@ -512,7 +515,7 @@ const SalonSettings = () => {
                   id="description"
                   value={salon.description}
                   onChange={(e) => setSalon({ ...salon, description: e.target.value })}
-                  placeholder="Breve descrição do seu salão para exibir na página pública"
+                  placeholder="Breve descrição do seu estabelecimento para exibir na página pública"
                   rows={3}
                 />
               </div>
@@ -580,7 +583,7 @@ const SalonSettings = () => {
           </Card>
 
           {/* Endereço */}
-          <Card className="glass-card" data-tour="settings-address">
+          <Card data-tour="settings-address">
             <CardHeader>
               <CardTitle>Endereço</CardTitle>
               <CardDescription>Localização do seu estabelecimento</CardDescription>
@@ -629,7 +632,7 @@ const SalonSettings = () => {
           </Card>
 
           {/* Horário de Funcionamento */}
-          <Card className="glass-card" data-tour="settings-hours">
+          <Card data-tour="settings-hours">
             <CardHeader>
               <CardTitle>Horário de Funcionamento</CardTitle>
               <CardDescription>Configure os dias e horários de atendimento</CardDescription>
@@ -791,10 +794,10 @@ const SalonSettings = () => {
           </Card>
 
           {/* Personalização */}
-          <Card className="glass-card" data-tour="settings-branding">
+          <Card data-tour="settings-branding">
             <CardHeader>
               <CardTitle>Personalização</CardTitle>
-              <CardDescription>Customize a aparência do seu salão</CardDescription>
+              <CardDescription>Personalize a aparência do seu estabelecimento</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2" data-tour="settings-branding-color">
@@ -810,13 +813,13 @@ const SalonSettings = () => {
                   <Input
                     value={salon.primary_color}
                     onChange={(e) => setSalon({ ...salon, primary_color: e.target.value })}
-                    placeholder="#D4AF37"
+                    placeholder={DEFAULT_TENANT_COLOR}
                     className="flex-1"
                   />
                 </div>
               </div>
               <div className="space-y-2" data-tour="settings-branding-logo">
-                <Label htmlFor="logo_url">Logo do Salão</Label>
+                <Label htmlFor="logo_url">Logo do estabelecimento</Label>
 
                 <div className="p-4 border rounded-lg bg-secondary/10">
                   <Tabs value={activeLogoTab} onValueChange={setActiveLogoTab}>
@@ -883,7 +886,7 @@ const SalonSettings = () => {
           </Card>
 
           {/* Notificações Push */}
-          <Card className="glass-card md:col-span-2" data-tour="settings-notifications">
+          <Card className="md:col-span-2" data-tour="settings-notifications">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell size={20} className="text-primary" />

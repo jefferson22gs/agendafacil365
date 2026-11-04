@@ -56,7 +56,7 @@ export const useAIProviders = (): {
             apiKey,
             defaultHeaders: {
               'HTTP-Referer': 'https://syshair.vercel.app',
-              'X-Title': 'SysHair'
+              'X-Title': 'Agenda Fácil 365'
             }
           });
 

@@ -16,7 +16,7 @@ export const statusSchedulerTour: TourDef = {
     {
       target: "status-scheduler-connection",
       title: "WhatsApp precisa estar conectado",
-      body: "O status no topo mostra se a conexão está pronta. Se aparecer desconectado, vá ao menu WhatsApp e conecte por lá; o botão Conectar WhatsApp desta tela não tem ação no código atual.",
+      body: "O status no topo mostra se a conexão está pronta. Se aparecer desconectado, abra WhatsApp no grupo Relacionamento do menu e conecte por lá, ou use o botão Conectar WhatsApp do aviso, que abre essa tela.",
     },
     {
       target: "status-scheduler-new",

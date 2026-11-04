@@ -28,7 +28,7 @@ const SYNONYMS: string[][] = [
   ["status", "stories", "story", "postagem"],
   ["importar", "vcf", "agenda do celular", "contatos do celular"],
   ["exportar", "baixar", "planilha", "csv", "excel"],
-  ["configuracao", "configurar", "ajustes", "dados do salao", "endereco", "horario de funcionamento"],
+  ["configuracao", "configurar", "ajustes", "dados do salao", "dados do estabelecimento", "estabelecimento", "endereco", "horario de funcionamento"],
   ["galeria", "foto", "antes e depois", "imagem", "portfolio"],
   ["avaliacao", "estrela", "nota", "comentario", "opiniao"],
   ["produto", "estoque", "venda", "loja"],

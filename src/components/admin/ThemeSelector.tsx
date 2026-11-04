@@ -1,235 +1,114 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import {
-    Palette,
-    Check,
-    Sun,
-    Moon,
-    Sparkles
-} from "lucide-react";
+import { Palette as PaletteIcon, Check, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    MODE_KEY,
+    PALETTE_KEY,
+    PALETTES,
+    applyAppearance,
+    clearPalette,
+    migratePreferences,
+    readMode,
+    readPalette,
+    writePreference,
+    type Mode,
+} from "@/lib/themePreferences";
 
-interface Theme {
-    id: string;
-    name: string;
-    primary: string;     // HSL values: "H S% L%"
-    accent: string;      // HSL values
-    primaryHex: string;  // For preview
-    preview: string;
-}
-
-const themes: Theme[] = [
-    {
-        id: 'gold',
-        name: 'Ouro Escuro',
-        primary: '43 74% 49%',
-        accent: '43 74% 65%',
-        primaryHex: '#C9A227',
-        preview: 'from-yellow-600 to-amber-400'
-    },
-    {
-        id: 'rose',
-        name: 'Rosé Premium',
-        primary: '335 55% 75%',
-        accent: '335 60% 85%',
-        primaryHex: '#E4A0B7',
-        preview: 'from-pink-400 to-rose-300'
-    },
-    {
-        id: 'emerald',
-        name: 'Esmeralda',
-        primary: '160 84% 39%',
-        accent: '160 72% 52%',
-        primaryHex: '#10B981',
-        preview: 'from-emerald-500 to-green-400'
-    },
-    {
-        id: 'purple',
-        name: 'Violeta Royal',
-        primary: '263 70% 66%',
-        accent: '263 60% 75%',
-        primaryHex: '#8B5CF6',
-        preview: 'from-purple-500 to-violet-400'
-    },
-    {
-        id: 'blue',
-        name: 'Azul Safira',
-        primary: '217 91% 60%',
-        accent: '217 80% 70%',
-        primaryHex: '#3B82F6',
-        preview: 'from-blue-500 to-cyan-400'
-    },
-    {
-        id: 'coral',
-        name: 'Coral Sunset',
-        primary: '25 95% 53%',
-        accent: '30 95% 60%',
-        primaryHex: '#F97316',
-        preview: 'from-orange-500 to-amber-400'
-    },
-];
-
+/**
+ * Aparência da interface administrativa. Modo claro/escuro é global (preferência do usuário);
+ * a paleta opcional só vale enquanto a área administrativa está montada.
+ */
 export const ThemeSelector = () => {
-    const [currentTheme, setCurrentTheme] = useState('gold');
-    const [isDark, setIsDark] = useState(true);
+    const [mode, setMode] = useState<Mode>(() => {
+        migratePreferences();
+        return readMode();
+    });
+    const [palette, setPalette] = useState(() => readPalette());
 
     useEffect(() => {
-        // Load saved theme from localStorage
-        const savedTheme = localStorage.getItem('syshair-theme');
-        const savedMode = localStorage.getItem('syshair-mode');
+        applyAppearance(mode, palette);
+    }, [mode, palette]);
 
-        if (savedTheme) {
-            setCurrentTheme(savedTheme);
-            applyTheme(savedTheme);
-        }
+    // Paleta opcional não vaza para páginas públicas/autenticação.
+    useEffect(() => () => clearPalette(), []);
 
-        if (savedMode === 'light') {
-            setIsDark(false);
-            document.documentElement.classList.add('light');
-        } else {
-            document.documentElement.classList.remove('light');
-        }
-    }, []);
-
-    const applyTheme = (themeId: string) => {
-        const theme = themes.find(t => t.id === themeId);
-        if (!theme) return;
-
-        const root = document.documentElement;
-
-        // Apply primary color
-        root.style.setProperty('--primary', theme.primary);
-        root.style.setProperty('--accent', theme.primary);
-        root.style.setProperty('--ring', theme.primary);
-
-        // Apply gold variables (for backwards compatibility)
-        root.style.setProperty('--gold', theme.primary);
-        root.style.setProperty('--gold-light', theme.accent);
-
-        // Sidebar
-        root.style.setProperty('--sidebar-primary', theme.primary);
-        root.style.setProperty('--sidebar-ring', theme.primary);
-
-        // Update shadow colors based on primary
-        const [h, s, l] = theme.primary.split(' ');
-        root.style.setProperty('--shadow-gold', `0 8px 32px -8px hsl(${h} ${s} ${l} / 0.3)`);
-        root.style.setProperty('--shadow-glow', `0 0 40px hsl(${h} ${s} ${l} / 0.15)`);
-
-        // Update gradient colors
-        root.style.setProperty('--gradient-gold', `linear-gradient(135deg, hsl(${theme.primary}), hsl(${theme.accent}))`);
-
-        console.log('Theme applied:', themeId, theme.primary);
+    const selectMode = (next: Mode) => {
+        setMode(next);
+        writePreference(MODE_KEY, next);
     };
 
-    const selectTheme = (themeId: string) => {
-        setCurrentTheme(themeId);
-        localStorage.setItem('syshair-theme', themeId);
-        applyTheme(themeId);
+    const selectPalette = (id: string) => {
+        const next = PALETTES.find(p => p.id === id);
+        if (!next) return;
+        setPalette(next);
+        writePreference(PALETTE_KEY, id);
     };
-
-    const toggleDarkMode = (dark: boolean) => {
-        setIsDark(dark);
-        localStorage.setItem('syshair-mode', dark ? 'dark' : 'light');
-
-        if (dark) {
-            document.documentElement.classList.remove('light');
-        } else {
-            document.documentElement.classList.add('light');
-        }
-    };
-
-    const selectedTheme = themes.find(t => t.id === currentTheme);
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                    <Palette size={20} />
+                <Button variant="ghost" size="icon" className="relative" aria-label="Aparência da interface">
+                    <PaletteIcon size={20} aria-hidden />
                     <span
                         className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-card"
-                        style={{ backgroundColor: selectedTheme?.primaryHex }}
+                        style={{ backgroundColor: palette.hex }}
+                        aria-hidden
                     />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-primary" />
-                    Personalizar Tema
-                </DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>Aparência</DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                {/* Dark/Light Toggle */}
                 <div className="p-2">
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-secondary/50">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-secondary" role="group" aria-label="Modo de cor">
                         <span className="text-sm font-medium">Modo</span>
                         <div className="flex gap-1">
-                            <button
-                                onClick={() => toggleDarkMode(true)}
-                                className={`p-2 rounded-lg transition-colors ${isDark ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                            >
-                                <Moon size={16} />
-                            </button>
-                            <button
-                                onClick={() => toggleDarkMode(false)}
-                                className={`p-2 rounded-lg transition-colors ${!isDark ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                            >
-                                <Sun size={16} />
-                            </button>
+                            {([["light", Sun, "Claro"], ["dark", Moon, "Escuro"]] as const).map(([value, Icon, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => selectMode(value)}
+                                    aria-pressed={mode === value}
+                                    aria-label={`Modo ${label.toLowerCase()}`}
+                                    className={`min-h-[36px] px-2.5 rounded-md text-xs font-medium inline-flex items-center gap-1.5 transition-colors ${mode === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    <Icon size={14} aria-hidden /> {label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
 
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>Cores do Tema</DropdownMenuLabel>
-
-                {/* Theme Colors Grid */}
-                <div className="p-2 grid grid-cols-3 gap-2">
-                    {themes.map((theme) => (
-                        <motion.button
-                            key={theme.id}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => selectTheme(theme.id)}
-                            className={`relative p-3 rounded-xl border-2 transition-colors ${currentTheme === theme.id
-                                ? 'border-primary'
-                                : 'border-border/50 hover:border-border'
-                                }`}
+                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Cor de destaque (opcional)</DropdownMenuLabel>
+                <div className="p-2 grid grid-cols-5 gap-2" role="radiogroup" aria-label="Cor de destaque">
+                    {PALETTES.map((p) => (
+                        <button
+                            key={p.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={palette.id === p.id}
+                            aria-label={p.name}
+                            title={p.name}
+                            onClick={() => selectPalette(p.id)}
+                            className={`relative h-9 w-9 rounded-full border-2 transition-colors ${palette.id === p.id ? 'border-foreground' : 'border-transparent hover:border-border'}`}
+                            style={{ backgroundColor: p.hex }}
                         >
-                            <div
-                                className={`w-full h-6 rounded-lg bg-gradient-to-r ${theme.preview}`}
-                            />
-                            <p className="text-xs mt-1.5 text-center text-muted-foreground truncate">
-                                {theme.name}
-                            </p>
-                            {currentTheme === theme.id && (
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center"
-                                >
-                                    <Check size={12} className="text-primary-foreground" />
-                                </motion.div>
-                            )}
-                        </motion.button>
+                            {palette.id === p.id && <Check size={14} className="absolute inset-0 m-auto text-white" aria-hidden />}
+                        </button>
                     ))}
                 </div>
-
-                <DropdownMenuSeparator />
-                <div className="p-2">
-                    <p className="text-xs text-muted-foreground text-center">
-                        Tema atual: <span className="text-foreground font-medium">{selectedTheme?.name}</span>
-                    </p>
-                </div>
+                <p className="px-3 pb-2 text-xs text-muted-foreground">
+                    Atual: <span className="text-foreground font-medium">{palette.name}</span>. Não altera as cores da página pública do seu negócio.
+                </p>
             </DropdownMenuContent>
         </DropdownMenu>
     );

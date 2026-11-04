@@ -17,7 +17,7 @@ export const whatsappArticles: Article[] = [
         image: { src: "/training/whatsapp/connection-status.webp", alt: "Tela de conexão do WhatsApp com status e botões principais", pending: true },
       },
       { text: "Use o WhatsApp de atendimento do salão, não um número pessoal. Você precisa ter o celular em mãos para escanear o QR Code." },
-      { text: "Se ainda não houver conexão cadastrada, clique em Criar Instância WhatsApp. O nome interno já vem sugerido; não é algo que o cliente verá e não precisa ser copiado." },
+      { text: "Se ainda não houver conexão cadastrada, clique em Conectar WhatsApp e confirme em Criar conexão. O cadastro não envia mensagens." },
       {
         text: "Depois de criar, clique em Conectar. O sistema mostra um QR Code para parear o WhatsApp.",
         image: { src: "/training/whatsapp/qrcode.webp", alt: "QR Code para conectar o WhatsApp do salão", pending: true },

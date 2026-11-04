@@ -212,7 +212,7 @@ export const AISettingsManagement = () => {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="glass-card">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/20">
@@ -226,11 +226,11 @@ export const AISettingsManagement = () => {
           </CardContent>
         </Card>
 
-        <Card className="glass-card">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <Sparkles className="w-5 h-5 text-green-500" />
+              <div className="p-2 rounded-lg bg-success/20">
+                <Sparkles className="w-5 h-5 text-success" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{apiKeys.filter(k => k.is_active).length}</p>
@@ -240,11 +240,11 @@ export const AISettingsManagement = () => {
           </CardContent>
         </Card>
 
-        <Card className="glass-card">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <Settings className="w-5 h-5 text-blue-500" />
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Settings className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{salonConfigs.length}</p>
@@ -256,7 +256,7 @@ export const AISettingsManagement = () => {
       </div>
 
       {/* Add New API Key */}
-      <Card className="glass-card">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
@@ -324,7 +324,7 @@ export const AISettingsManagement = () => {
       </Card>
 
       {/* API Keys Table */}
-      <Card className="glass-card">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5" />
@@ -362,8 +362,8 @@ export const AISettingsManagement = () => {
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           key.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-success/10 text-success'
+                            : 'bg-destructive/10 text-destructive'
                         }`}>
                           {key.is_active ? 'Ativa' : 'Inativa'}
                         </span>

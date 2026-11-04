@@ -110,15 +110,16 @@ const RatingPage = () => {
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" aria-hidden="true"></div>
+                <span className="sr-only">Carregando</span>
             </div>
         );
     }
 
     if (!appointment) {
         return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-                <X className="w-16 h-16 text-destructive mb-4" />
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" role="alert">
+                <X className="w-16 h-16 text-destructive mb-4" aria-hidden="true" />
                 <h1 className="text-xl font-bold mb-2">Agendamento não encontrado</h1>
                 <p className="text-muted-foreground mb-4">Este link pode ter expirado.</p>
                 <Button onClick={() => salonSlug ? navigate(`/s/${salonSlug}`) : window.close()}>Voltar</Button>
@@ -167,7 +168,7 @@ const RatingPage = () => {
     return (
         <div className="min-h-screen bg-gradient-to-b from-background to-secondary/30">
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary to-gold-light p-6 text-center text-primary-foreground">
+            <div className="bg-gradient-to-r from-primary to-brand-hover p-6 text-center text-primary-foreground">
                 <Heart className="w-10 h-10 mx-auto mb-2" />
                 <h1 className="text-2xl font-bold">Como foi seu atendimento?</h1>
                 <p className="text-sm opacity-90 mt-1">
@@ -208,13 +209,16 @@ const RatingPage = () => {
                     <div className="flex justify-center gap-2 mb-3">
                         {[1, 2, 3, 4, 5].map((star) => (
                             <motion.button
+                                type="button"
                                 key={star}
+                                aria-label={`${star} de 5 estrelas`}
+                                aria-pressed={star === rating}
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => setRating(star)}
                                 onMouseEnter={() => setHoverRating(star)}
                                 onMouseLeave={() => setHoverRating(0)}
-                                className="focus:outline-none"
+                                className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <Star
                                     className={`w-12 h-12 transition-all ${star <= (hoverRating || rating)
@@ -245,10 +249,11 @@ const RatingPage = () => {
                     transition={{ delay: 0.2 }}
                     className="mb-6"
                 >
-                    <label className="text-sm text-muted-foreground mb-2 block">
+                    <label htmlFor="ratingComment" className="text-sm text-muted-foreground mb-2 block">
                         Deixe um comentário (opcional)
                     </label>
                     <Textarea
+                        id="ratingComment"
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         placeholder="Conte como foi sua experiência..."
@@ -266,7 +271,7 @@ const RatingPage = () => {
                         onClick={handleSubmit}
                         disabled={rating === 0 || submitting}
                         className="w-full h-14 text-lg font-bold"
-                        variant="gold"
+                        variant="brand"
                     >
                         {submitting ? (
                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current"></div>
@@ -281,8 +286,10 @@ const RatingPage = () => {
 
                 {/* Skip */}
                 <button
+                    type="button"
                     onClick={() => salonSlug ? navigate(`/s/${salonSlug}`) : window.close()}
-                    className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-foreground transition-colors"
+                    className="w-full min-h-11 text-center text-sm text-muted-foreground mt-4 hover:text-foreground transition-colors"
+
                 >
                     Avaliar depois
                 </button>

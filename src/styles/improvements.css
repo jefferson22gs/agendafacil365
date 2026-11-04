@@ -1,5 +1,5 @@
 /* ============================================
-   MELHORIAS UI/UX - SysHair
+   MELHORIAS UI/UX - Agenda Fácil 365
    Data: 2026-02-19
    ============================================ */
 
@@ -67,14 +67,14 @@
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
   }
 
-  .card-gold {
+  .card-brand {
     @apply card-modern border-primary/30;
-    box-shadow: 0 4px 20px -4px hsl(var(--gold) / 0.2);
+    box-shadow: 0 4px 20px -4px hsl(var(--primary) / 0.2);
   }
 
-  .card-gold:hover {
+  .card-brand:hover {
     @apply border-primary/50;
-    box-shadow: 0 8px 30px -4px hsl(var(--gold) / 0.3);
+    box-shadow: 0 8px 30px -4px hsl(var(--primary) / 0.3);
   }
 
   /* ========== BOTÕES MODERNOS ========== */
@@ -88,11 +88,11 @@
 
   .btn-primary {
     @apply btn-modern bg-primary text-primary-foreground hover:bg-primary/90;
-    box-shadow: 0 2px 8px -2px hsl(var(--gold) / 0.3);
+    box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.3);
   }
 
   .btn-primary:hover {
-    box-shadow: 0 4px 12px -2px hsl(var(--gold) / 0.4);
+    box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.4);
     transform: translateY(-1px);
   }
 

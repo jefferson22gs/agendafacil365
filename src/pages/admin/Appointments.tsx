@@ -15,6 +15,8 @@ import { Tables } from "@/integrations/supabase/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnhancedSalonCalendar } from "@/components/admin/EnhancedSalonCalendar";
 import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { AppointmentStatusBadge } from "@/components/admin/AppointmentStatusBadge";
 
 type Appointment = Tables<"appointments"> & {
   services?: { name: string; duration_minutes: number } | null;
@@ -23,14 +25,6 @@ type Appointment = Tables<"appointments"> & {
 
 type Service = Tables<"services">;
 type Professional = Tables<"professionals">;
-
-const statusColors = {
-  pending: 'bg-warning/20 text-warning',
-  confirmed: 'bg-success/20 text-success',
-  completed: 'bg-primary/20 text-primary',
-  cancelled: 'bg-destructive/20 text-destructive',
-  no_show: 'bg-muted text-muted-foreground',
-};
 
 const statusLabels = {
   pending: 'Pendente',
@@ -54,6 +48,9 @@ const Appointments = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   };
   const [selectedDate, setSelectedDate] = useState(getLocalToday());
+  // Filtros locais sobre os agendamentos já carregados do dia (não alteram a query).
+  const [professionalFilter, setProfessionalFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [formData, setFormData] = useState({
     client_name: "",
     client_phone: "",
@@ -234,6 +231,12 @@ const Appointments = () => {
     setSelectedDate(`${y}-${m}-${d}`);
   };
 
+  const visibleAppointments = appointments.filter((a) =>
+    (professionalFilter === "all" || a.professional_id === professionalFilter) &&
+    (statusFilter === "all" || a.status === statusFilter)
+  );
+  const hasFilters = professionalFilter !== "all" || statusFilter !== "all";
+
   const timeSlots = [];
   for (let h = 8; h <= 20; h++) {
     timeSlots.push(`${String(h).padStart(2, '0')}:00`);
@@ -243,8 +246,9 @@ const Appointments = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando agendamentos…</p>
         </div>
       </AdminLayout>
     );
@@ -253,12 +257,16 @@ const Appointments = () => {
   if (!salonId) {
     return (
       <AdminLayout>
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <p className="text-muted-foreground mb-4">Configure seu salão primeiro</p>
-          <Button variant="gold" onClick={() => window.location.href = '/admin/settings'}>
-            Configurar Salão
-          </Button>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title="Configure seu estabelecimento primeiro"
+          description="Depois de cadastrar o estabelecimento você poderá criar e acompanhar agendamentos."
+          action={
+            <Button variant="brand" onClick={() => window.location.href = '/admin/settings'}>
+              Configurar estabelecimento
+            </Button>
+          }
+        />
       </AdminLayout>
     );
   }
@@ -266,17 +274,18 @@ const Appointments = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between" data-tour="appointments-header">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">Agendamentos</h1>
-            <p className="text-muted-foreground mt-1">Gerencie os agendamentos do salão</p>
-          </div>
+        <div data-tour="appointments-header">
+          <PageHeader
+            className="mb-0"
+            title="Agendamentos"
+            description="Veja a agenda do dia, confirme atendimentos e acompanhe o status."
+            actions={
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold" data-tour="appointments-new-button">
+              <Button variant="brand" data-tour="appointments-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Agendamento
               </Button>
@@ -380,38 +389,44 @@ const Appointments = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit} data-tour="appointments-new-save">
+                <Button variant="brand" onClick={handleSubmit} data-tour="appointments-new-save">
                   Criar
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+            }
+          />
         </div>
 
         {/* Tabs para alternar entre visualizações */}
         <Tabs defaultValue="list" className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="list" data-tour="appointments-list-tab">Lista de Agendamentos</TabsTrigger>
+            <TabsTrigger value="list" data-tour="appointments-list-tab">Lista do dia</TabsTrigger>
             <TabsTrigger value="calendar" data-tour="appointments-calendar-tab">Agenda Completa</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="list" className="space-y-6">
-            {/* Date Navigation */}
-            <Card className="glass-card" data-tour="appointments-date-navigation">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={() => changeDate(-1)} aria-label="Dia anterior">
-                <ChevronLeft size={20} />
+          <TabsContent value="list" className="space-y-4">
+            {/* Navegação de data: setas + seletor; no mobile o nome do dia vai para a linha de baixo */}
+            <Card data-tour="appointments-date-navigation">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Button variant="outline" size="icon" className="shrink-0" onClick={() => changeDate(-1)} aria-label="Dia anterior">
+                <ChevronLeft size={20} aria-hidden />
               </Button>
-              <div className="flex items-center gap-4">
-                <Calendar size={20} className="text-primary" />
-                <Input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-auto"
-                />
-                <span className="text-foreground font-medium">
+              <div className="flex flex-1 min-w-0 flex-col items-center gap-1 sm:flex-row sm:justify-center sm:gap-4">
+                <Label htmlFor="appointments-date" className="sr-only">Data da agenda</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar size={20} className="text-primary hidden sm:block" aria-hidden />
+                  <Input
+                    id="appointments-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-auto"
+                  />
+                </div>
+                <span className="text-sm sm:text-base text-foreground font-medium capitalize truncate">
                   {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
                     weekday: 'long',
                     day: 'numeric',
@@ -419,67 +434,114 @@ const Appointments = () => {
                   })}
                 </span>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => changeDate(1)} aria-label="Próximo dia">
-                <ChevronRight size={20} />
+              <Button variant="outline" size="icon" className="shrink-0" onClick={() => changeDate(1)} aria-label="Próximo dia">
+                <ChevronRight size={20} aria-hidden />
               </Button>
             </div>
           </CardContent>
         </Card>
 
+        {/* Filtros do dia: profissional e status */}
+        {appointments.length > 0 && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,240px)_minmax(0,200px)_auto] sm:items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="appointments-filter-professional">Profissional</Label>
+              <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+                <SelectTrigger id="appointments-filter-professional"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os profissionais</SelectItem>
+                  {professionals.map((pro) => (
+                    <SelectItem key={pro.id} value={pro.id}>{pro.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="appointments-filter-status">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger id="appointments-filter-status"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  {Object.entries(statusLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {hasFilters && (
+              <Button variant="ghost" onClick={() => { setProfessionalFilter("all"); setStatusFilter("all"); }}>
+                <X size={16} className="mr-2" aria-hidden />
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Appointments List */}
         {appointments.length === 0 ? (
-          <Card className="glass-card" data-tour="appointments-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Calendar size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-center">
-                Nenhum agendamento para esta data
-              </p>
-              <TrainingEmptyActions tourId="appointments" className="mt-4" />
-            </CardContent>
-          </Card>
+          <div data-tour="appointments-empty">
+            <EmptyState
+              icon={Calendar}
+              title="Nenhum agendamento para esta data"
+              description="Use as setas para ver outros dias ou crie um novo agendamento."
+              action={<TrainingEmptyActions tourId="appointments" />}
+            />
+          </div>
         ) : (
           <div className="space-y-3" data-tour="appointments-list">
-            {appointments.map((appointment) => (
-              <Card key={appointment.id} className="glass-card">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-gold-light flex flex-col items-center justify-center text-primary-foreground">
-                        <span className="text-lg font-bold">{appointment.start_time?.slice(0, 5)}</span>
-                        <span className="text-xs">-{appointment.end_time?.slice(0, 5)}</span>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {hasFilters
+                ? `${visibleAppointments.length} de ${appointments.length} agendamentos com os filtros aplicados`
+                : `${appointments.length} ${appointments.length === 1 ? 'agendamento' : 'agendamentos'} neste dia`}
+            </p>
+            {visibleAppointments.length === 0 && (
+              <EmptyState title="Nenhum agendamento com esses filtros" description="Altere o profissional ou o status, ou limpe os filtros." className="py-8" />
+            )}
+            {visibleAppointments.map((appointment) => (
+              <Card key={appointment.id}>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                      <div className="w-16 h-16 shrink-0 rounded-xl bg-primary/10 text-primary flex flex-col items-center justify-center tabular-nums">
+                        <span className="text-lg font-bold leading-none">{appointment.start_time?.slice(0, 5)}</span>
+                        <span className="text-xs mt-1">até {appointment.end_time?.slice(0, 5)}</span>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground text-lg">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground sm:text-lg truncate">
                           {appointment.client_name || 'Cliente'}
                         </p>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock size={14} />
-                            {appointment.services?.name}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1 min-w-0">
+                            <Clock size={14} aria-hidden />
+                            <span className="truncate">{appointment.services?.name}</span>
                           </span>
-                          <span className="flex items-center gap-1">
-                            <User size={14} />
-                            {appointment.professionals?.name}
+                          <span className="flex items-center gap-1 min-w-0">
+                            <User size={14} aria-hidden />
+                            <span className="truncate">{appointment.professionals?.name}</span>
                           </span>
                         </div>
                         {appointment.client_phone && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            📞 {appointment.client_phone}
+                          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                            <Phone size={14} aria-hidden />
+                            {appointment.client_phone}
                           </p>
                         )}
                         {appointment.notes && (
-                          <p className="text-xs text-muted-foreground mt-1 bg-secondary/50 px-2 py-1 rounded">
-                            📝 {appointment.notes}
+                          <p className="text-xs text-muted-foreground mt-1 surface-2 px-2 py-1 rounded break-words">
+                            Obs.: {appointment.notes}
                           </p>
                         )}
+                        {/* Mobile: status e valor abaixo dos dados para não espremer o nome */}
+                        <div className="mt-2 flex items-center gap-2 sm:hidden">
+                          <AppointmentStatusBadge data-tour="appointments-status" status={appointment.status} />
+                          <span className="text-sm font-semibold text-foreground tabular-nums">R$ {appointment.final_price.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span data-tour="appointments-status" className={`text-xs font-medium px-3 py-1.5 rounded-full ${statusColors[appointment.status as keyof typeof statusColors]}`}>
-                        {statusLabels[appointment.status as keyof typeof statusLabels]}
-                      </span>
-                      <div className="text-right">
-                        <p className="font-bold text-foreground">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <AppointmentStatusBadge data-tour="appointments-status" status={appointment.status} className="hidden sm:inline-flex" />
+                      <div className="text-right hidden sm:block">
+                        <p className="font-bold text-foreground tabular-nums">
                           R$ {appointment.final_price.toFixed(2)}
                         </p>
                       </div>

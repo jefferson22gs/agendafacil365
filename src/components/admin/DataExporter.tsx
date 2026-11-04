@@ -83,7 +83,7 @@ export function DataExporter({ data, columns, filename = "export", className }: 
             h1 { color: #333; margin-bottom: 20px; }
             table { width: 100%; border-collapse: collapse; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #C9A227; color: white; }
+            th { background-color: #2563EB; color: white; }
             tr:nth-child(even) { background-color: #f9f9f9; }
             .footer { margin-top: 20px; font-size: 12px; color: #666; }
           </style>
@@ -112,7 +112,7 @@ export function DataExporter({ data, columns, filename = "export", className }: 
             </tbody>
           </table>
           <div class="footer">
-            Exportado em ${new Date().toLocaleString("pt-BR")} | SysHair
+            Exportado em ${new Date().toLocaleString("pt-BR")} | Agenda Fácil 365
           </div>
         </body>
         </html>

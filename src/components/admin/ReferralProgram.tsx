@@ -67,7 +67,8 @@ export const ReferralProgram = ({
     referralCode = "MARIA2024"
 }: ReferralProgramProps) => {
     const [copied, setCopied] = useState(false);
-    const referralLink = `https://syshair.app/ref/${referralCode}`;
+    // ponytail: rota /ref/:code não existe em App.tsx (componente órfão; ver docs/REBRANDING.md). Origem atual em vez de domínio fixo antigo.
+    const referralLink = `${window.location.origin}/ref/${referralCode}`;
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -77,47 +78,24 @@ export const ReferralProgram = ({
 
     const shareViaWhatsApp = () => {
         const message = encodeURIComponent(
-            `🌟 Olha que legal! Eu uso o SysHair para agendar meus serviços de beleza e você pode ganhar 10% OFF na primeira visita usando meu código: ${referralCode}\n\nAgende aqui: ${referralLink}`
+            `🌟 Olha que legal! Eu uso o Agenda Fácil 365 para agendar meus serviços de beleza e você pode ganhar 10% OFF na primeira visita usando meu código: ${referralCode}\n\nAgende aqui: ${referralLink}`
         );
         window.open(`https://wa.me/?text=${message}`, '_blank');
     };
 
     return (
-        <Card className="glass-card overflow-hidden">
+        <Card className="overflow-hidden">
             {/* Header Banner */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-500 p-6 text-white relative overflow-hidden">
-                <div className="absolute inset-0 overflow-hidden">
-                    {[...Array(8)].map((_, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0.3 }}
-                            animate={{
-                                opacity: [0.3, 0.6, 0.3],
-                                scale: [1, 1.2, 1],
-                            }}
-                            transition={{
-                                duration: 3,
-                                repeat: Infinity,
-                                delay: i * 0.4,
-                            }}
-                            className="absolute w-32 h-32 rounded-full"
-                            style={{
-                                background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-                                left: `${(i % 4) * 30}%`,
-                                top: `${Math.floor(i / 4) * 50}%`
-                            }}
-                        />
-                    ))}
-                </div>
-
+            {/* Banner sólido navy da marca (sem brilhos animados) */}
+            <div className="bg-brand-navy p-6 text-white relative overflow-hidden">
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-2">
                         <Gift className="w-6 h-6" />
                         <h3 className="font-display text-2xl font-bold">Indique e Ganhe!</h3>
                     </div>
                     <p className="text-white/80 max-w-md">
-                        Indique amigos e ganhe <span className="font-bold text-yellow-300">15% OFF</span> no seu próximo serviço.
-                        Seu amigo ganha <span className="font-bold text-yellow-300">10% OFF</span> na primeira visita!
+                        Indique amigos e ganhe <span className="font-bold text-white underline underline-offset-2">15% OFF</span> no seu próximo serviço.
+                        Seu amigo ganha <span className="font-bold text-white underline underline-offset-2">10% OFF</span> na primeira visita!
                     </p>
                 </div>
             </div>
@@ -131,7 +109,7 @@ export const ReferralProgram = ({
                             {referralCode}
                         </div>
                         <Button
-                            variant="gold"
+                            variant="brand"
                             size="icon"
                             onClick={() => copyToClipboard(referralCode)}
                             className="h-12 w-12"
@@ -164,7 +142,7 @@ export const ReferralProgram = ({
                 <div className="flex gap-3">
                     <Button
                         variant="outline"
-                        className="flex-1 bg-green-500/10 border-green-500/30 text-green-500 hover:bg-green-500/20"
+                        className="flex-1 bg-success/10 border-success/30 text-success hover:bg-success/20"
                         onClick={shareViaWhatsApp}
                     >
                         <MessageCircle size={18} className="mr-2" />
@@ -223,7 +201,7 @@ export const ReferralProgram = ({
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {referral.status === 'completed' ? (
-                                        <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+                                        <Badge variant="success">
                                             +{referral.reward}% OFF
                                         </Badge>
                                     ) : referral.status === 'pending' ? (
@@ -276,9 +254,9 @@ export const ReferralProgram = ({
                 </div>
 
                 {/* Bonus Alert */}
-                <div className="p-4 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30">
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                     <div className="flex items-start gap-3">
-                        <Sparkles className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                        <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" aria-hidden />
                         <div>
                             <p className="text-sm font-medium text-foreground">🎯 Meta do mês: 15 indicações</p>
                             <p className="text-xs text-muted-foreground mt-1">

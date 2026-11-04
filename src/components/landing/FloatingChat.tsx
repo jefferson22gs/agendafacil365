@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BRAND } from "@/config/brand";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Sparkles } from "lucide-react";
 import { DEVELOPER_INFO, getSupportWhatsAppLink } from "@/config/contact";
@@ -11,10 +12,10 @@ const quickMessages = [
 ];
 
 const botResponses: Record<string, string> = {
-    "Quero conhecer o sistema": "Ótimo! 🎉 O SysHair é o sistema mais completo para gestão de salões. Posso agendar uma demonstração gratuita para você! Qual melhor horário?",
-    "Como funciona o trial?": "Nosso trial é de 21 dias com TODAS as funcionalidades liberadas! 🚀 Não precisa de cartão de crédito. Quer começar agora?",
-    "Preciso de ajuda para migrar": "Sem problemas! Nossa equipe faz a migração gratuita para você. 💪 Geralmente leva menos de 1 hora. Posso agendar?",
-    "Quanto custa?": "O SysHair tem 2 opções: 💰 Mensal R$ 39,90/mês ou Anual R$ 400,00/ano (15% de desconto!). Tudo incluso: profissionais ilimitados, agendamentos ilimitados, sem taxas extras. Quer testar grátis?",
+    "Quero conhecer o sistema": `Ótimo! 🎉 O ${BRAND.name} reúne agendamento online e gestão para negócios de serviços. Posso agendar uma demonstração gratuita para você! Qual melhor horário?`,
+    "Como funciona o trial?": "Ao criar sua conta, você tem 21 dias de teste com TODAS as funcionalidades liberadas! 🚀 Não precisa de cartão de crédito. Quer começar agora?",
+    "Preciso de ajuda para migrar": "Sem problemas! Nossa equipe faz a migração gratuita para você. 💪 Posso agendar?",
+    "Quanto custa?": `O ${BRAND.name} tem 2 opções: 💰 Mensal R$ 39,90/mês ou Anual R$ 400,00/ano (15% de desconto!). Tudo incluso: profissionais ilimitados, agendamentos ilimitados, sem taxas extras. Quer criar sua conta e testar por 21 dias?`,
 };
 
 interface Message {
@@ -29,7 +30,7 @@ export const FloatingChat = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 1,
-            text: "Olá! 👋 Sou a assistente virtual do SysHair. Como posso ajudar você hoje?",
+            text: `Olá! 👋 Sou a assistente virtual do ${BRAND.name}. Como posso ajudar você hoje?`,
             isBot: true,
             timestamp: new Date(),
         },
@@ -44,6 +45,13 @@ export const FloatingChat = () => {
         }, 5000);
         return () => clearTimeout(timer);
     }, []);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setIsOpen(false);
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [isOpen]);
 
     const handleSendMessage = (text: string) => {
         if (!text.trim()) return;
@@ -94,18 +102,19 @@ export const FloatingChat = () => {
                     )}
                 </AnimatePresence>
 
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                <button
+                    type="button"
                     onClick={() => {
-                        setIsOpen(true);
+                        setIsOpen((v) => !v);
                         setShowBubble(false);
                     }}
-                    className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-gold-light text-primary-foreground shadow-gold flex items-center justify-center relative"
+                    aria-label={isOpen ? "Fechar chat de atendimento" : "Abrir chat de atendimento"}
+                    aria-expanded={isOpen}
+                    aria-controls="landing-chat"
+                    className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-brand hover:bg-brand-hover transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                    <MessageCircle size={28} />
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
-                </motion.button>
+                    {isOpen ? <X size={24} aria-hidden /> : <MessageCircle size={24} aria-hidden />}
+                </button>
             </div>
 
             {/* Chat Window */}
@@ -115,30 +124,35 @@ export const FloatingChat = () => {
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="fixed bottom-24 right-6 z-50 w-[340px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-120px)]"
+                        id="landing-chat"
+                        role="dialog"
+                        aria-label={`Assistente ${BRAND.name}`}
+                        className="fixed bottom-24 right-4 sm:right-6 z-50 w-[340px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-120px)]"
                     >
-                        <div className="glass-card rounded-3xl overflow-hidden shadow-2xl border border-border/50 flex flex-col max-h-[500px]">
+                        <div className="bg-card rounded-2xl overflow-hidden shadow-lg border border-border flex flex-col max-h-[500px]">
                             {/* Header */}
-                            <div className="bg-gradient-to-r from-primary to-gold-light p-3 flex items-center justify-between flex-shrink-0">
+                            <div className="bg-primary p-3 flex items-center justify-between flex-shrink-0">
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                                        <Sparkles className="w-4 h-4 text-white" />
+                                        <Sparkles className="w-4 h-4 text-white" aria-hidden />
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-white text-sm">SysHair Assistente</p>
-                                        <p className="text-[10px] text-white/70">🟢 Online agora</p>
+                                        <p className="font-semibold text-white text-sm">Assistente {BRAND.shortName}</p>
+                                        <p className="text-[10px] text-white/70">Respostas automáticas</p>
                                     </div>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => setIsOpen(false)}
-                                    className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                                    aria-label="Fechar chat"
+                                    className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                                 >
-                                    <X size={18} />
+                                    <X size={18} aria-hidden />
                                 </button>
                             </div>
 
                             {/* Messages */}
-                            <div className="h-[200px] overflow-y-auto p-3 space-y-3 bg-surface-1 flex-1">
+                            <div className="h-[200px] overflow-y-auto p-3 space-y-3 bg-surface-1 flex-1" aria-live="polite">
                                 {messages.map((message) => (
                                     <motion.div
                                         key={message.id}
@@ -148,8 +162,8 @@ export const FloatingChat = () => {
                                     >
                                         <div
                                             className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.isBot
-                                                ? 'bg-card border border-border/50 rounded-bl-none'
-                                                : 'bg-gradient-to-r from-primary to-gold-light text-primary-foreground rounded-br-none'
+                                                ? 'bg-card border border-border rounded-bl-none'
+                                                : 'bg-primary text-primary-foreground rounded-br-none'
                                                 }`}
                                         >
                                             <p className="text-sm">{message.text}</p>
@@ -183,8 +197,9 @@ export const FloatingChat = () => {
                                     {quickMessages.map((msg, index) => (
                                         <button
                                             key={index}
+                                            type="button"
                                             onClick={() => handleSendMessage(msg)}
-                                            className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] text-primary hover:bg-primary/20 transition-colors"
+                                            className="min-h-9 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         >
                                             {msg}
                                         </button>
@@ -197,15 +212,18 @@ export const FloatingChat = () => {
                                         type="text"
                                         value={inputValue}
                                         onChange={(e) => setInputValue(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputValue)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(inputValue)}
                                         placeholder="Digite sua mensagem..."
-                                        className="flex-1 px-3 py-1.5 rounded-full bg-background border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                        aria-label="Mensagem"
+                                        className="flex-1 min-w-0 h-11 px-4 rounded-full bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     />
                                     <button
+                                        type="button"
                                         onClick={() => handleSendMessage(inputValue)}
-                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-gold-light flex items-center justify-center text-primary-foreground"
+                                        aria-label="Enviar mensagem"
+                                        className="w-11 h-11 shrink-0 rounded-full bg-primary hover:bg-brand-hover flex items-center justify-center text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     >
-                                        <Send size={16} />
+                                        <Send size={16} aria-hidden />
                                     </button>
                                 </div>
                             </div>
@@ -215,10 +233,10 @@ export const FloatingChat = () => {
                                 href={getSupportWhatsAppLink('demo')}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block p-2 bg-green-500 text-center text-white text-sm font-medium hover:bg-green-600 transition-colors flex-shrink-0"
+                                className="block p-3 bg-success text-center text-success-foreground text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
                             >
                                 <span className="flex items-center justify-center gap-2">
-                                    <MessageCircle size={16} />
+                                    <MessageCircle size={16} aria-hidden />
                                     Falar no WhatsApp ({DEVELOPER_INFO.whatsappFormatted})
                                 </span>
                             </a>

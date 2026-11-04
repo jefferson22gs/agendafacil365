@@ -29,15 +29,15 @@ interface Notification {
 
 const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
-        case 'appointment': return <Calendar className="w-5 h-5 text-blue-500" />;
-        case 'payment': return <DollarSign className="w-5 h-5 text-green-500" />;
+        case 'appointment': return <Calendar className="w-5 h-5 text-primary" />;
+        case 'payment': return <DollarSign className="w-5 h-5 text-success" />;
         case 'review': return <Star className="w-5 h-5 text-yellow-500" />;
-        case 'alert': return <AlertTriangle className="w-5 h-5 text-orange-500" />;
-        case 'message': return <MessageCircle className="w-5 h-5 text-purple-500" />;
-        case 'client': return <UserPlus className="w-5 h-5 text-cyan-500" />;
-        case 'promo': return <Gift className="w-5 h-5 text-pink-500" />;
-        case 'broadcast': return <MessageCircle className="w-5 h-5 text-blue-500" />;
-        case 'system': return <Bell className="w-5 h-5 text-gray-500" />;
+        case 'alert': return <AlertTriangle className="w-5 h-5 text-warning" />;
+        case 'message': return <MessageCircle className="w-5 h-5 text-primary" />;
+        case 'client': return <UserPlus className="w-5 h-5 text-primary" />;
+        case 'promo': return <Gift className="w-5 h-5 text-primary" />;
+        case 'broadcast': return <MessageCircle className="w-5 h-5 text-primary" />;
+        case 'system': return <Bell className="w-5 h-5 text-muted-foreground" />;
         default: return <Bell className="w-5 h-5 text-primary" />;
     }
 };
@@ -157,7 +157,7 @@ export const NotificationCenter = ({ isOpen, onClose }: NotificationCenterProps)
                                         Marcar todas
                                     </Button>
                                 )}
-                                <Button variant="ghost" size="icon" onClick={onClose}>
+                                <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar notificações">
                                     <X size={20} />
                                 </Button>
                             </div>

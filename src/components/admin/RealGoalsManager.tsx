@@ -255,7 +255,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                 </div>
 
                 {activeGoals.length === 0 ? (
-                    <Card className="glass-card">
+                    <Card>
                         <CardContent className="p-8 text-center">
                             <Target className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                             <h3 className="text-lg font-medium mb-2">Nenhuma meta ativa</h3>
@@ -279,7 +279,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
                             >
-                                <Card className="glass-card overflow-hidden" data-tour="advanced-goals-progress">
+                                <Card className="overflow-hidden" data-tour="advanced-goals-progress">
                                     <CardContent className="p-4">
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-center gap-3">
@@ -331,7 +331,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
             {/* Estatísticas e Histórico */}
             <div className="space-y-6">
                 {/* Estatísticas */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-primary" />
@@ -344,16 +344,16 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                 <p className="text-2xl font-bold text-primary">{stats.activeGoals}</p>
                                 <p className="text-xs text-muted-foreground">Metas ativas</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-green-500/10">
-                                <p className="text-2xl font-bold text-green-500">{stats.completedGoals}</p>
+                            <div className="text-center p-4 rounded-xl bg-success/10">
+                                <p className="text-2xl font-bold text-success">{stats.completedGoals}</p>
                                 <p className="text-xs text-muted-foreground">Concluídas</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-red-500/10">
-                                <p className="text-2xl font-bold text-red-500">{stats.failedGoals}</p>
+                            <div className="text-center p-4 rounded-xl bg-destructive/10">
+                                <p className="text-2xl font-bold text-destructive">{stats.failedGoals}</p>
                                 <p className="text-xs text-muted-foreground">Não atingidas</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-yellow-500/10">
-                                <p className="text-2xl font-bold text-yellow-500">{stats.averageCompletion}%</p>
+                            <div className="text-center p-4 rounded-xl bg-warning/10">
+                                <p className="text-2xl font-bold text-warning">{stats.averageCompletion}%</p>
                                 <p className="text-xs text-muted-foreground">Taxa média</p>
                             </div>
                         </div>
@@ -361,7 +361,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                 </Card>
 
                 {/* Histórico */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle>Histórico de Metas</CardTitle>
                     </CardHeader>

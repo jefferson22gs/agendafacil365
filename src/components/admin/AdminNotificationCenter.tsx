@@ -248,26 +248,26 @@ export function AdminNotificationCenter() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "new_appointment":
-        return <Calendar className="text-green-500" size={20} />;
+        return <Calendar className="text-success" size={20} />;
       case "cancelled_appointment":
-        return <X className="text-red-500" size={20} />;
+        return <X className="text-destructive" size={20} />;
       case "rescheduled_appointment":
-        return <Clock className="text-blue-500" size={20} />;
+        return <Clock className="text-primary" size={20} />;
       default:
-        return <Bell className="text-gray-500" size={20} />;
+        return <Bell className="text-muted-foreground" size={20} />;
     }
   };
 
   const getNotificationColor = (type: string) => {
     switch (type) {
       case "new_appointment":
-        return "bg-green-500/10 border-green-500/30";
+        return "bg-success/10 border-success/30";
       case "cancelled_appointment":
-        return "bg-red-500/10 border-red-500/30";
+        return "bg-destructive/10 border-destructive/30";
       case "rescheduled_appointment":
-        return "bg-blue-500/10 border-blue-500/30";
+        return "bg-primary/10 border-primary/30";
       default:
-        return "bg-gray-500/10 border-gray-500/30";
+        return "bg-muted border-border";
     }
   };
 
@@ -379,7 +379,8 @@ export function AdminNotificationCenter() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-9 w-9"
+                            aria-label="Marcar como lida"
                             onClick={(e) => {
                               e.stopPropagation();
                               markAsRead(notification.id);
@@ -391,7 +392,8 @@ export function AdminNotificationCenter() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          className="h-9 w-9 text-destructive hover:text-destructive"
+                          aria-label="Excluir notificação"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteNotification(notification.id);

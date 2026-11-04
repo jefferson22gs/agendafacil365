@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -357,14 +358,15 @@ const StatusScheduler = () => {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
+            // Status semântico: agendado = informação, processando = aviso, publicado = sucesso, falhou = erro
             case 'scheduled':
-                return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Agendado</Badge>;
+                return <Badge variant="info" className="gap-1"><Clock size={10} aria-hidden />Agendado</Badge>;
             case 'processing':
-                return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Processando</Badge>;
+                return <Badge variant="warning" className="gap-1"><Loader2 size={10} className="animate-spin" aria-hidden />Processando</Badge>;
             case 'posted':
-                return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Publicado</Badge>;
+                return <Badge variant="success" className="gap-1"><CheckCircle size={10} aria-hidden />Publicado</Badge>;
             case 'failed':
-                return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Falhou</Badge>;
+                return <Badge variant="danger" className="gap-1"><XCircle size={10} aria-hidden />Falhou</Badge>;
             case 'cancelled':
                 return <Badge variant="secondary">Cancelado</Badge>;
             default:
@@ -375,8 +377,9 @@ const StatusScheduler = () => {
     if (isLoading) {
         return (
             <AdminLayout>
-                <div className="flex items-center justify-center h-96">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <div className="flex flex-col items-center justify-center h-96 gap-3" role="status">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+                    <p className="text-sm text-muted-foreground">Carregando agendador…</p>
                 </div>
             </AdminLayout>
         );
@@ -386,44 +389,41 @@ const StatusScheduler = () => {
         <AdminLayout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4" data-tour="status-scheduler-header">
-                    <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
-                            <CalendarDays className="w-8 h-8 text-primary" />
-                            Agendador de Status
-                        </h1>
-                        <p className="text-muted-foreground mt-1">
-                            Agende fotos e vídeos para publicar automaticamente no Status do WhatsApp
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3" data-tour="status-scheduler-connection">
+                <div data-tour="status-scheduler-header">
+                    <PageHeader
+                        className="mb-0"
+                        title={<span className="flex items-center gap-2"><CalendarDays className="w-6 h-6 text-primary" aria-hidden />Agendador de Status</span>}
+                        description="Agende fotos e vídeos para publicar automaticamente no Status do WhatsApp."
+                        actions={
+                    <div className="flex flex-wrap items-center gap-3" data-tour="status-scheduler-connection">
                         {instance?.status === 'connected' ? (
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 px-4 py-2">
-                                <CheckCircle size={14} className="mr-2" />
+                            <Badge variant="success" className="px-3 py-1.5">
+                                <CheckCircle size={14} className="mr-2" aria-hidden />
                                 WhatsApp Conectado
                             </Badge>
                         ) : (
-                            <Badge variant="destructive" className="px-4 py-2">
-                                <XCircle size={14} className="mr-2" />
+                            <Badge variant="danger" className="px-3 py-1.5">
+                                <XCircle size={14} className="mr-2" aria-hidden />
                                 WhatsApp Desconectado
                             </Badge>
                         )}
 
-                        <Button variant="gold" onClick={() => setIsModalOpen(true)} data-tour="status-scheduler-new">
-                            <Plus className="w-4 h-4 mr-2" />
+                        <Button variant="brand" onClick={() => setIsModalOpen(true)} data-tour="status-scheduler-new">
+                            <Plus className="w-4 h-4 mr-2" aria-hidden />
                             Agendar Post
                         </Button>
                     </div>
+                        }
+                    />
                 </div>
 
-                {/* Alerta se WhatsApp não conectado */}
+                {/* Alerta se WhatsApp não conectado (aviso, não erro: o agendamento continua salvo) */}
                 {instance?.status !== 'connected' && (
-                    <Card className="border-orange-500/50 bg-orange-500/10">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <AlertCircle className="w-6 h-6 text-orange-500" />
+                    <Card className="border-warning/40 bg-warning/10" role="alert">
+                        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                            <AlertCircle className="w-6 h-6 text-warning shrink-0" aria-hidden />
                             <div className="flex-1">
-                                <p className="font-medium text-orange-500">WhatsApp não conectado</p>
+                                <p className="font-medium text-foreground">WhatsApp não conectado</p>
                                 <p className="text-sm text-muted-foreground">
                                     Conecte seu WhatsApp para que os posts sejam publicados automaticamente.
                                 </p>
@@ -437,11 +437,11 @@ const StatusScheduler = () => {
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList>
                         <TabsTrigger value="calendar" className="flex items-center gap-2">
-                            <Calendar size={16} />
+                            <Calendar size={16} aria-hidden />
                             Calendário
                         </TabsTrigger>
                         <TabsTrigger value="list" className="flex items-center gap-2" data-tour="status-scheduler-list-tab">
-                            <CalendarDays size={16} />
+                            <CalendarDays size={16} aria-hidden />
                             Lista
                         </TabsTrigger>
                     </TabsList>
@@ -450,8 +450,8 @@ const StatusScheduler = () => {
                     <TabsContent value="calendar" className="mt-6" data-tour="status-scheduler-calendar">
                         <Card>
                             <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <CardTitle>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <CardTitle className="capitalize">
                                         {format(currentWeek, "MMMM 'de' yyyy", { locale: ptBR })}
                                     </CardTitle>
                                     <div className="flex items-center gap-2">
@@ -479,8 +479,9 @@ const StatusScheduler = () => {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-7 gap-2">
+                            {/* Semana com rolagem contida no mobile: evita espremer as 7 colunas em 360px */}
+                            <CardContent className="overflow-x-auto">
+                                <div className="grid grid-cols-7 gap-2 min-w-[560px]">
                                     {/* Headers dos dias */}
                                     {DAYS_OF_WEEK.map(day => (
                                         <div key={day.id} className="text-center py-2 font-medium text-muted-foreground">
@@ -516,10 +517,11 @@ const StatusScheduler = () => {
                                                             key={post.id}
                                                             className={cn(
                                                                 "text-xs p-1.5 rounded flex items-center gap-1 truncate",
-                                                                post.status === 'posted' && "bg-green-500/20 text-green-400",
-                                                                post.status === 'scheduled' && "bg-blue-500/20 text-blue-400",
-                                                                post.status === 'failed' && "bg-red-500/20 text-red-400"
+                                                                post.status === 'posted' && "bg-success/10 text-success",
+                                                                post.status === 'scheduled' && "bg-primary/10 text-primary",
+                                                                post.status === 'failed' && "bg-destructive/10 text-destructive"
                                                             )}
+                                                            title={post.status === 'posted' ? 'Publicado' : post.status === 'scheduled' ? 'Agendado' : post.status === 'failed' ? 'Falhou' : undefined}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleEdit(post);
@@ -558,23 +560,27 @@ const StatusScheduler = () => {
                             </CardHeader>
                             <CardContent data-tour="status-scheduler-list">
                                 {posts.length === 0 ? (
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                        <p>Nenhum post agendado</p>
-                                        <Button variant="outline" className="mt-4" onClick={() => setIsModalOpen(true)}>
-                                            <Plus className="w-4 h-4 mr-2" />
-                                            Agendar primeiro post
-                                        </Button>
-                                    </div>
+                                    <EmptyState
+                                        icon={CalendarDays}
+                                        title="Nenhum post agendado"
+                                        description="Agende fotos, vídeos ou textos para publicar no Status do WhatsApp."
+                                        className="border-0 bg-transparent"
+                                        action={
+                                            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+                                                <Plus className="w-4 h-4 mr-2" aria-hidden />
+                                                Agendar primeiro post
+                                            </Button>
+                                        }
+                                    />
                                 ) : (
                                     <div className="space-y-3">
                                         {posts.map(post => (
                                             <div
                                                 key={post.id}
-                                                className="flex items-center gap-4 p-4 rounded-lg bg-card border hover:border-primary/50 transition-colors"
+                                                className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-card border border-border hover:border-primary/50 transition-colors"
                                             >
                                                 {/* Preview da mídia */}
-                                                <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
+                                                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
                                                     {post.content_type === 'image' && post.media_url ? (
                                                         <img src={post.media_url} alt="" className="w-full h-full object-cover" />
                                                     ) : post.content_type === 'video' ? (
@@ -586,7 +592,7 @@ const StatusScheduler = () => {
 
                                                 {/* Informações */}
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                    <div className="flex flex-wrap items-center gap-2 mb-1">
                                                         {getStatusBadge(post.status)}
                                                         {post.recurrence_type !== 'once' && (
                                                             <Badge variant="outline" className="text-xs">
@@ -607,23 +613,25 @@ const StatusScheduler = () => {
                                                 </div>
 
                                                 {/* Ações */}
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
                                                         onClick={() => handleEdit(post)}
                                                         disabled={post.status === 'posted'}
+                                                        aria-label="Editar post"
                                                     >
-                                                        <Edit size={16} />
+                                                        <Edit size={16} aria-hidden />
                                                     </Button>
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                         onClick={() => handleDelete(post.id)}
                                                         disabled={post.status === 'posted'}
+                                                        aria-label="Cancelar agendamento do post"
                                                     >
-                                                        <Trash2 size={16} />
+                                                        <Trash2 size={16} aria-hidden />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -656,6 +664,8 @@ const StatusScheduler = () => {
                                     ].map(type => (
                                         <button
                                             key={type.id}
+                                            type="button"
+                                            aria-pressed={formData.content_type === type.id}
                                             onClick={() => setFormData(prev => ({ ...prev, content_type: type.id as any }))}
                                             className={cn(
                                                 "flex items-center justify-center gap-2 p-3 rounded-lg border transition-colors",
@@ -702,6 +712,7 @@ const StatusScheduler = () => {
                                                 size="icon"
                                                 variant="destructive"
                                                 className="absolute top-2 right-2"
+                                                aria-label="Remover mídia"
                                                 onClick={() => setFormData(prev => ({
                                                     ...prev,
                                                     media_file: null,
@@ -764,16 +775,18 @@ const StatusScheduler = () => {
                             {/* Data e Hora */}
                             <div className="grid grid-cols-2 gap-4" data-tour="status-scheduler-date-time">
                                 <div className="space-y-2">
-                                    <Label>Data</Label>
+                                    <Label htmlFor="status-scheduled-date">Data</Label>
                                     <Input
+                                        id="status-scheduled-date"
                                         type="date"
                                         value={formData.scheduled_date}
                                         onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Hora</Label>
+                                    <Label htmlFor="status-scheduled-time">Hora</Label>
                                     <Input
+                                        id="status-scheduled-time"
                                         type="time"
                                         value={formData.scheduled_time}
                                         onChange={(e) => setFormData(prev => ({ ...prev, scheduled_time: e.target.value }))}
@@ -781,16 +794,16 @@ const StatusScheduler = () => {
                                 </div>
                             </div>
 
-                            <p className="text-sm text-muted-foreground">Horário no fuso do salão: <strong>{timezone}</strong> (altere em Configurações do salão).</p>
+                            <p className="text-sm text-muted-foreground">Horário no fuso do estabelecimento: <strong>{timezone}</strong> (altere em Configurações).</p>
                             {/* Recorrência */}
                             <div className="space-y-4" data-tour="status-scheduler-recurrence">
                                 <div className="space-y-2">
-                                    <Label>Recorrência</Label>
+                                    <Label htmlFor="status-recurrence">Recorrência</Label>
                                     <Select
                                         value={formData.recurrence_type}
                                         onValueChange={(v: any) => setFormData(prev => ({ ...prev, recurrence_type: v }))}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger id="status-recurrence">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -809,6 +822,8 @@ const StatusScheduler = () => {
                                             {DAYS_OF_WEEK.map(day => (
                                                 <button
                                                     key={day.id}
+                                                    type="button"
+                                                    aria-pressed={formData.recurrence_days.includes(day.id)}
                                                     onClick={() => toggleRecurrenceDay(day.id)}
                                                     className={cn(
                                                         "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
@@ -826,8 +841,9 @@ const StatusScheduler = () => {
 
                                 {formData.recurrence_type !== 'once' && (
                                     <div className="space-y-2">
-                                        <Label>Data Final (opcional)</Label>
+                                        <Label htmlFor="status-recurrence-end">Data Final (opcional)</Label>
                                         <Input
+                                            id="status-recurrence-end"
                                             type="date"
                                             value={formData.recurrence_end_date}
                                             onChange={(e) => setFormData(prev => ({ ...prev, recurrence_end_date: e.target.value }))}
@@ -841,7 +857,7 @@ const StatusScheduler = () => {
                             <Button variant="outline" onClick={handleCloseModal} data-tour="status-scheduler-cancel">
                                 Cancelar
                             </Button>
-                            <Button variant="gold" onClick={handleSubmit} disabled={isSubmitting} data-tour="status-scheduler-save">
+                            <Button variant="brand" onClick={handleSubmit} disabled={isSubmitting} data-tour="status-scheduler-save">
                                 {isSubmitting ? (
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 ) : (

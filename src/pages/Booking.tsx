@@ -133,7 +133,7 @@ const Booking = () => {
                   <div className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center transition-all",
                     step >= s.number 
-                      ? 'bg-gradient-to-br from-primary to-gold-light text-primary-foreground' 
+                      ? 'bg-gradient-to-br from-primary to-brand-hover text-primary-foreground' 
                       : 'bg-secondary text-muted-foreground'
                   )}>
                     {step > s.number ? <Check size={18} /> : <s.icon size={18} />}
@@ -187,7 +187,7 @@ const Booking = () => {
                       className={cn(
                         "relative w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left touch-target",
                         selectedService === service.id 
-                          ? 'border-primary bg-primary/5 shadow-gold' 
+                          ? 'border-primary bg-primary/5 shadow-brand' 
                           : 'border-border hover:border-primary/50 active:scale-[0.98]'
                       )}
                     >
@@ -238,11 +238,11 @@ const Booking = () => {
                       className={cn(
                         "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left touch-target",
                         selectedProfessional === pro.id 
-                          ? 'border-primary bg-primary/5 shadow-gold' 
+                          ? 'border-primary bg-primary/5 shadow-brand' 
                           : 'border-border hover:border-primary/50 active:scale-[0.98]'
                       )}
                     >
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold text-xl flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-brand-hover flex items-center justify-center text-primary-foreground font-bold text-xl flex-shrink-0">
                         {pro.avatar}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -362,7 +362,7 @@ const Booking = () => {
                             !slot.available 
                               ? 'bg-secondary/50 text-muted-foreground/50 cursor-not-allowed line-through'
                               : selectedTime === slot.time 
-                                ? 'bg-primary text-primary-foreground shadow-gold' 
+                                ? 'bg-primary text-primary-foreground shadow-brand' 
                                 : 'bg-secondary text-foreground hover:bg-secondary/80 active:scale-95'
                           )}
                         >
@@ -405,7 +405,7 @@ const Booking = () => {
 
                   <div className="p-4 rounded-2xl bg-card border border-border">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-brand-hover flex items-center justify-center text-primary-foreground font-bold">
                         {selectedProfessional === 0 ? <User size={20} /> : selectedProfessionalData?.avatar}
                       </div>
                       <div className="flex-1">
@@ -453,7 +453,7 @@ const Booking = () => {
                 </div>
 
                 {/* Total */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-gold-light/10 border border-primary/20">
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-brand-hover/10 border border-primary/20">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-foreground">Total a pagar</span>
                     <span className="text-3xl font-bold text-foreground">
@@ -472,7 +472,7 @@ const Booking = () => {
         <div className="container-responsive">
           {step < 4 ? (
             <Button 
-              variant="gold" 
+              variant="brand" 
               size="lg"
               className="w-full h-14 text-base font-semibold"
               onClick={handleNext}
@@ -487,7 +487,7 @@ const Booking = () => {
             </Button>
           ) : (
             <Button 
-              variant="gold" 
+              variant="brand" 
               size="lg" 
               className="w-full h-14 text-base font-semibold"
             >

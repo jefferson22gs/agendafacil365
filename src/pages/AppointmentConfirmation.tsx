@@ -105,7 +105,8 @@ export default function AppointmentConfirmation() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
-        <Loader2 className="animate-spin text-primary" size={48} />
+        <Loader2 className="animate-spin text-primary" size={48} aria-hidden="true" />
+        <span className="sr-only">Carregando</span>
       </div>
     );
   }
@@ -130,8 +131,8 @@ export default function AppointmentConfirmation() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Success Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/20 mb-4">
-            <CheckCircle className="text-green-500" size={48} />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/20 mb-4">
+            <CheckCircle className="text-success" size={48} aria-hidden="true" />
           </div>
           <h1 className="text-3xl md:text-4xl font-bold">
             Agendamento Confirmado!
@@ -223,7 +224,8 @@ export default function AppointmentConfirmation() {
           >
             {copied ? (
               <>
-                <CheckCircle size={18} className="mr-2 text-green-500" />
+                <CheckCircle size={18} className="mr-2 text-success" aria-hidden="true" />
+
                 Link Copiado!
               </>
             ) : (

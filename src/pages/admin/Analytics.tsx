@@ -30,8 +30,10 @@ import {
   Star,
   AlertTriangle,
   Target,
-  Lightbulb
+  Lightbulb,
+  BarChart3
 } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
 
 interface Analytics {
   period: string;
@@ -50,7 +52,11 @@ interface Analytics {
 }
 
 const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const COLORS = ['hsl(43, 74%, 49%)', 'hsl(43, 74%, 65%)', 'hsl(220, 15%, 50%)', 'hsl(142, 71%, 45%)', 'hsl(38, 92%, 50%)'];
+// Paleta de gráficos da marca (tokens --chart-N adaptam claro/escuro).
+const COLORS = [1, 2, 3, 4, 5].map((n) => `hsl(var(--chart-${n}))`);
+const AXIS = 'hsl(var(--muted-foreground))';
+const GRID = 'hsl(var(--border))';
+const TOOLTIP_STYLE = { backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' };
 
 const AnalyticsDashboard = () => {
   const { user } = useAuth();
@@ -152,8 +158,9 @@ const AnalyticsDashboard = () => {
   if (loading && !analytics) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando relatórios…</p>
         </div>
       </AdminLayout>
     );
@@ -162,10 +169,8 @@ const AnalyticsDashboard = () => {
   if (!salonId) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64" data-tour="analytics-no-salon">
-          <p className="text-muted-foreground text-center">
-            Configure seu salão em Configurações para ver os relatórios.
-          </p>
+        <div data-tour="analytics-no-salon">
+          <EmptyState icon={BarChart3} title="Relatórios indisponíveis" description="Configure seu estabelecimento em Configurações para ver os relatórios." />
         </div>
       </AdminLayout>
     );
@@ -175,21 +180,16 @@ const AnalyticsDashboard = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div data-tour="analytics-header">
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              Dashboard Analítico
-            </h1>
-            <p className="text-muted-foreground">
-              Análise completa do desempenho do seu salão
-            </p>
+            <PageHeader className="mb-0" title="Dashboard Analítico" description="Análise do desempenho do seu estabelecimento no período escolhido." />
           </div>
           
-          <div className="flex gap-2" data-tour="analytics-period">
+          <div className="flex flex-wrap gap-2" data-tour="analytics-period" role="group" aria-label="Período do relatório">
             {(['week', 'month', 'quarter', 'year'] as const).map((p) => (
               <Button
                 key={p}
-                variant={period === p ? 'gold' : 'outline'}
+                variant={period === p ? 'brand' : 'outline'}
                 size="sm"
                 onClick={() => setPeriod(p)}
               >
@@ -204,11 +204,11 @@ const AnalyticsDashboard = () => {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-tour="analytics-kpis">
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                  <DollarSign size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-lg bg-success/10 text-success flex items-center justify-center">
+                  <DollarSign size={20} />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -220,11 +220,11 @@ const AnalyticsDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                  <Calendar size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <Calendar size={20} />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -236,11 +236,11 @@ const AnalyticsDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <Target size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <Target size={20} />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -252,11 +252,11 @@ const AnalyticsDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                  <Users size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <Users size={20} />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -271,7 +271,7 @@ const AnalyticsDashboard = () => {
 
         {/* Suggestions */}
         {suggestions.length > 0 && (
-          <Card className="glass-card border-primary/30" data-tour="analytics-suggestions">
+          <Card className="border-primary/30" data-tour="analytics-suggestions">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Lightbulb size={20} className="text-primary" />
@@ -291,54 +291,46 @@ const AnalyticsDashboard = () => {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue by Day */}
-          <Card className="glass-card" data-tour="analytics-by-day">
+          <Card data-tour="analytics-by-day">
             <CardHeader>
               <CardTitle className="text-lg">Faturamento por Dia da Semana</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={formatRevenueByDay()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 20%)" />
-                  <XAxis dataKey="day" stroke="hsl(220, 10%, 55%)" fontSize={12} />
-                  <YAxis stroke="hsl(220, 10%, 55%)" fontSize={12} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                  <XAxis dataKey="day" stroke={AXIS} fontSize={12} />
+                  <YAxis stroke={AXIS} fontSize={12} />
                   <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(220, 18%, 12%)', 
-                      border: '1px solid hsl(220, 15%, 18%)',
-                      borderRadius: '8px'
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                     formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
                   />
-                  <Bar dataKey="revenue" fill="hsl(43, 74%, 49%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" fill={COLORS[0]} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
           {/* Hourly Distribution */}
-          <Card className="glass-card" data-tour="analytics-by-hour">
+          <Card data-tour="analytics-by-hour">
             <CardHeader>
               <CardTitle className="text-lg">Distribuição por Horário</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={formatHourlyData()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 20%)" />
-                  <XAxis dataKey="label" stroke="hsl(220, 10%, 55%)" fontSize={12} />
-                  <YAxis stroke="hsl(220, 10%, 55%)" fontSize={12} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                  <XAxis dataKey="label" stroke={AXIS} fontSize={12} />
+                  <YAxis stroke={AXIS} fontSize={12} />
                   <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(220, 18%, 12%)', 
-                      border: '1px solid hsl(220, 15%, 18%)',
-                      borderRadius: '8px'
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                     formatter={(value: number) => [value, 'Agendamentos']}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="count" 
-                    stroke="hsl(43, 74%, 49%)" 
-                    fill="hsl(43, 74%, 49%)"
+                    stroke={COLORS[0]} 
+                    fill={COLORS[0]}
                     fillOpacity={0.3}
                   />
                 </AreaChart>
@@ -347,7 +339,7 @@ const AnalyticsDashboard = () => {
           </Card>
 
           {/* Top Services */}
-          <Card className="glass-card" data-tour="analytics-top-services">
+          <Card data-tour="analytics-top-services">
             <CardHeader>
               <CardTitle className="text-lg">Top Serviços</CardTitle>
             </CardHeader>
@@ -355,11 +347,11 @@ const AnalyticsDashboard = () => {
               {analytics?.top_services && analytics.top_services.length > 0 ? (
                 <div className="space-y-3">
                   {analytics.top_services.map((service, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg surface-2">
                       <div className="flex items-center gap-3">
                         <div 
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                          style={{ backgroundColor: COLORS[i % COLORS.length], color: '#000' }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-foreground border-2"
+                          style={{ borderColor: COLORS[i % COLORS.length] }}
                         >
                           {i + 1}
                         </div>
@@ -373,13 +365,13 @@ const AnalyticsDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
+                <p className="text-center text-muted-foreground py-8">Nenhum dado no período selecionado</p>
               )}
             </CardContent>
           </Card>
 
           {/* Top Professionals */}
-          <Card className="glass-card" data-tour="analytics-top-professionals">
+          <Card data-tour="analytics-top-professionals">
             <CardHeader>
               <CardTitle className="text-lg">Top Profissionais</CardTitle>
             </CardHeader>
@@ -387,7 +379,7 @@ const AnalyticsDashboard = () => {
               {analytics?.top_professionals && analytics.top_professionals.length > 0 ? (
                 <div className="space-y-3">
                   {analytics.top_professionals.map((pro, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg surface-2">
                       <div className="flex items-center gap-3">
                         <div 
                           className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-primary text-primary-foreground"
@@ -400,7 +392,7 @@ const AnalyticsDashboard = () => {
                             <span>{pro.appointments} atendimentos</span>
                             {pro.avg_rating && (
                               <span className="flex items-center gap-1">
-                                <Star size={10} className="text-primary fill-primary" />
+                                <Star size={10} className="text-amber-500 fill-amber-500" aria-hidden />
                                 {pro.avg_rating.toFixed(1)}
                               </span>
                             )}
@@ -412,14 +404,14 @@ const AnalyticsDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
+                <p className="text-center text-muted-foreground py-8">Nenhum dado no período selecionado</p>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* Cancellation Rate */}
-        <Card className="glass-card" data-tour="analytics-cancellations">
+        <Card data-tour="analytics-cancellations">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

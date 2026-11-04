@@ -1,5 +1,5 @@
 // Custom Service Worker for Push Notifications
-// SysHair - BelezaTech
+// Agenda Fácil 365
 
 const SUPABASE_URL = 'https://ocbwsaydgkiseeardjga.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jYndzYXlkZ2tpc2VlYXJkamdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMjkzNzMsImV4cCI6MjEwNjkwNTM3M30.qxt_4WcCKYSJ5AqN5Scl7V_mBQ3ZaN1V29AIe2JfvoA';
@@ -44,7 +44,7 @@ self.addEventListener('push', (event) => {
 
     // Dados padrão
     let notificationData = {
-        title: 'SysHair',
+        title: 'Agenda Fácil 365',
         body: 'Você tem uma nova notificação!',
         icon: '/pwa-192x192.png',
         badge: '/pwa-192x192.png',
@@ -74,7 +74,7 @@ self.addEventListener('push', (event) => {
         if (notificationData.body === 'Você tem uma nova notificação!') {
             const dbNotification = await fetchLatestNotification();
             if (dbNotification) {
-                notificationData.title = dbNotification.title || 'SysHair';
+                notificationData.title = dbNotification.title || 'Agenda Fácil 365';
                 notificationData.body = dbNotification.message || dbNotification.body || 'Nova notificação';
 
                 // Parsear metadata se existir

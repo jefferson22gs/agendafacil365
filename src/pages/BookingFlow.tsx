@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Logo } from "@/components/icons/Logo";
+import { BRAND, safeHexColor } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -347,7 +347,8 @@ const BookingFlow = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden="true" />
+        <span className="sr-only">Carregando</span>
       </div>
     );
   }
@@ -355,9 +356,10 @@ const BookingFlow = () => {
   if (error || !salon) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">{error || "Salão não encontrado"}</p>
-          <Button variant="gold" onClick={() => navigate('/')}>Voltar ao início</Button>
+        <div className="text-center p-4" role="alert">
+          <p className="text-muted-foreground mb-4">{error
+ || "Estabelecimento não encontrado"}</p>
+          <Button variant="brand" onClick={() => navigate('/')}>Voltar ao início</Button>
         </div>
       </div>
     );
@@ -377,7 +379,7 @@ const BookingFlow = () => {
           <p className="text-muted-foreground mb-6">
             Seu agendamento foi realizado com sucesso. Você receberá uma confirmação em breve.
           </p>
-          <div className="glass-card rounded-2xl p-6 mb-6 text-left">
+          <div className="bg-card border border-border shadow-sm rounded-2xl p-6 mb-6 text-left">
             <div className="space-y-3">
               <div>
                 <span className="text-muted-foreground">Serviços</span>
@@ -450,7 +452,7 @@ const BookingFlow = () => {
             </div>
           )}
 
-          <Button variant="gold" size="lg" onClick={() => navigate('/')}>
+          <Button variant="brand" size="lg" onClick={() => navigate('/')}>
             Voltar ao início
           </Button>
         </div>
@@ -463,12 +465,30 @@ const BookingFlow = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container px-4">
-          <div className="flex items-center justify-between h-16">
-            <Logo size="sm" />
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-3 min-h-16 py-2">
+            {/* Identidade do estabelecimento (logo/nome do tenant) prevalece sobre a marca da plataforma */}
+            <div className="flex items-center gap-3 min-w-0">
+              {salon.logo_url && (
+                <img
+                  src={salon.logo_url}
+                  alt=""
+                  className="w-10 h-10 rounded-xl object-cover border border-border bg-card shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{salon.name}</p>
+                {salon.address && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
+                    <MapPin size={12} className="shrink-0" aria-hidden="true" />
+                    <span className="truncate">{salon.address}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-4 shrink-0">
               {products.length > 0 && (
                 <Button
-                  variant={showStore ? "gold" : "outline"}
+                  variant={showStore ? "brand" : "outline"}
                   size="sm"
                   onClick={() => setShowStore(!showStore)}
                   className="relative"
@@ -482,28 +502,19 @@ const BookingFlow = () => {
                   )}
                 </Button>
               )}
-              <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{salon.name}</p>
-                {salon.address && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                    <MapPin size={12} />
-                    {salon.address}
-                  </p>
-                )}
-              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container px-4 py-8 max-w-2xl mx-auto">
+      <main className="container px-4 py-6 sm:py-8 max-w-2xl mx-auto">
         {/* Store View */}
         {showStore ? (
           <div className="animate-fade-in">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
-                  Loja do Salão
+                  Loja do estabelecimento
                 </h2>
                 <p className="text-muted-foreground">
                   Produtos disponíveis para compra
@@ -525,32 +536,32 @@ const BookingFlow = () => {
         ) : (
           <>
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-8">
+        <ol className="flex items-center justify-between mb-8" aria-label="Etapas do agendamento">
           {steps.map((s, index) => (
-            <div key={s.number} className="flex items-center">
+            <li key={s.number} className="flex items-center" aria-current={step === s.number ? "step" : undefined}>
               <div className="flex flex-col items-center">
                 <div className={`
                   w-10 h-10 rounded-full flex items-center justify-center transition-all
                   ${step >= s.number 
-                    ? 'bg-gradient-to-br from-primary to-gold-light text-primary-foreground' 
+                    ? 'bg-gradient-to-br from-primary to-brand-hover text-primary-foreground' 
                     : 'bg-secondary text-muted-foreground'
                   }
                 `}>
-                  {step > s.number ? <Check size={18} /> : <s.icon size={18} />}
+                  {step > s.number ? <Check size={18} aria-hidden="true" /> : <s.icon size={18} aria-hidden="true" />}
                 </div>
-                <span className={`text-xs mt-2 ${step >= s.number ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <span className={`text-[11px] sm:text-xs mt-2 text-center ${step === s.number ? 'text-foreground font-semibold' : step > s.number ? 'text-foreground' : 'text-muted-foreground'}`}>
                   {s.label}
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-12 md:w-20 h-0.5 mx-2 ${step > s.number ? 'bg-primary' : 'bg-border'}`} />
+                <div className={`w-3 sm:w-12 md:w-20 h-0.5 mx-1 sm:mx-2 ${step > s.number ? 'bg-primary' : 'bg-border'}`} aria-hidden="true" />
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
 
         {/* Step Content */}
-        <div className="glass-card rounded-3xl p-6 md:p-8">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-4 sm:p-6 md:p-8">
           {/* Step 1: Select Service */}
           {step === 1 && (
             <div className="animate-fade-in">
@@ -562,6 +573,8 @@ const BookingFlow = () => {
               {/* Tabs */}
               <div className="flex gap-2 mb-6 border-b border-border">
                 <button
+                  type="button"
+                  aria-pressed={activeTab === 'services'}
                   onClick={() => setActiveTab('services')}
                   className={`px-4 py-2 font-medium transition-colors border-b-2 ${
                     activeTab === 'services'
@@ -573,6 +586,8 @@ const BookingFlow = () => {
                 </button>
                 {packages.length > 0 && (
                   <button
+                    type="button"
+                    aria-pressed={activeTab === 'packages'}
                     onClick={() => setActiveTab('packages')}
                     className={`px-4 py-2 font-medium transition-colors border-b-2 ${
                       activeTab === 'packages'
@@ -618,21 +633,22 @@ const BookingFlow = () => {
                           <div
                             key={service.id}
                             className={`
-                              relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all
+                              relative flex flex-wrap items-center gap-3 sm:gap-4 p-4 rounded-2xl border-2 transition-all
                               ${quantityInCart > 0
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border hover:border-primary/50'
                               }
                             `}
                           >
-                            <span className="text-2xl">{service.icon || '✂️'}</span>
-                            <div className="flex-1">
+                            <span className="text-2xl" aria-hidden="true">{service.icon || '✂️'}</span>
+                            <div className="flex-1 min-w-0">
                               <p className="font-medium text-foreground">{service.name}</p>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock size={14} />
                                 {service.duration_minutes}min
                               </div>
                             </div>
+                            <div className="flex items-center justify-between gap-3 w-full sm:w-auto">
                             <p className="text-lg font-bold text-foreground">
                               R$ {service.price.toFixed(2)}
                             </p>
@@ -644,16 +660,18 @@ const BookingFlow = () => {
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="h-8 w-8"
+                                    className="h-11 w-11"
+                                    aria-label={`Diminuir quantidade de ${service.name}`}
                                     onClick={() => updateServiceQuantity(service.id, quantityInCart - 1)}
                                   >
                                     <Minus size={14} />
                                   </Button>
-                                  <span className="w-6 text-center font-medium">{quantityInCart}</span>
+                                  <span className="w-6 text-center font-medium" aria-live="polite">{quantityInCart}</span>
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="h-8 w-8"
+                                    className="h-11 w-11"
+                                    aria-label={`Aumentar quantidade de ${service.name}`}
                                     onClick={() => updateServiceQuantity(service.id, quantityInCart + 1)}
                                   >
                                     <Plus size={14} />
@@ -661,7 +679,7 @@ const BookingFlow = () => {
                                 </>
                               ) : (
                                 <Button
-                                  variant="gold"
+                                  variant="brand"
                                   size="sm"
                                   onClick={() => addServiceToCart(service)}
                                 >
@@ -669,6 +687,7 @@ const BookingFlow = () => {
                                   Adicionar
                                 </Button>
                               )}
+                            </div>
                             </div>
                           </div>
                         );
@@ -710,13 +729,13 @@ const BookingFlow = () => {
                         return (
                           <div
                             key={pkg.id}
-                            className="relative p-6 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-gold-light/5 hover:border-primary/50 transition-all"
+                            className="relative p-4 sm:p-6 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-brand-hover/5 hover:border-primary/50 transition-all"
                           >
                             <div className="flex items-start gap-4 mb-4">
                               <div className="p-3 rounded-xl bg-primary/10">
                                 <Gift size={24} className="text-primary" />
                               </div>
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0 pr-24">
                                 <h3 className="font-bold text-lg text-foreground mb-1">{pkg.name}</h3>
                                 {pkg.description && (
                                   <p className="text-sm text-muted-foreground mb-2">{pkg.description}</p>
@@ -748,7 +767,7 @@ const BookingFlow = () => {
                             </div>
 
                             {/* Pricing */}
-                            <div className="flex items-end justify-between">
+                            <div className="flex flex-wrap items-end justify-between gap-3">
                               <div>
                                 <p className="text-xs text-muted-foreground line-through">
                                   De R$ {originalPrice.toFixed(2)}
@@ -761,7 +780,7 @@ const BookingFlow = () => {
                                 </p>
                               </div>
                               <Button
-                                variant="gold"
+                                variant="brand"
                                 onClick={() => addPackageToCart(pkg)}
                               >
                                 <Plus size={16} className="mr-2" />
@@ -796,24 +815,26 @@ const BookingFlow = () => {
               <div className="grid gap-3">
                 {professionals.map((pro) => (
                   <button
+                    type="button"
                     key={pro.id}
+                    aria-pressed={selectedProfessional === pro.id}
                     onClick={() => setSelectedProfessional(pro.id)}
                     className={`
-                      flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left
+                      flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left
                       ${selectedProfessional === pro.id 
                         ? 'border-primary bg-primary/5' 
                         : 'border-border hover:border-primary/50'
                       }
                     `}
                   >
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold text-xl">
+                    <div className="w-14 h-14 shrink-0 rounded-full bg-gradient-to-br from-primary to-brand-hover flex items-center justify-center text-primary-foreground font-bold text-xl">
                       {pro.avatar_url ? (
                         <img src={pro.avatar_url} alt={pro.name} className="w-full h-full rounded-full object-cover" />
                       ) : (
                         pro.name.charAt(0)
                       )}
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground">{pro.name}</p>
                       {pro.specialty && (
                         <p className="text-sm text-muted-foreground">{pro.specialty}</p>
@@ -828,9 +849,11 @@ const BookingFlow = () => {
                 ))}
 
                 <button
+                  type="button"
+                  aria-pressed={selectedProfessional === "any"}
                   onClick={() => setSelectedProfessional("any")}
                   className={`
-                    flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left
+                    flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left
                     ${selectedProfessional === "any" 
                       ? 'border-primary bg-primary/5' 
                       : 'border-border hover:border-primary/50'
@@ -883,7 +906,8 @@ const BookingFlow = () => {
                   
                   {loadingSlots ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" aria-hidden="true" />
+                      <span className="sr-only">Carregando horários</span>
                     </div>
                   ) : availableSlots.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -893,7 +917,9 @@ const BookingFlow = () => {
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {availableSlots.map((time) => (
                         <button
+                          type="button"
                           key={time}
+                          aria-pressed={selectedTime === time}
                           onClick={() => setSelectedTime(time)}
                           className={`
                             py-3 rounded-lg font-medium transition-all
@@ -1011,7 +1037,7 @@ const BookingFlow = () => {
                     <CalendarIcon size={20} className="text-primary" />
                     <span className="text-foreground">Data e hora</span>
                   </div>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-foreground text-right">
                     {selectedDate && format(selectedDate, "dd/MM/yyyy")} às {selectedTime}
                   </span>
                 </div>
@@ -1104,7 +1130,7 @@ const BookingFlow = () => {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+          <div className="flex items-center justify-between gap-3 mt-8 pt-6 border-t border-border">
             {step > 1 ? (
               <Button variant="ghost" onClick={handleBack}>
                 <ArrowLeft size={18} className="mr-2" />
@@ -1116,7 +1142,8 @@ const BookingFlow = () => {
 
             {step < 4 ? (
               <Button 
-                variant="gold" 
+                variant="brand" 
+                size="lg"
                 onClick={handleNext}
                 disabled={
                   (step === 1 && selectedServices.length === 0) ||
@@ -1129,7 +1156,7 @@ const BookingFlow = () => {
               </Button>
             ) : (
               <Button 
-                variant="gold" 
+                variant="brand" 
                 size="lg"
                 onClick={handleConfirmBooking}
                 disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthDate}
@@ -1146,6 +1173,8 @@ const BookingFlow = () => {
         </div>
           </>
         )}
+        {/* Assinatura discreta da plataforma (substitui o logo do SaaS que ficava no cabeçalho) */}
+        <p className="mt-8 text-center text-xs text-muted-foreground">{BRAND.poweredBy}</p>
       </main>
 
       {/* PWA Install Prompt for Salon */}
@@ -1154,7 +1183,7 @@ const BookingFlow = () => {
           salonName={salon.name}
           salonSlug={salonId}
           salonLogo={salon.logo_url || undefined}
-          salonThemeColor={salon.theme_color || '#c9a227'}
+          salonThemeColor={safeHexColor(salon.primary_color)}
         />
       )}
     </div>

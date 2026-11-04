@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/icons/Logo";
 import { Button } from "@/components/ui/button";
@@ -11,76 +11,80 @@ const navLinks = [
   { label: "Contato", href: "#contact" },
 ];
 
+const linkClass =
+  "rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setIsOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
+  const close = () => setIsOpen(false);
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-      <div className="container px-4">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
-          <Link to="/" className="flex items-center">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+      <nav aria-label="Principal" className="container px-4">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <Link to="/" className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Logo size="sm" />
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <ul className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {link.label}
-              </a>
+              <li key={link.href}>
+                <a href={link.href} className={linkClass}>
+                  {link.label}
+                </a>
+              </li>
             ))}
+          </ul>
+
+          <div className="hidden items-center gap-2 md:flex">
+            <Button asChild variant="ghost" className="h-11">
+              <Link to="/login">Entrar</Link>
+            </Button>
+            <Button asChild variant="brand" className="h-11 px-5">
+              <Link to="/register">Criar conta grátis</Link>
+            </Button>
           </div>
 
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost">Entrar</Button>
-            </Link>
-            <Link to="/register">
-              <Button variant="gold">Começar grátis</Button>
-            </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
           <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 text-foreground"
+            type="button"
+            onClick={() => setIsOpen((v) => !v)}
+            aria-expanded={isOpen}
+            aria-controls="landing-mobile-menu"
+            aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
+            {isOpen ? <X size={22} aria-hidden /> : <Menu size={22} aria-hidden />}
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b border-border">
-          <div className="container px-4 py-6 space-y-4">
+        <div id="landing-mobile-menu" className="border-t border-border bg-card shadow-md md:hidden">
+          <div className="container space-y-1 px-4 py-4">
             {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="block text-lg font-medium text-foreground py-2"
-                onClick={() => setIsOpen(false)}
-              >
+              <a key={link.href} href={link.href} onClick={close} className={`${linkClass} flex min-h-11 items-center text-base`}>
                 {link.label}
               </a>
             ))}
-            <div className="pt-4 space-y-3">
-              <Link to="/login" className="block">
-                <Button variant="outline" className="w-full">Entrar</Button>
-              </Link>
-              <Link to="/register" className="block">
-                <Button variant="gold" className="w-full">Começar grátis</Button>
-              </Link>
+            <div className="grid gap-2 pt-3">
+              <Button asChild variant="outline" className="h-11 w-full">
+                <Link to="/login" onClick={close}>Entrar</Link>
+              </Button>
+              <Button asChild variant="brand" className="h-11 w-full">
+                <Link to="/register" onClick={close}>Criar conta grátis</Link>
+              </Button>
             </div>
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 };

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Upload, Smartphone, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { contactPreview, mapCsv, parseVcf, readCsv, MAX_FILE_BYTES, type CsvData, type PreviewContact, type RawContact } from "@/features/whatsapp/contacts/parse";
 
 interface PickedContact { name?: string[]; tel?: string[]; email?: string[] }
@@ -30,7 +32,7 @@ export default function ImportContacts() {
       if (!user) return;
       const { data: salon, error } = await supabase.from("salons").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
       if (cancelled) return;
-      if (error || !salon) { toast.error("Configure seu salão antes de importar contatos."); return; }
+      if (error || !salon) { toast.error("Configure seu estabelecimento antes de importar contatos."); return; }
       setSalonId(salon.id);
       const phones: string[] = [];
       for (let offset = 0; offset < 100_000; offset += 1000) {
@@ -73,7 +75,7 @@ export default function ImportContacts() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-instances", { body: { action: "contacts", salonId } });
-      if (error || !data?.success || !Array.isArray(data.contacts)) throw new Error("Conecte o WhatsApp do salão e tente novamente.");
+      if (error || !data?.success || !Array.isArray(data.contacts)) throw new Error("Conecte o WhatsApp do estabelecimento e tente novamente.");
       preview(data.contacts.map((c: { name: string; phone: string }) => ({ name: c.name, phones: [c.phone] })));
       if (data.truncated) toast.warning("A conexão retornou mais de 10.000 contatos. A lista foi limitada; não é uma sincronização completa.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível buscar contatos."); }
@@ -103,20 +105,27 @@ export default function ImportContacts() {
   }
   const filtered = contacts.map((contact, index) => ({ contact, index })).filter(({ contact }) => `${contact.name} ${contact.phone ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const counts = (status: PreviewContact["status"]) => contacts.filter(c => c.status === status).length;
+  // Situação de cada contato na prévia: texto + cor semântica (inválido = erro, repetido = aviso).
+  const STATUS_BADGE: Record<PreviewContact["status"], { label: string; variant: NonNullable<BadgeProps["variant"]> }> = {
+    new: { label: "Novo", variant: "success" },
+    existing: { label: "Já cadastrado", variant: "secondary" },
+    duplicate: { label: "Repetido no arquivo", variant: "warning" },
+    invalid: { label: "Inválido", variant: "danger" },
+  };
   return <AdminLayout><div className="max-w-5xl mx-auto space-y-6">
-    <header data-tour="import-contacts-header"><h1 className="text-3xl font-bold">Importar contatos</h1><p className="text-muted-foreground mt-2">Confira a prévia antes de salvar. Importar um contato não significa consentimento para marketing.</p></header>
+    <div data-tour="import-contacts-header"><PageHeader className="mb-0" title="Importar contatos" description="Confira a prévia antes de salvar. Importar um contato não significa consentimento para marketing." /></div>
     <div className="grid gap-4 md:grid-cols-3" data-tour="import-contacts-methods">
-      <Card data-tour="import-contacts-vcf"><CardHeader><CardTitle>Arquivo VCF ou CSV</CardTitle><CardDescription>Até 5 MB e 10.000 números. VCF 2.1, 3.0 e 4.0; CSV com mapeamento de colunas.</CardDescription></CardHeader><CardContent><input ref={fileRef} type="file" accept=".vcf,.csv" className="hidden" onChange={e => void fileSelected(e.target.files?.[0])} /><Button disabled={busy || !salonId} onClick={() => fileRef.current?.click()}><Upload size={16} className="mr-2" />Escolher arquivo</Button></CardContent></Card>
-      <Card data-tour="import-contacts-phone"><CardHeader><CardTitle>Contatos do celular</CardTitle><CardDescription>Escolha pelo navegador compatível; nenhum acesso silencioso à agenda.</CardDescription></CardHeader><CardContent><Button variant="outline" disabled={busy || !salonId} onClick={() => void fromPhone()}><Smartphone size={16} className="mr-2" />Selecionar contatos</Button></CardContent></Card>
-      <Card data-tour="import-contacts-whatsapp"><CardHeader><CardTitle>WhatsApp do salão</CardTitle><CardDescription>Use a conexão existente. Grupos e status não entram como clientes.</CardDescription></CardHeader><CardContent><Button variant="outline" disabled={busy || !salonId} onClick={() => void fromWhatsApp()}><MessageCircle size={16} className="mr-2" />Buscar contatos</Button></CardContent></Card>
+      <Card data-tour="import-contacts-vcf"><CardHeader><CardTitle>Arquivo VCF ou CSV</CardTitle><CardDescription>Até 5 MB e 10.000 números. VCF 2.1, 3.0 e 4.0; CSV com mapeamento de colunas.</CardDescription></CardHeader><CardContent><input ref={fileRef} type="file" accept=".vcf,.csv" className="hidden" onChange={e => void fileSelected(e.target.files?.[0])} /><Button variant="brand" disabled={busy || !salonId} onClick={() => fileRef.current?.click()}><Upload size={16} className="mr-2" aria-hidden />Escolher arquivo</Button></CardContent></Card>
+      <Card data-tour="import-contacts-phone"><CardHeader><CardTitle>Contatos do celular</CardTitle><CardDescription>Escolha pelo navegador compatível; nenhum acesso silencioso à agenda.</CardDescription></CardHeader><CardContent><Button variant="outline" disabled={busy || !salonId} onClick={() => void fromPhone()}><Smartphone size={16} className="mr-2" aria-hidden />Selecionar contatos</Button></CardContent></Card>
+      <Card data-tour="import-contacts-whatsapp"><CardHeader><CardTitle>WhatsApp do estabelecimento</CardTitle><CardDescription>Use a conexão existente. Grupos e status não entram como clientes.</CardDescription></CardHeader><CardContent><Button variant="outline" disabled={busy || !salonId} onClick={() => void fromWhatsApp()}><MessageCircle size={16} className="mr-2" aria-hidden />Buscar contatos</Button></CardContent></Card>
     </div>
-    {csv && <Card><CardHeader><CardTitle>Escolha as colunas do CSV</CardTitle></CardHeader><CardContent className="space-y-3">{(["name", "phone", "email"] as const).map(key => <div key={key}><Label>{key === "name" ? "Nome" : key === "phone" ? "Telefone (obrigatório)" : "E-mail (opcional)"}</Label><select className="block w-full border rounded p-2 bg-background" value={mapping[key]} onChange={e => setMapping(prev => ({ ...prev, [key]: e.target.value }))}><option value="">Não informado</option>{csv.headers.map(h => <option key={h}>{h}</option>)}</select></div>)}<Button onClick={() => { try { preview(mapCsv(csv, mapping)); } catch(error) { toast.error(error instanceof Error ? error.message : "Mapeamento inválido."); } }}>Gerar prévia</Button></CardContent></Card>}
-    {busy && <p className="flex gap-2 items-center" role="status"><Loader2 className="animate-spin" />Processando…</p>}
-    {result && <p className="rounded-lg border p-4" role="status" data-tour="import-contacts-results">{result}</p>}
+    {csv && <Card><CardHeader><CardTitle>Escolha as colunas do CSV</CardTitle></CardHeader><CardContent className="space-y-3">{(["name", "phone", "email"] as const).map(key => <div key={key} className="space-y-1"><Label htmlFor={`csv-map-${key}`}>{key === "name" ? "Nome" : key === "phone" ? "Telefone (obrigatório)" : "E-mail (opcional)"}</Label><select id={`csv-map-${key}`} className="block w-full h-11 border border-input rounded-[10px] px-3 bg-background text-foreground" value={mapping[key]}onChange={e => setMapping(prev => ({ ...prev, [key]: e.target.value }))}><option value="">Não informado</option>{csv.headers.map(h => <option key={h}>{h}</option>)}</select></div>)}<Button onClick={() => { try { preview(mapCsv(csv, mapping)); } catch(error) { toast.error(error instanceof Error ? error.message : "Mapeamento inválido."); } }}>Gerar prévia</Button></CardContent></Card>}
+    {busy && <p className="flex gap-2 items-center text-muted-foreground" role="status"><Loader2 className="animate-spin text-primary" aria-hidden />Processando…</p>}
+    {result && <p className="rounded-xl border border-success/30 bg-success/10 p-4 text-foreground" role="status" data-tour="import-contacts-results">{result}</p>}
     {contacts.length > 0 && <Card data-tour="import-contacts-preview"><CardHeader><CardTitle>{contacts.length} números encontrados</CardTitle><CardDescription>{counts("new")} novos · {counts("existing")} cadastrados · {counts("duplicate")} repetidos · {counts("invalid")} inválidos</CardDescription></CardHeader><CardContent className="space-y-4">
-      <div className="flex flex-wrap gap-2" data-tour="import-contacts-selection"><Input className="flex-1" placeholder="Buscar nome ou telefone" value={search} onChange={e => setSearch(e.target.value)} /><Button variant="outline" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: c.status === "new" })))}>Selecionar novos</Button><Button variant="ghost" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: false })))}>Nenhum</Button></div>
-      <ul className="max-h-96 overflow-y-auto space-y-2">{filtered.map(({ contact: c, index }) => <li key={index} className="flex gap-3 p-3 rounded border"><Checkbox aria-label={`Selecionar ${c.name}`} disabled={c.status !== "new" || busy} checked={c.selected} onCheckedChange={checked => setContacts(prev => prev.map((item,i) => i === index ? { ...item, selected: checked === true } : item))} /><div><p className="font-medium">{c.name}</p><p className="text-sm text-muted-foreground">{c.phone ?? c.reason} · {c.status === "new" ? "Novo" : c.status === "existing" ? "Já cadastrado" : c.status === "duplicate" ? "Repetido no arquivo" : "Inválido"}</p></div></li>)}</ul>
-      <Button disabled={busy || !selected.length} onClick={() => void importSelected()} data-tour="import-contacts-save">Importar {selected.length} selecionados</Button>
+      <div className="flex flex-wrap gap-2" data-tour="import-contacts-selection"><Input className="flex-1 min-w-[12rem]" aria-label="Buscar nome ou telefone" placeholder="Buscar nome ou telefone" value={search}onChange={e => setSearch(e.target.value)} /><Button variant="outline" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: c.status === "new" })))}>Selecionar novos</Button><Button variant="ghost" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: false })))}>Nenhum</Button></div>
+      <ul className="max-h-96 overflow-y-auto space-y-2">{filtered.map(({ contact: c, index }) => <li key={index} className="flex items-start gap-3 p-3 rounded-xl border border-border"><Checkbox className="mt-1"aria-label={`Selecionar ${c.name}`} disabled={c.status !== "new" || busy} checked={c.selected} onCheckedChange={checked => setContacts(prev => prev.map((item,i) => i === index ? { ...item, selected: checked === true } : item))} /><div className="min-w-0 flex-1"><p className="font-medium truncate">{c.name}</p><p className="text-sm text-muted-foreground break-words">{c.phone ?? c.reason}</p></div><Badge variant={STATUS_BADGE[c.status].variant} className="shrink-0">{STATUS_BADGE[c.status].label}</Badge></li>)}</ul>
+      <Button variant="brand" disabled={busy || !selected.length}onClick={() => void importSelected()} data-tour="import-contacts-save">Importar {selected.length} selecionados</Button>
     </CardContent></Card>}
   </div></AdminLayout>;
 }

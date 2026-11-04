@@ -137,7 +137,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour="advanced-referral-panel">
             {/* Card Principal - Código do Cliente */}
-            <Card className="glass-card overflow-hidden">
+            <Card className="overflow-hidden">
                 {/* Seletor de Cliente */}
                 <div className="p-4 border-b border-border">
                     <Select value={selectedClientId} onValueChange={setSelectedClientId}>
@@ -154,8 +154,8 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                     </Select>
                 </div>
 
-                {/* Gradiente de fundo */}
-                <div className="bg-gradient-to-br from-primary/20 via-green-500/20 to-emerald-500/20 p-6">
+                {/* Fundo suave com o tom primário */}
+                <div className="bg-primary/10 p-6">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
                             <Gift className="w-6 h-6 text-primary" />
@@ -174,7 +174,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                         {selectedClient?.name || 'O cliente'} ganha{' '}
                         <span className="font-bold text-primary">15% OFF</span> no próximo serviço.
                         O amigo indicado ganha{' '}
-                        <span className="font-bold text-green-500">10% OFF</span> na primeira visita!
+                        <span className="font-bold text-success">10% OFF</span> na primeira visita!
                     </p>
 
                     {/* Código de Indicação */}
@@ -182,7 +182,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                         <div>
                             <label className="text-sm text-muted-foreground">Código de indicação</label>
                             <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-primary/30">
+                                <div className="flex-1 bg-card rounded-xl p-4 border border-primary/30">
                                     <p className="text-center font-mono text-2xl font-bold text-primary tracking-widest">
                                         {clientCode?.code || 'Gerando...'}
                                     </p>
@@ -207,7 +207,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                                     <Copy className="w-4 h-4 mr-2" />
                                     Copiar Link
                                 </Button>
-                                <Button data-tour="advanced-referral-whatsapp" onClick={shareWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700">
+                                <Button data-tour="advanced-referral-whatsapp" onClick={shareWhatsApp} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
                                     <Share2 className="w-4 h-4 mr-2" />
                                     WhatsApp
                                 </Button>
@@ -247,7 +247,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
             {/* Estatísticas e Ranking */}
             <div className="space-y-6">
                 {/* Estatísticas */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-primary" />
@@ -260,12 +260,12 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                                 <p className="text-2xl font-bold text-primary">{stats.totalReferrals}</p>
                                 <p className="text-xs text-muted-foreground">Total</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-yellow-500/10">
-                                <p className="text-2xl font-bold text-yellow-500">{stats.pendingReferrals}</p>
+                            <div className="text-center p-4 rounded-xl bg-warning/10">
+                                <p className="text-2xl font-bold text-warning">{stats.pendingReferrals}</p>
                                 <p className="text-xs text-muted-foreground">Pendentes</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-green-500/10">
-                                <p className="text-2xl font-bold text-green-500">{stats.completedReferrals}</p>
+                            <div className="text-center p-4 rounded-xl bg-success/10">
+                                <p className="text-2xl font-bold text-success">{stats.completedReferrals}</p>
                                 <p className="text-xs text-muted-foreground">Concluídas</p>
                             </div>
                         </div>
@@ -273,7 +273,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                 </Card>
 
                 {/* Top Indicadores */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Award className="w-5 h-5 text-yellow-500" />
@@ -319,7 +319,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                 </Card>
 
                 {/* Como funciona */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle>Como funciona</CardTitle>
                     </CardHeader>

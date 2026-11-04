@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, ArrowLeft, Check, Loader2, Store } from "lucide-react";
+import { BRAND } from "@/config/brand";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -104,220 +105,206 @@ const Register = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-background lg:grid lg:grid-cols-2">
+      {/* Formulário (prioridade no mobile) */}
+      <main className="flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-md">
-          {/* Back Link */}
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
             Voltar ao início
           </Link>
 
-          {/* Logo */}
-          <div className="mb-8">
-            <Logo size="lg" />
+          {/* No desktop o logo aparece no painel navy */}
+          <div className="mb-6 lg:hidden">
+            <Logo size="md" variant="default" />
           </div>
 
-          {/* Heading */}
-          <div className="mb-8">
-            <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-              Crie sua conta grátis
-            </h1>
-            <p className="text-muted-foreground">
-              Comece a transformar seu salão agora mesmo
-            </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="salonName">Nome do Salão</Label>
-              <Input
-                id="salonName"
-                name="salonName"
-                type="text"
-                placeholder="Ex: Barbearia Premium"
-                value={formData.salonName}
-                onChange={handleChange}
-                className="h-12"
-                required
-                disabled={isLoading}
-              />
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-md sm:p-8">
+            <div className="mb-6">
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2">
+                Crie sua conta grátis
+              </h1>
+              <p className="text-muted-foreground">
+                Comece a organizar seu negócio agora mesmo
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Seu nome</Label>
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Como podemos te chamar?"
-                value={formData.name}
-                onChange={handleChange}
-                className="h-12"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={formData.email}
-                onChange={handleChange}
-                className="h-12"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">WhatsApp</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="(11) 99999-9999"
-                value={formData.phone}
-                onChange={handleChange}
-                className="h-12"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-5" aria-busy={isLoading}>
+              <div className="space-y-2">
+                <Label htmlFor="salonName">Nome do negócio</Label>
                 <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Mínimo 6 caracteres"
-                  value={formData.password}
+                  id="salonName"
+                  name="salonName"
+                  type="text"
+                  autoComplete="organization"
+                  placeholder="Ex: Barbearia Premium"
+                  value={formData.salonName}
                   onChange={handleChange}
-                  className="h-12 pr-12"
+                  className="h-12"
                   required
-                  minLength={6}
                   disabled={isLoading}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
               </div>
-            </div>
 
-            {/* Campo para selecionar vendedor que indicou */}
-            {sellers.length > 0 && (
               <div className="space-y-2">
-                <Label htmlFor="seller" className="flex items-center gap-2">
-                  <Store className="w-4 h-4" />
-                  Quem te indicou? (Opcional)
-                </Label>
-                <Select
-                  value={formData.sellerId}
-                  onValueChange={(value) => setFormData({ ...formData, sellerId: value })}
-                >
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Ninguém, me encontrei sozinho" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Ninguém, me encontrei sozinho</SelectItem>
-                    {sellers.map((seller) => (
-                      <SelectItem key={seller.id} value={seller.id}>
-                        {seller.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Selecione quem te indicou o sistema para que ele receba comissão pela venda.
-                </p>
+                <Label htmlFor="name">Seu nome</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Como podemos te chamar?"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="h-12"
+                  required
+                  disabled={isLoading}
+                />
               </div>
-            )}
 
-            <Button type="submit" variant="gold" size="lg" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Criando conta...
-                </>
-              ) : (
-                'Criar minha conta grátis'
-              )}
-            </Button>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="seu@email.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="h-12"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
 
-            <p className="text-xs text-center text-muted-foreground">
-              Ao criar sua conta, você concorda com nossos{" "}
-              <a href="#" className="text-primary hover:underline">Termos de Uso</a> e{" "}
-              <a href="#" className="text-primary hover:underline">Política de Privacidade</a>
-            </p>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="phone">WhatsApp</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  placeholder="(11) 99999-9999"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="h-12"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
 
-          {/* Sign In Link */}
-          <p className="text-center mt-8 text-sm text-muted-foreground">
-            Já tem uma conta?{" "}
-            <Link to="/login" className="text-primary hover:underline font-medium">
-              Fazer login
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side - Benefits */}
-      <div className="hidden lg:flex flex-1 relative bg-surface-1">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-full max-w-md px-8">
-          <h2 className="font-display text-3xl font-bold text-foreground mb-8">
-            Por que escolher o{" "}
-            <span className="text-gradient-gold">SysHair?</span>
-          </h2>
-
-          <ul className="space-y-6">
-            {benefits.map((benefit) => (
-              <li key={benefit} className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Check size={16} className="text-primary" />
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 6 caracteres"
+                    aria-describedby="password-hint"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="h-12 pr-12"
+                    required
+                    minLength={6}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={showPassword}
+                    aria-controls="password"
+                    className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+                  </button>
                 </div>
-                <span className="text-lg text-foreground">{benefit}</span>
+                <p id="password-hint" className="text-xs text-muted-foreground">Use pelo menos 6 caracteres.</p>
+              </div>
+
+              {/* Campo para selecionar vendedor que indicou */}
+              {sellers.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="seller" className="flex items-center gap-2">
+                    <Store className="w-4 h-4" aria-hidden="true" />
+                    Quem te indicou? (Opcional)
+                  </Label>
+                  <Select
+                    value={formData.sellerId}
+                    onValueChange={(value) => setFormData({ ...formData, sellerId: value })}
+                  >
+                    <SelectTrigger id="seller" className="h-12" aria-describedby="seller-hint">
+                      <SelectValue placeholder="Ninguém, me encontrei sozinho" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Ninguém, me encontrei sozinho</SelectItem>
+                      {sellers.map((seller) => (
+                        <SelectItem key={seller.id} value={seller.id}>
+                          {seller.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p id="seller-hint" className="text-xs text-muted-foreground">
+                    Selecione quem te indicou o sistema para que ele receba comissão pela venda.
+                  </p>
+                </div>
+              )}
+
+              <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" />
+                    Criando conta...
+                  </>
+                ) : (
+                  'Criar minha conta grátis'
+                )}
+              </Button>
+
+              {/* BLOQUEIO DE PUBLICAÇÃO: Termos de Uso e Política de Privacidade ainda não existem.
+                  Os links "#" foram removidos; inserir os documentos aprovados juridicamente antes do lançamento. */}
+            </form>
+
+            <p className="text-center mt-6 text-sm text-muted-foreground">
+              Já tem uma conta?{" "}
+              <Link to="/login" className="inline-flex min-h-11 items-center text-primary hover:underline font-medium">
+                Fazer login
+              </Link>
+            </p>
+          </div>
+        </div>
+      </main>
+
+      {/* Painel secundário (apenas desktop). Depoimento e números não verificados removidos no rebranding. */}
+      <aside className="hidden lg:flex items-center justify-center bg-brand-navy p-12 text-white">
+        <div className="max-w-sm">
+          <Logo size="lg" variant="white" />
+          <h2 className="font-display text-3xl font-bold mt-10 mb-8">
+            Por que escolher o {BRAND.name}?
+          </h2>
+          <ul className="space-y-5">
+            {benefits.map((benefit) => (
+              <li key={benefit} className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Check size={16} className="text-brand-sky" aria-hidden="true" />
+                </span>
+                <span className="text-lg">{benefit}</span>
               </li>
             ))}
           </ul>
-
-          <div className="mt-12 p-6 rounded-2xl glass-card">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold">
-                RS
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">Roberto Silva</p>
-                <p className="text-sm text-muted-foreground">Barbearia Vintage</p>
-              </div>
-            </div>
-            <p className="text-muted-foreground italic">
-              "O SysHair transformou minha barbearia. Reduzi 70% das faltas e meus clientes adoram a facilidade de agendar."
-            </p>
-          </div>
         </div>
-
-        {/* Decorative Elements */}
-        <div className="absolute top-20 left-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-60 h-60 bg-primary/10 rounded-full blur-3xl" />
-      </div>
+      </aside>
     </div>
   );
 };
 
 export default Register;
+

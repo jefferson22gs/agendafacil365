@@ -22,11 +22,12 @@ function getColorIntensity(value: number, max: number): string {
 
     const intensity = value / max;
 
-    if (intensity < 0.2) return "bg-emerald-500/20";
-    if (intensity < 0.4) return "bg-emerald-500/40";
-    if (intensity < 0.6) return "bg-amber-500/50";
-    if (intensity < 0.8) return "bg-orange-500/60";
-    return "bg-rose-500/70";
+    // Escala sequencial de um só tom (ocupação não é erro/aviso): mais forte = mais ocupado.
+    if (intensity < 0.2) return "bg-primary/15";
+    if (intensity < 0.4) return "bg-primary/35";
+    if (intensity < 0.6) return "bg-primary/55";
+    if (intensity < 0.8) return "bg-primary/75";
+    return "bg-primary";
 }
 
 export function OccupancyHeatmap({ data, maxValue, className }: OccupancyHeatmapProps) {
@@ -41,7 +42,7 @@ export function OccupancyHeatmap({ data, maxValue, className }: OccupancyHeatmap
     const max = maxValue || Math.max(...data.map((d) => d.value), 1);
 
     return (
-        <Card className={cn("glass-card", className)}>
+        <Card className={className}>
             <CardHeader>
                 <CardTitle className="text-lg flex items-center justify-between">
                     Heatmap de Ocupação
@@ -49,10 +50,10 @@ export function OccupancyHeatmap({ data, maxValue, className }: OccupancyHeatmap
                         <span>Baixa</span>
                         <div className="flex gap-0.5">
                             <div className="w-3 h-3 rounded-sm bg-muted/30" />
-                            <div className="w-3 h-3 rounded-sm bg-emerald-500/30" />
-                            <div className="w-3 h-3 rounded-sm bg-amber-500/50" />
-                            <div className="w-3 h-3 rounded-sm bg-orange-500/60" />
-                            <div className="w-3 h-3 rounded-sm bg-rose-500/70" />
+                            <div className="w-3 h-3 rounded-sm bg-primary/15" />
+                            <div className="w-3 h-3 rounded-sm bg-primary/35" />
+                            <div className="w-3 h-3 rounded-sm bg-primary/55" />
+                            <div className="w-3 h-3 rounded-sm bg-primary" />
                         </div>
                         <span>Alta</span>
                     </div>

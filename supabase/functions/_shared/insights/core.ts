@@ -1,6 +1,6 @@
 import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 
-/** Regras puras do SysHair Insights. Sem banco, sem rede: tudo testável. */
+/** Regras puras do Agenda Fácil 365 Insights. Sem banco, sem rede: tudo testável. */
 
 export type ReportKind = "weekly" | "monthly" | "yearly";
 export interface Period { start: string; endExclusive: string; label: string }
@@ -86,7 +86,7 @@ export function recommendation(m: Metrics, prev: Metrics): string {
 
 function noData(kind: ReportKind, salon: string, p: Period): string {
   const title = kind === "weekly" ? "RESUMO SEMANAL" : kind === "monthly" ? "FECHAMENTO MENSAL" : "RETROSPECTIVA ANUAL";
-  return `📊 SYSHAIR — ${title}\n\nSalão: ${salon}\nPeríodo: ${p.label}\n\nAinda não há atendimentos concluídos neste período.\nQuando os horários forem marcados como concluídos na agenda, os números aparecem aqui.\n\nResponda MENU para outras consultas.`;
+  return `📊 AGENDA FÁCIL 365 — ${title}\n\nSalão: ${salon}\nPeríodo: ${p.label}\n\nAinda não há atendimentos concluídos neste período.\nQuando os horários forem marcados como concluídos na agenda, os números aparecem aqui.\n\nResponda MENU para outras consultas.`;
 }
 
 export function renderReport(kind: ReportKind, salon: string, p: Period, m: Metrics, prev: Metrics, showProfessional: boolean): string {
@@ -94,14 +94,14 @@ export function renderReport(kind: ReportKind, salon: string, p: Period, m: Metr
   const lines: string[] = [];
   const otherServices = m.completed - m.cuts;
   if (kind === "weekly") {
-    lines.push("📊 SYSHAIR — RESUMO SEMANAL", "", `Salão: ${salon}`, `Período: ${p.label}`, "",
+    lines.push("📊 AGENDA FÁCIL 365 — RESUMO SEMANAL", "", `Salão: ${salon}`, `Período: ${p.label}`, "",
       `💰 Faturamento: ${money(m.revenue)}`, `✂️ Cortes realizados: ${m.cuts}`, `📅 Atendimentos: ${m.completed}`,
       `👥 Clientes atendidos: ${m.unique_clients}`, `📈 Variação: ${variation(m.completed, prev.completed)}`, "");
     if (peakDay(m)) lines.push(`🏆 Dia mais movimentado: ${peakDay(m)}`);
     if (peakHour(m)) lines.push(`⏰ Horário de pico: ${peakHour(m)}`);
     if (topService(m)) lines.push(`⭐ Serviço campeão: ${topService(m)}`);
   } else if (kind === "monthly") {
-    lines.push("📊 SYSHAIR — FECHAMENTO MENSAL", "", `Salão: ${salon}`, `Período: ${p.label}`, "",
+    lines.push("📊 AGENDA FÁCIL 365 — FECHAMENTO MENSAL", "", `Salão: ${salon}`, `Período: ${p.label}`, "",
       `💰 Faturamento: ${money(m.revenue)} (${variation(m.revenue, prev.revenue)})`,
       `📅 Atendimentos: ${m.completed} (${variation(m.completed, prev.completed)})`,
       `✂️ Cortes: ${m.cuts} · Outros serviços: ${otherServices}`, `🎟️ Ticket médio: ${money(ticket(m))}`,
@@ -113,7 +113,7 @@ export function renderReport(kind: ReportKind, salon: string, p: Period, m: Metr
     const months = (m.by_month ?? []).filter(x => x.n > 0);
     const best = [...months].sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))[0];
     const activeMonths = months.length;
-    lines.push("📊 SYSHAIR — RETROSPECTIVA ANUAL", "", `Salão: ${salon}`, `Ano: ${p.label}`);
+    lines.push("📊 AGENDA FÁCIL 365 — RETROSPECTIVA ANUAL", "", `Salão: ${salon}`, `Ano: ${p.label}`);
     if (m.first_data_date && m.first_data_date > p.start) lines.push(`(dados disponíveis a partir de ${br(m.first_data_date)})`);
     lines.push("", `💰 Faturamento total: ${money(m.revenue)}`, `📅 Atendimentos: ${m.completed}`, `✂️ Cortes: ${m.cuts}`,
       `👥 Clientes únicos: ${m.unique_clients}`);
@@ -159,11 +159,11 @@ export function detectAlerts(m: Metrics, prev: Metrics, cfg: AlertSettings, dowH
 }
 
 export function renderAlerts(salon: string, alerts: Alert[]): string {
-  return [`🔔 SYSHAIR — ALERTA`, "", `Salão: ${salon}`, "", ...alerts.map(a => `• ${a.text}`), "", "Não indicamos causa: são observações dos números da agenda.", "Responda MENU para consultar mais informações."].join("\n");
+  return [`🔔 AGENDA FÁCIL 365 — ALERTA`, "", `Salão: ${salon}`, "", ...alerts.map(a => `• ${a.text}`), "", "Não indicamos causa: são observações dos números da agenda.", "Responda MENU para consultar mais informações."].join("\n");
 }
 
 export const MENU = [
-  "📋 SYSHAIR — MENU",
+  "📋 AGENDA FÁCIL 365 — MENU",
   "",
   "RESUMO — semana até agora",
   "SEMANA — última semana fechada",

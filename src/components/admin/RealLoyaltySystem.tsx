@@ -226,7 +226,7 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour="advanced-loyalty-panel">
             {/* Card do Cliente */}
-            <Card className="glass-card overflow-hidden">
+            <Card className="overflow-hidden">
                 {/* Seletor de Cliente */}
                 <div className="p-4 border-b border-border">
                     <Select value={selectedClientId} onValueChange={setSelectedClientId}>
@@ -360,7 +360,7 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
             {/* Estatísticas e Configurações */}
             <div className="space-y-6">
                 {/* Resumo do Programa */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-xl">Resumo do Programa</CardTitle>
                     </CardHeader>
@@ -370,20 +370,20 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
                                 <p className="text-2xl font-bold text-primary">{stats.activeClients}</p>
                                 <p className="text-xs text-muted-foreground">Clientes ativos</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-green-500/10">
-                                <p className="text-2xl font-bold text-green-500">
+                            <div className="text-center p-4 rounded-xl bg-success/10">
+                                <p className="text-2xl font-bold text-success">
                                     {stats.totalPointsDistributed >= 1000
                                         ? `${(stats.totalPointsDistributed / 1000).toFixed(1)}K`
                                         : stats.totalPointsDistributed}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Pontos distribuídos</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-purple-500/10">
-                                <p className="text-2xl font-bold text-purple-500">{stats.redemptionsThisMonth}</p>
+                            <div className="text-center p-4 rounded-xl bg-primary/10">
+                                <p className="text-2xl font-bold text-primary">{stats.redemptionsThisMonth}</p>
                                 <p className="text-xs text-muted-foreground">Resgates no mês</p>
                             </div>
-                            <div className="text-center p-4 rounded-xl bg-yellow-500/10">
-                                <p className="text-2xl font-bold text-yellow-500">
+                            <div className="text-center p-4 rounded-xl bg-warning/10">
+                                <p className="text-2xl font-bold text-warning">
                                     R$ {stats.totalValueRedeemed.toFixed(0)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Valor resgatado</p>
@@ -393,10 +393,10 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
                 </Card>
 
                 {/* Como ganhar pontos */}
-                <Card className="glass-card">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-xl flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-green-500" />
+                            <TrendingUp className="w-5 h-5 text-success" />
                             Como ganhar pontos
                         </CardTitle>
                     </CardHeader>

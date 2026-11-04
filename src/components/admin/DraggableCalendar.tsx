@@ -63,10 +63,10 @@ function SortableAppointment({ appointment }: { appointment: Appointment }) {
     };
 
     const statusColors = {
-        scheduled: "border-l-blue-500",
-        confirmed: "border-l-emerald-500",
-        completed: "border-l-gray-400",
-        cancelled: "border-l-red-500",
+        scheduled: "border-l-primary",
+        confirmed: "border-l-success",
+        completed: "border-l-muted-foreground",
+        cancelled: "border-l-destructive",
     };
 
     return (
@@ -84,6 +84,7 @@ function SortableAppointment({ appointment }: { appointment: Appointment }) {
                 <button
                     {...listeners}
                     className="p-1 hover:bg-secondary rounded cursor-grab active:cursor-grabbing touch-target"
+                    aria-label="Arrastar agendamento"
                 >
                     <GripVertical size={16} className="text-muted-foreground" />
                 </button>
@@ -207,17 +208,17 @@ export function DraggableCalendar({
         : null;
 
     return (
-        <Card className={cn("glass-card", className)}>
+        <Card className={className}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg">Agenda do Dia</CardTitle>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => navigateDate("prev")}>
+                    <Button variant="ghost" size="icon" onClick={() => navigateDate("prev")} aria-label="Dia anterior">
                         <ChevronLeft size={18} />
                     </Button>
-                    <span className="text-sm font-medium min-w-[200px] text-center capitalize">
+                    <span className="text-sm font-medium sm:min-w-[200px] text-center capitalize">
                         {formatDate(currentDate)}
                     </span>
-                    <Button variant="ghost" size="icon" onClick={() => navigateDate("next")}>
+                    <Button variant="ghost" size="icon" onClick={() => navigateDate("next")} aria-label="Próximo dia">
                         <ChevronRight size={18} />
                     </Button>
                 </div>
@@ -248,13 +249,13 @@ export function DraggableCalendar({
                 <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
                     <div className="flex items-center gap-4 text-xs">
                         <span className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded bg-blue-500" /> Agendado
+                            <div className="w-3 h-3 rounded bg-primary" /> Agendado
                         </span>
                         <span className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded bg-emerald-500" /> Confirmado
+                            <div className="w-3 h-3 rounded bg-success" /> Confirmado
                         </span>
                         <span className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded bg-gray-400" /> Concluído
+                            <div className="w-3 h-3 rounded bg-muted-foreground" /> Concluído
                         </span>
                     </div>
                     <p className="text-xs text-muted-foreground">

@@ -18,7 +18,6 @@ import {
   ChevronRight,
   Loader2,
   Phone,
-  Scissors,
   MapPin,
   Bell,
   Settings,
@@ -28,6 +27,8 @@ import {
 import { format, addDays, subDays, isToday, isTomorrow, parseISO, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/page-header";
+import { AppointmentStatusBadge } from "@/components/admin/AppointmentStatusBadge";
 
 interface Appointment {
   id: string;
@@ -180,25 +181,12 @@ const ProfessionalDashboard = () => {
     return format(date, "EEE", { locale: ptBR });
   };
 
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'confirmed': 
-        return { bg: 'bg-success/10', text: 'text-success', border: 'border-success/20', label: 'Confirmado' };
-      case 'completed': 
-        return { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/20', label: 'Concluído' };
-      case 'cancelled': 
-        return { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-destructive/20', label: 'Cancelado' };
-      default: 
-        return { bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/20', label: 'Pendente' };
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm">Carregando...</p>
+        <div className="flex flex-col items-center gap-4" role="status">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" aria-hidden />
+          <p className="text-muted-foreground text-sm">Carregando sua agenda…</p>
         </div>
       </div>
     );
@@ -214,7 +202,7 @@ const ProfessionalDashboard = () => {
         <div className="container-responsive">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold">
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold" aria-hidden>
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="hidden sm:block">
@@ -223,14 +211,15 @@ const ProfessionalDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors touch-target">
-                <Bell size={22} className="text-muted-foreground" />
+              <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors touch-target" aria-label="Notificações">
+                <Bell size={22} className="text-muted-foreground" aria-hidden />
               </button>
-              <button 
+              <button
                 onClick={handleSignOut}
                 className="p-2 rounded-lg hover:bg-secondary transition-colors touch-target"
+                aria-label="Sair da conta"
               >
-                <LogOut size={22} className="text-muted-foreground" />
+                <LogOut size={22} className="text-muted-foreground" aria-hidden />
               </button>
             </div>
           </div>
@@ -241,11 +230,11 @@ const ProfessionalDashboard = () => {
         {/* Stats Cards - Horizontal Scroll on Mobile */}
         <div className="py-4">
           <div className="flex gap-3 overflow-x-auto scroll-snap-x px-4 pb-2">
-            <Card className="glass-card min-w-[140px] flex-shrink-0 scroll-snap-item">
+            <Card className="min-w-[140px] flex-shrink-0 scroll-snap-item">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <Calendar size={20} className="text-blue-500" />
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center" aria-hidden>
+                    <Calendar size={20} className="text-primary" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-foreground">{appointments.length}</p>
@@ -255,11 +244,11 @@ const ProfessionalDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="glass-card min-w-[140px] flex-shrink-0 scroll-snap-item">
+            <Card className="min-w-[140px] flex-shrink-0 scroll-snap-item">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                    <CheckCircle2 size={20} className="text-green-500" />
+                  <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center" aria-hidden>
+                    <CheckCircle2 size={20} className="text-success" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-foreground">{completedToday}</p>
@@ -269,10 +258,10 @@ const ProfessionalDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="glass-card min-w-[160px] flex-shrink-0 scroll-snap-item">
+            <Card className="min-w-[160px] flex-shrink-0 scroll-snap-item">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center" aria-hidden>
                     <DollarSign size={20} className="text-primary" />
                   </div>
                   <div>
@@ -283,11 +272,11 @@ const ProfessionalDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="glass-card min-w-[120px] flex-shrink-0 scroll-snap-item">
+            <Card className="min-w-[120px] flex-shrink-0 scroll-snap-item">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                    <TrendingUp size={20} className="text-purple-500" />
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center" aria-hidden>
+                    <TrendingUp size={20} className="text-muted-foreground" />
                   </div>
                   <div>
                     <p className="text-xl font-bold text-foreground">{professional?.commission_rate}%</p>
@@ -311,10 +300,12 @@ const ProfessionalDashboard = () => {
                   key={date.toISOString()}
                   onClick={() => setSelectedDate(date)}
                   disabled={isPast}
+                  aria-pressed={isSelected}
+                  aria-label={format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                   className={cn(
                     "flex flex-col items-center justify-center min-w-[64px] h-[76px] rounded-2xl border-2 transition-all scroll-snap-item",
                     isSelected
-                      ? 'border-primary bg-primary text-primary-foreground shadow-gold'
+                      ? 'border-primary bg-primary text-primary-foreground shadow-brand'
                       : isPast
                         ? 'border-border/50 bg-secondary/50 text-muted-foreground/50'
                         : 'border-border bg-card hover:border-primary/50'
@@ -347,14 +338,14 @@ const ProfessionalDashboard = () => {
         {/* Next Appointment Highlight */}
         {nextAppointment && isToday(selectedDate) && (
           <div className="px-4 mb-4">
-            <Card className="bg-gradient-to-r from-primary/10 to-gold-light/10 border-primary/20">
+            <Card className="bg-primary/5 border-primary/30">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock size={14} className="text-primary" />
+                  <Clock size={14} className="text-primary" aria-hidden />
                   <span className="text-xs font-medium text-primary uppercase tracking-wide">Próximo</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-gold-light flex flex-col items-center justify-center text-primary-foreground">
+                  <div className="w-14 h-14 rounded-xl bg-primary flex flex-col items-center justify-center text-primary-foreground shrink-0 tabular-nums">
                     <span className="text-lg font-bold leading-none">{nextAppointment.start_time.slice(0, 5)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -366,11 +357,11 @@ const ProfessionalDashboard = () => {
                     </p>
                   </div>
                   <Button
-                    variant="gold"
+                    variant="brand"
                     size="sm"
                     onClick={() => handleCompleteAppointment(nextAppointment.id)}
                   >
-                    <CheckCircle2 size={16} className="mr-1" />
+                    <CheckCircle2 size={16} className="mr-1" aria-hidden />
                     Concluir
                   </Button>
                 </div>
@@ -381,24 +372,18 @@ const ProfessionalDashboard = () => {
 
         {/* Appointments List */}
         <div className="px-4 space-y-3 pb-6">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             {isToday(selectedDate) ? 'Agenda de Hoje' : format(selectedDate, "EEEE, dd/MM", { locale: ptBR })}
-          </h3>
+          </h2>
 
           {appointments.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="py-12 text-center">
-                <Calendar size={48} className="mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">Nenhum agendamento</p>
-                <p className="text-sm text-muted-foreground/70">para este dia</p>
-              </CardContent>
-            </Card>
+            <EmptyState icon={Calendar} title="Nenhum agendamento" description="Não há atendimentos marcados para este dia." />
           ) : (
             <div className="space-y-3">
               <AnimatePresence>
                 {appointments.map((appointment, index) => {
-                  const status = getStatusConfig(appointment.status);
                   const isExpanded = expandedAppointment === appointment.id;
+                  const toggle = () => setExpandedAppointment(isExpanded ? null : appointment.id);
                   
                   return (
                     <motion.div
@@ -410,20 +395,29 @@ const ProfessionalDashboard = () => {
                       <Card 
                         className={cn(
                           "transition-all cursor-pointer overflow-hidden",
-                          appointment.status === 'completed' 
-                            ? 'opacity-60' 
-                            : 'glass-card',
+                          // Concluído fica esmaecido, mas sem opacidade que prejudique a leitura do texto
+                          appointment.status === 'completed' && 'surface-2',
                           isExpanded && 'ring-2 ring-primary/50'
                         )}
-                        onClick={() => setExpandedAppointment(isExpanded ? null : appointment.id)}
+                        onClick={toggle}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        onKeyDown={(e) => {
+                          // Só reage quando o foco está no próprio cartão (não nos botões/links internos)
+                          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            toggle();
+                          }
+                        }}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center gap-4">
                             <div className={cn(
-                              "w-14 h-14 rounded-xl flex flex-col items-center justify-center text-primary-foreground flex-shrink-0",
+                              "w-14 h-14 rounded-xl flex flex-col items-center justify-center flex-shrink-0 tabular-nums",
                               appointment.status === 'completed'
                                 ? 'bg-muted text-muted-foreground'
-                                : 'bg-gradient-to-br from-primary to-gold-light'
+                                : 'bg-primary/10 text-primary'
                             )}>
                               <span className="text-base font-bold leading-none">
                                 {appointment.start_time.slice(0, 5)}
@@ -434,16 +428,11 @@ const ProfessionalDashboard = () => {
                             </div>
                             
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
+                              <div className="flex items-center gap-2 mb-0.5 min-w-0">
                                 <p className="font-semibold text-foreground truncate">
                                   {appointment.client_name || 'Cliente'}
                                 </p>
-                                <span className={cn(
-                                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0",
-                                  status.bg, status.text
-                                )}>
-                                  {status.label}
-                                </span>
+                                <AppointmentStatusBadge status={appointment.status} className="flex-shrink-0" />
                               </div>
                               <p className="text-sm text-muted-foreground truncate">
                                 {appointment.services?.name}
@@ -451,7 +440,7 @@ const ProfessionalDashboard = () => {
                             </div>
 
                             <div className="text-right flex-shrink-0">
-                              <p className="text-lg font-bold text-foreground">
+                              <p className="text-lg font-bold text-foreground tabular-nums">
                                 R$ {appointment.final_price?.toFixed(0)}
                               </p>
                             </div>
@@ -471,10 +460,11 @@ const ProfessionalDashboard = () => {
                                   {appointment.client_phone && (
                                     <a
                                       href={`tel:${appointment.client_phone}`}
-                                      className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
+                                      className="flex items-center gap-3 p-3 min-h-[44px] rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                                       onClick={(e) => e.stopPropagation()}
+                                      aria-label={`Ligar para ${appointment.client_name || 'cliente'}: ${appointment.client_phone}`}
                                     >
-                                      <Phone size={18} className="text-primary" />
+                                      <Phone size={18} className="text-primary" aria-hidden />
                                       <span className="font-medium text-foreground">
                                         {appointment.client_phone}
                                       </span>
@@ -483,14 +473,14 @@ const ProfessionalDashboard = () => {
                                   
                                   {appointment.status === 'confirmed' && (
                                     <Button
-                                      variant="gold"
+                                      variant="brand"
                                       className="w-full"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleCompleteAppointment(appointment.id);
                                       }}
                                     >
-                                      <CheckCircle2 size={18} className="mr-2" />
+                                      <CheckCircle2 size={18} className="mr-2" aria-hidden />
                                       Marcar como Concluído
                                     </Button>
                                   )}

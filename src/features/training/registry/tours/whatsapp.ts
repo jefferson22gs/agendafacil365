@@ -22,14 +22,14 @@ export const whatsappConnectTour: TourDef = {
       target: "whatsapp-create-button",
       mode: "waitForClick",
       title: "Preparar a conexão",
-      body: "Se ainda não há conexão cadastrada, clique em Criar Instância WhatsApp. Neste sistema, instância é apenas o cadastro da conexão do salão.",
+      body: "Se ainda não há conexão cadastrada, clique em Conectar WhatsApp. Isso só abre o cadastro da conexão do estabelecimento.",
       fallbackBody: "Se a conexão já está cadastrada, não precisa criar outra. Confira o status e use Conectar somente se estiver desconectada.",
     },
     {
       target: "whatsapp-create-save",
       title: "Criar quando estiver pronto",
-      body: "O sistema já sugere um nome interno; não é o número de telefone e não precisa copiá-lo. Quando decidir preparar a conexão, clique em Criar Instância; para só conhecer a tela, use Cancelar.",
-      fallbackBody: "A criação fica no formulário aberto pelo botão Criar Instância WhatsApp. Se já existe uma conexão cadastrada, pule esta etapa.",
+      body: "O sistema cria uma conexão exclusiva; nenhuma mensagem é enviada neste cadastro. Quando decidir preparar a conexão, clique em Criar conexão; para só conhecer a tela, use Voltar.",
+      fallbackBody: "A criação fica no formulário aberto pelo botão Conectar WhatsApp. Se já existe uma conexão cadastrada, pule esta etapa.",
     },
     {
       target: "whatsapp-connect-button",

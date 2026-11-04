@@ -13,13 +13,13 @@ export const appointmentsArticles: Article[] = [
     tourId: "appointments",
     steps: [
       {
-        text: "Abra Agendamentos no menu. A tela mostra a lista do dia selecionado.",
+        text: "Abra Agendamentos, no grupo Operação do menu. A aba Lista do dia mostra os agendamentos da data selecionada.",
         image: { src: "/training/appointments/list.webp", alt: "Lista de agendamentos do dia", pending: true },
       },
       { text: "Use as setas ou o campo de data para trocar o dia. Assim você confere ontem, hoje ou os próximos dias." },
       { text: "Leia cada cartão: horário, cliente, serviço, profissional, status e valor ficam juntos." },
       { text: "Use os três pontinhos do cartão para mudar o status quando o atendimento avançar." },
-      { text: "Se a lista estiver vazia, não há agendamento naquela data. Você pode criar um novo pelo botão no topo." },
+      { text: "Se aparecer Nenhum agendamento para esta data, use as setas para ver outros dias ou crie um novo pelo botão Novo Agendamento no topo." },
     ],
     notes: ["Mudar status pode enviar uma notificação de avaliação quando o atendimento for marcado como concluído."],
     keywords: ["agenda", "horário", "agendamento", "status", "confirmado", "cancelado", "cliente"],

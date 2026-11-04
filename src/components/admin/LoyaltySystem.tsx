@@ -83,7 +83,7 @@ interface LoyaltyBadge {
 const badges: LoyaltyBadge[] = [
     { id: '1', name: 'Primeira Visita', description: 'Completou o primeiro agendamento', icon: '🎉', earned: true },
     { id: '2', name: 'Fã de Coloração', description: '5 serviços de coloração', icon: '🎨', earned: true },
-    { id: '3', name: 'Cliente Frequente', description: '10 visitas ao salão', icon: '⭐', earned: true },
+    { id: '3', name: 'Cliente Frequente', description: '10 visitas', icon: '⭐', earned: true },
     { id: '4', name: 'Indicador', description: 'Indicou 3 amigos', icon: '👥', earned: false },
     { id: '5', name: 'Avaliador', description: '5 avaliações deixadas', icon: '📝', earned: true },
     { id: '6', name: 'Aniversariante', description: 'Visitou no mês do aniversário', icon: '🎂', earned: false },
@@ -119,7 +119,7 @@ export const ClientLoyaltyCard = ({
     const pointsToNext = nextLevel ? nextLevel.minPoints - points : 0;
 
     return (
-        <Card className="glass-card overflow-hidden">
+        <Card className="overflow-hidden">
             {/* Header with Level Banner */}
             <div className={`bg-gradient-to-r ${currentLevel.color} p-6 text-white relative overflow-hidden`}>
                 {/* Sparkles Animation */}
@@ -243,7 +243,7 @@ export const ClientLoyaltyCard = ({
                 {/* How to Earn Points */}
                 <div className="p-4 rounded-xl bg-secondary/30 border border-border/30">
                     <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-green-500" />
+                        <TrendingUp className="w-4 h-4 text-success" />
                         Como ganhar pontos
                     </h4>
                     <ul className="text-sm text-muted-foreground space-y-1">

@@ -11,7 +11,7 @@ export const subscriptionTour: TourDef = {
     {
       target: "subscription-header",
       title: "Minha Assinatura",
-      body: "Esta tela mostra a situação da sua assinatura do SysHair Premium e os caminhos de pagamento pelo Mercado Pago.",
+      body: "Esta tela mostra a situação da sua assinatura do Agenda Fácil 365 Premium e os caminhos de pagamento pelo Mercado Pago.",
     },
     {
       target: "subscription-refresh",

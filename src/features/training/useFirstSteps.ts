@@ -87,8 +87,8 @@ export function useFirstSteps() {
       "first-appointment": (s?.appointments ?? 0) > 0,
     };
     const list: Omit<FirstStepTask, "done">[] = [
-      { id: "salon-info", title: "Complete os dados do salão", description: "Nome, telefone ou WhatsApp e endereço.", route: "/admin/settings", tourId: "settings-info" },
-      { id: "hours", title: "Defina os horários de funcionamento", description: "Dias e horários em que o salão atende.", route: "/admin/settings", tourId: "settings-hours" },
+      { id: "salon-info", title: "Complete os dados do estabelecimento", description: "Nome, telefone ou WhatsApp e endereço.", route: "/admin/settings", tourId: "settings-info" },
+      { id: "hours", title: "Defina os horários de funcionamento", description: "Dias e horários em que o estabelecimento atende.", route: "/admin/settings", tourId: "settings-hours" },
       { id: "service", title: "Cadastre seu primeiro serviço", description: "Com preço e duração.", route: "/admin/services", tourId: "services" },
       { id: "professional", title: "Cadastre um profissional", description: "Quem vai atender os clientes.", route: "/admin/professionals", tourId: "professionals" },
       { id: "public-link", title: "Ative seu link de agendamento", description: "A página onde o cliente marca sozinho.", route: "/admin/settings", tourId: "settings-public-link" },

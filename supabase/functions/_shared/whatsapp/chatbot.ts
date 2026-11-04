@@ -10,17 +10,21 @@ async function sha256(v: string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)))).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Código de verificação de Insights. Prefixo opcional: legado "syshair" (códigos já enviados) e novo "agenda fácil 365". */
+export const parseVerificationCode = (text: string): string | undefined =>
+  text.trim().match(/^(?:(?:syshair|agenda(?:\s*f[aá]cil(?:\s*365)?)?)\s+)?(\d{6})$/i)?.[1];
+
 async function adminReply(ctx: BotContext, text: string): Promise<ChatbotReply | null> {
   const { db, salonId, phone } = ctx;
   const { data: rec, error } = await db.from("insights_recipients").select("id,verified_at").eq("salon_id", salonId).eq("phone", phone).maybeSingle();
   if (error) throw new WhatsAppError("persistence_failed", 503);
   if (!rec) return null; // número não cadastrado: segue como cliente comum, sem dado financeiro.
   if (!rec.verified_at) {
-    const code = text.trim().match(/^(?:syshair\s+)?(\d{6})$/i)?.[1];
+    const code = parseVerificationCode(text);
     if (!code) return null;
     const { data: ver, error: verError } = await db.rpc("insights_check_code", { p_recipient_id: rec.id, p_code_hash: await sha256(`${rec.id}:${code}`) });
     if (verError) throw new WhatsAppError("persistence_failed", 503);
-    return { text: ver === true ? "✅ Número verificado. Você vai receber os relatórios do SysHair aqui.\n\nResponda MENU para ver as consultas disponíveis." : "Código inválido ou expirado. Gere um novo código no SysHair.", provider: "deterministic", model: "insights_verify" };
+    return { text: ver === true ? "✅ Número verificado. Você vai receber os relatórios do Agenda Fácil 365 aqui.\n\nResponda MENU para ver as consultas disponíveis." : "Código inválido ou expirado. Gere um novo código no Agenda Fácil 365.", provider: "deterministic", model: "insights_verify" };
   }
   const cmd = parseAdminCommand(text);
   if (!cmd) return null;

@@ -1,36 +1,40 @@
-import { Scissors } from "lucide-react";
+import { BRAND } from "@/config/brand";
+import { cn } from "@/lib/utils";
 
 interface LogoProps {
   className?: string;
+  /** false = apenas o símbolo (compacto). Mantido por compatibilidade. */
   showText?: boolean;
   size?: "sm" | "md" | "lg";
+  /** "default" para fundos claros; "white" para navy/escuro; "auto" segue o modo de cor. */
+  variant?: "default" | "white" | "auto";
+  /** true quando o nome da marca já está escrito ao lado (logo vira decorativo). */
+  decorative?: boolean;
 }
 
-export const Logo = ({ className = "", showText = true, size = "md" }: LogoProps) => {
-  const sizes = {
-    sm: { icon: 20, text: "text-lg" },
-    md: { icon: 28, text: "text-2xl" },
-    lg: { icon: 36, text: "text-3xl" },
-  };
+// Alturas em px; o SVG preserva a proporção (horizontal 1502×316, símbolo 300×316).
+const HEIGHTS = { sm: 32, md: 40, lg: 52 } as const;
+
+export const Logo = ({ className = "", showText = true, size = "md", variant = "auto", decorative = false }: LogoProps) => {
+  const h = HEIGHTS[size];
+  const alt = decorative ? "" : BRAND.name;
+  const [light, dark] = showText
+    ? [BRAND.assets.logo, BRAND.assets.logoWhite]
+    : [BRAND.assets.symbol, BRAND.assets.symbolWhite];
+  const img = (src: string, extra = "") => (
+    <img src={src} alt={alt} height={h} style={{ height: h }} className={cn("w-auto max-w-full select-none", extra)} draggable={false} />
+  );
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <div className="relative">
-        <div className="absolute inset-0 bg-primary/30 blur-lg rounded-full" />
-        <div className="relative bg-gradient-to-br from-primary to-gold-light p-2 rounded-xl">
-          <Scissors size={sizes[size].icon} className="text-primary-foreground" />
-        </div>
-      </div>
-      {showText && (
-        <div className="flex flex-col leading-none">
-          <span className={`font-display font-bold ${sizes[size].text} text-foreground`}>
-            Sys<span className="text-gradient-gold">Hair</span>
-          </span>
-          <span className="text-xs text-muted-foreground font-medium tracking-widest uppercase">
-            BelezaTech
-          </span>
-        </div>
+    <span className={cn("inline-flex items-center shrink-0", className)}>
+      {variant === "default" && img(light)}
+      {variant === "white" && img(dark)}
+      {variant === "auto" && (
+        <>
+          {img(light, "dark:hidden")}
+          {img(dark, "hidden dark:block")}
+        </>
       )}
-    </div>
+    </span>
   );
 };

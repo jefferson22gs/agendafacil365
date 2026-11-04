@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, ShoppingBag, Edit2, Trash2, Package } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/page-header";
 
 interface Product {
   id: string;
@@ -166,8 +168,9 @@ const ProductsPage = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando…</p>
         </div>
       </AdminLayout>
     );
@@ -177,14 +180,10 @@ const ProductsPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div data-tour="products-header">
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              Produtos
-            </h1>
-            <p className="text-muted-foreground">
-              Gerencie produtos para venda no seu salão
-            </p>
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Produtos</h2>
+            <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Gerencie os produtos à venda no seu estabelecimento.</p>
           </div>
           
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -192,7 +191,7 @@ const ProductsPage = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold" data-tour="products-new-button">
+              <Button variant="brand" data-tour="products-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Produto
               </Button>
@@ -276,7 +275,7 @@ const ProductsPage = () => {
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="gold" className="flex-1" data-tour="products-save">
+                  <Button type="submit" variant="brand" className="flex-1" data-tour="products-save">
                     {editingProduct ? 'Salvar' : 'Criar Produto'}
                   </Button>
                 </div>
@@ -287,19 +286,13 @@ const ProductsPage = () => {
 
         {/* Products Grid */}
         {products.length === 0 ? (
-          <Card className="glass-card" data-tour="products-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <ShoppingBag size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">Nenhum produto cadastrado</p>
-              <p className="text-sm text-muted-foreground">
-                Adicione produtos para vender aos seus clientes
-              </p>
-            </CardContent>
-          </Card>
+          <div data-tour="products-empty">
+            <EmptyState icon={ShoppingBag} title="Nenhum produto cadastrado" description="Adicione produtos para vender aos seus clientes." />
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-tour="products-list">
             {products.map((product) => (
-              <Card key={product.id} className="glass-card overflow-hidden">
+              <Card key={product.id} className="overflow-hidden">
                 <div className="aspect-square bg-secondary/50 flex items-center justify-center">
                   {product.image_url ? (
                     <img 
@@ -333,13 +326,9 @@ const ProductsPage = () => {
                     <p className="text-xl font-bold text-primary">
                       R$ {product.price.toFixed(2)}
                     </p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      product.stock > 0 
-                        ? 'bg-success/20 text-success' 
-                        : 'bg-destructive/20 text-destructive'
-                    }`}>
+                    <Badge variant={product.stock > 0 ? 'success' : 'warning'}>
                       {product.stock > 0 ? `${product.stock} em estoque` : 'Sem estoque'}
-                    </span>
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>

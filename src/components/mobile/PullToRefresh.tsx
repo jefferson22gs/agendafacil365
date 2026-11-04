@@ -79,7 +79,7 @@ export function PullToRefresh({
 
             {/* Refreshing overlay */}
             {isRefreshing && (
-                <div className="absolute top-0 left-0 right-0 py-4 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                <div role="status" className="absolute top-0 left-0 right-0 py-4 flex items-center justify-center bg-background/90">
                     <div className="flex items-center gap-2 text-primary">
                         <RefreshCw size={16} className="animate-spin" />
                         <span className="text-sm font-medium">Atualizando...</span>

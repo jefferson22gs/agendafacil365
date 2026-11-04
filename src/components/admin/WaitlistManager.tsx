@@ -91,9 +91,9 @@ const mockWaitlist: WaitlistEntry[] = [
 const getPriorityBadge = (priority: string, loyaltyLevel?: string) => {
     switch (priority) {
         case 'vip':
-            return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">👑 VIP</Badge>;
+            return <Badge variant="info">👑 VIP</Badge>;
         case 'high':
-            return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">⭐ Prioridade</Badge>;
+            return <Badge variant="warning">⭐ Prioridade</Badge>;
         default:
             return loyaltyLevel ? (
                 <Badge variant="secondary">{loyaltyLevel}</Badge>
@@ -104,13 +104,13 @@ const getPriorityBadge = (priority: string, loyaltyLevel?: string) => {
 const getStatusBadge = (status: string) => {
     switch (status) {
         case 'waiting':
-            return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">⏳ Aguardando</Badge>;
+            return <Badge variant="info">⏳ Aguardando</Badge>;
         case 'notified':
-            return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">🔔 Notificado</Badge>;
+            return <Badge variant="success">🔔 Notificado</Badge>;
         case 'booked':
-            return <Badge className="bg-primary/20 text-primary border-primary/30">✅ Agendado</Badge>;
+            return <Badge variant="info">✅ Agendado</Badge>;
         case 'expired':
-            return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">❌ Expirado</Badge>;
+            return <Badge variant="danger">❌ Expirado</Badge>;
         default:
             return null;
     }
@@ -174,7 +174,7 @@ export const WaitlistManager = ({ salonId }: WaitlistManagerProps) => {
 
     return (
         <>
-            <Card className="glass-card">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
@@ -206,7 +206,7 @@ export const WaitlistManager = ({ salonId }: WaitlistManagerProps) => {
                                     exit={{ opacity: 0, x: -100 }}
                                     transition={{ delay: index * 0.05 }}
                                     className={`p-4 rounded-xl border transition-all ${entry.status === 'notified'
-                                            ? 'bg-green-500/5 border-green-500/20'
+                                            ? 'bg-success/5 border-success/20'
                                             : 'bg-card/50 border-border/50 hover:border-primary/30'
                                         }`}
                                 >
@@ -214,9 +214,9 @@ export const WaitlistManager = ({ salonId }: WaitlistManagerProps) => {
                                         {/* Position Number */}
                                         <div className="flex flex-col items-center gap-1">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${entry.priority === 'vip'
-                                                    ? 'bg-purple-500/20 text-purple-400'
+                                                    ? 'bg-primary/20 text-primary'
                                                     : entry.priority === 'high'
-                                                        ? 'bg-orange-500/20 text-orange-400'
+                                                        ? 'bg-warning/20 text-warning'
                                                         : 'bg-secondary text-muted-foreground'
                                                 }`}>
                                                 #{entry.position}
@@ -267,7 +267,7 @@ export const WaitlistManager = ({ salonId }: WaitlistManagerProps) => {
                                             </div>
 
                                             {entry.status === 'notified' && entry.notifiedAt && (
-                                                <p className="text-xs text-green-500 mt-2">
+                                                <p className="text-xs text-success mt-2">
                                                     🔔 Notificado {formatTimeAgo(entry.notifiedAt)}
                                                 </p>
                                             )}
@@ -278,7 +278,7 @@ export const WaitlistManager = ({ salonId }: WaitlistManagerProps) => {
                                             {entry.status === 'waiting' && (
                                                 <Button
                                                     size="sm"
-                                                    variant="gold"
+                                                    variant="brand"
                                                     onClick={() => {
                                                         setSelectedEntry(entry);
                                                         setShowNotifyDialog(true);
@@ -352,7 +352,7 @@ export const WaitlistManager = ({ salonId }: WaitlistManagerProps) => {
                         <Button variant="outline" onClick={() => setShowNotifyDialog(false)}>
                             Cancelar
                         </Button>
-                        <Button variant="gold" onClick={() => selectedEntry && notifyClient(selectedEntry)}>
+                        <Button variant="brand" onClick={() => selectedEntry && notifyClient(selectedEntry)}>
                             <Bell size={16} className="mr-2" />
                             Enviar notificação
                         </Button>

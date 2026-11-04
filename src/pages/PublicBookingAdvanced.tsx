@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/icons/Logo";
+import { BRAND } from "@/config/brand";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -125,7 +125,7 @@ const PublicBookingAdvanced = () => {
         setSubmitting(true);
         try {
             if (!salon) {
-                toast.error("Erro: Salão não encontrado");
+                toast.error("Erro: Estabelecimento não encontrado");
                 return;
             }
 
@@ -180,12 +180,24 @@ const PublicBookingAdvanced = () => {
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
-            <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                    <Logo size="sm" />
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin size={14} />
-                        <span>{salon?.name || 'Carregando...'}</span>
+            <header className="border-b border-border bg-card/90 backdrop-blur-sm sticky top-0 z-50">
+                {/* Identidade do estabelecimento prevalece; a marca da plataforma vira assinatura no rodapé */}
+                <div className="container mx-auto px-4 min-h-16 py-2 flex items-center gap-3">
+                    {salon?.logo_url && (
+                        <img
+                            src={salon.logo_url}
+                            alt=""
+                            className="w-10 h-10 rounded-xl object-cover border border-border bg-card shrink-0"
+                        />
+                    )}
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{salon?.name || 'Carregando...'}</p>
+                        {salon?.address && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
+                                <MapPin size={12} className="shrink-0" aria-hidden="true" />
+                                <span className="truncate">{salon.address}</span>
+                            </p>
+                        )}
                     </div>
                 </div>
             </header>
@@ -193,7 +205,7 @@ const PublicBookingAdvanced = () => {
             {/* Progress Steps */}
             <div className="border-b border-border/50 bg-card/30">
                 <div className="container mx-auto px-4 py-4">
-                    <div className="flex items-center justify-center gap-2">
+                    <ol className="flex items-center justify-center gap-1 sm:gap-2" aria-label="Etapas do agendamento">
                         {['Serviço', 'Profissional', 'Data/Hora', 'Confirmar'].map((label, index) => {
                             const stepOrder = ['service', 'professional', 'datetime', 'confirm'];
                             const currentIndex = stepOrder.indexOf(step);
@@ -201,32 +213,33 @@ const PublicBookingAdvanced = () => {
                             const isCompleted = index < currentIndex;
 
                             return (
-                                <div key={label} className="flex items-center">
+                                <li key={label} className="flex items-center" aria-current={isActive ? "step" : undefined}>
                                     <div className={cn(
                                         "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
                                         isActive && "bg-primary text-primary-foreground",
-                                        isCompleted && "bg-green-500 text-white",
+                                        isCompleted && "bg-success text-white",
                                         !isActive && !isCompleted && "bg-secondary text-muted-foreground"
                                     )}>
-                                        {isCompleted ? <Check size={16} /> : index + 1}
+                                        {isCompleted ? <Check size={16} aria-hidden="true" /> : index + 1}
                                     </div>
+                                    {/* No mobile só a etapa atual mostra o rótulo; as demais ficam para leitores de tela */}
                                     <span className={cn(
-                                        "ml-2 text-sm hidden sm:inline",
-                                        isActive ? "text-foreground font-medium" : "text-muted-foreground"
+                                        "ml-2 text-sm",
+                                        isActive ? "text-foreground font-medium" : "text-muted-foreground sr-only sm:not-sr-only"
                                     )}>
                                         {label}
                                     </span>
                                     {index < 3 && (
-                                        <ChevronRight className="mx-2 text-muted-foreground" size={16} />
+                                        <ChevronRight className="mx-1 sm:mx-2 text-muted-foreground" size={16} aria-hidden="true" />
                                     )}
-                                </div>
+                                </li>
                             );
                         })}
-                    </div>
+                    </ol>
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-4 py-6 sm:py-8">
                 <AnimatePresence mode="wait">
                     {/* Step 1: Select Service */}
                     {step === 'service' && (
@@ -240,7 +253,7 @@ const PublicBookingAdvanced = () => {
                                 Escolha o serviço
                             </h2>
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                                 {loading ? (
                                     <div className="col-span-full text-center py-8 text-muted-foreground">
                                         Carregando serviços...
@@ -255,6 +268,12 @@ const PublicBookingAdvanced = () => {
                                             key={service.id}
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-pressed={selectedService?.id === service.id}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
+                                            }}
                                             onClick={() => {
                                                 setSelectedService(service);
                                                 setStep('professional');
@@ -262,12 +281,12 @@ const PublicBookingAdvanced = () => {
                                             className={cn(
                                                 "cursor-pointer rounded-2xl overflow-hidden border-2 transition-colors",
                                                 selectedService?.id === service.id
-                                                    ? "border-primary shadow-gold"
+                                                    ? "border-primary shadow-brand"
                                                     : "border-border/50 hover:border-primary/50"
                                             )}
                                         >
                                             {service.icon && (
-                                                <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-gold-light/20 flex items-center justify-center text-6xl">
+                                                <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-brand-hover/20 flex items-center justify-center text-6xl">
                                                     {service.icon}
                                                 </div>
                                             )}
@@ -326,6 +345,13 @@ const PublicBookingAdvanced = () => {
                                                 whileTap={{ scale: 0.98 }}
                                             >
                                                 <Card
+                                                    role="button"
+                                                    tabIndex={professional.is_active ? 0 : -1}
+                                                    aria-disabled={!professional.is_active}
+                                                    aria-pressed={selectedProfessional?.id === professional.id}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
+                                                    }}
                                                     onClick={() => {
                                                         if (professional.is_active) {
                                                             setSelectedProfessional(professional);
@@ -335,7 +361,7 @@ const PublicBookingAdvanced = () => {
                                                     className={cn(
                                                         "cursor-pointer transition-all overflow-hidden",
                                                         !professional.is_active && "opacity-50 cursor-not-allowed",
-                                                        selectedProfessional?.id === professional.id && "ring-2 ring-primary shadow-gold"
+                                                        selectedProfessional?.id === professional.id && "ring-2 ring-primary shadow-brand"
                                                     )}
                                                 >
                                                     <CardContent className="p-6">
@@ -347,7 +373,7 @@ const PublicBookingAdvanced = () => {
                                                                     className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
                                                                 />
                                                             ) : (
-                                                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold text-xl">
+                                                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-brand-hover flex items-center justify-center text-primary-foreground font-bold text-xl">
                                                                     {professional.name.charAt(0).toUpperCase()}
                                                                 </div>
                                                             )}
@@ -376,6 +402,11 @@ const PublicBookingAdvanced = () => {
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <Card
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
+                                                }}
                                                 onClick={() => {
                                                     setSelectedProfessional(null);
                                                     setStep('datetime');
@@ -421,19 +452,23 @@ const PublicBookingAdvanced = () => {
                                     <CardContent className="p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <button
+                                                type="button"
+                                                aria-label="Mês anterior"
                                                 onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                                                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                                                className="w-11 h-11 flex items-center justify-center hover:bg-secondary rounded-lg transition-colors"
                                             >
-                                                <ChevronLeft size={20} />
+                                                <ChevronLeft size={20} aria-hidden="true" />
                                             </button>
                                             <h3 className="font-semibold text-foreground">
                                                 {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                                             </h3>
                                             <button
+                                                type="button"
+                                                aria-label="Próximo mês"
                                                 onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                                                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                                                className="w-11 h-11 flex items-center justify-center hover:bg-secondary rounded-lg transition-colors"
                                             >
-                                                <ChevronRight size={20} />
+                                                <ChevronRight size={20} aria-hidden="true" />
                                             </button>
                                         </div>
 
@@ -450,7 +485,10 @@ const PublicBookingAdvanced = () => {
                                         <div className="grid grid-cols-7 gap-1">
                                             {days.map((date, index) => (
                                                 <button
+                                                    type="button"
                                                     key={index}
+                                                    aria-pressed={date ? isSelected(date) : undefined}
+                                                    aria-label={date ? date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) : undefined}
                                                     onClick={() => date && !isPast(date) && setSelectedDate(date)}
                                                     disabled={!date || isPast(date)}
                                                     className={cn(
@@ -478,7 +516,7 @@ const PublicBookingAdvanced = () => {
 
                                         <div className="grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto py-2">
                                             {loadingSlots ? (
-                                                <div className="col-span-3 text-center py-8 text-muted-foreground">
+                                                <div className="col-span-3 text-center py-8 text-muted-foreground" role="status">
                                                     Carregando horários...
                                                 </div>
                                             ) : timeSlots.length === 0 ? (
@@ -488,7 +526,9 @@ const PublicBookingAdvanced = () => {
                                             ) : (
                                                 timeSlots.map((slot) => (
                                                     <button
+                                                        type="button"
                                                         key={slot}
+                                                        aria-pressed={selectedTime === slot}
                                                         onClick={() => setSelectedTime(slot)}
                                                         className={cn(
                                                             "p-3 rounded-lg text-sm font-medium transition-colors",
@@ -504,7 +544,7 @@ const PublicBookingAdvanced = () => {
 
                                         {selectedTime && (
                                             <Button
-                                                variant="gold"
+                                                variant="brand"
                                                 className="w-full mt-6"
                                                 onClick={() => setStep('confirm')}
                                             >
@@ -538,7 +578,7 @@ const PublicBookingAdvanced = () => {
                             </div>
 
                             <Card className="glass-card overflow-hidden">
-                                <div className="bg-gradient-to-r from-primary/20 to-gold-light/20 p-6 border-b border-border/50">
+                                <div className="bg-gradient-to-r from-primary/20 to-brand-hover/20 p-6 border-b border-border/50">
                                     <div className="flex items-center gap-4">
                                         <CalendarIcon className="w-12 h-12 text-primary" />
                                         <div>
@@ -594,7 +634,7 @@ const PublicBookingAdvanced = () => {
                                     {/* Service */}
                                     <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
                                         {selectedService?.icon && (
-                                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-gold-light/20 flex items-center justify-center text-3xl">
+                                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-brand-hover/20 flex items-center justify-center text-3xl">
                                                 {selectedService.icon}
                                             </div>
                                         )}
@@ -618,7 +658,7 @@ const PublicBookingAdvanced = () => {
                                                     className="w-12 h-12 rounded-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-brand-hover flex items-center justify-center text-primary-foreground font-bold">
                                                     {selectedProfessional.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -646,7 +686,7 @@ const PublicBookingAdvanced = () => {
                                                     Pagar antecipado (opcional)
                                                 </p>
                                                 <p className="text-sm text-muted-foreground mt-1">
-                                                    Garanta seu horário pagando agora e ganhe <span className="text-green-500 font-medium">5% de desconto</span>
+                                                    Garanta seu horário pagando agora e ganhe <span className="text-success font-medium">5% de desconto</span>
                                                 </p>
                                                 {wantsPrepayment && (
                                                     <p className="text-lg font-bold text-primary mt-2">
@@ -668,7 +708,7 @@ const PublicBookingAdvanced = () => {
 
                                     {/* Confirm Button */}
                                     <Button
-                                        variant="gold"
+                                        variant="brand"
                                         size="lg"
                                         className="w-full"
                                         onClick={handleConfirmBooking}
@@ -700,9 +740,13 @@ const PublicBookingAdvanced = () => {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Assinatura discreta da plataforma (substitui o logo do SaaS que ficava no cabeçalho) */}
+                <p className="mt-10 text-center text-xs text-muted-foreground">{BRAND.poweredBy}</p>
             </div>
         </div>
     );
 };
+
 
 export default PublicBookingAdvanced;

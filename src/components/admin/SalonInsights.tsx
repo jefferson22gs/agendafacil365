@@ -29,11 +29,12 @@ interface SalonInsightsProps {
   salonId: string;
 }
 
+// Fundo suave + ícone na cor semântica da prioridade (sem gradiente).
 const priorityColors: Record<string, string> = {
-  urgent: "from-destructive to-red-600",
-  high: "from-warning to-orange-500",
-  medium: "from-primary to-gold-light",
-  low: "from-blue-500 to-cyan-500"
+  urgent: "bg-destructive/10 text-destructive",
+  high: "bg-warning/10 text-warning",
+  medium: "bg-primary/10 text-primary",
+  low: "bg-muted text-muted-foreground"
 };
 
 const typeIcons: Record<string, LucideIcon> = {
@@ -87,7 +88,7 @@ export const SalonInsights = ({ salonId }: SalonInsightsProps) => {
 
   if (loading) {
     return (
-      <Card className="glass-card" data-tour="dashboard-insights">
+      <Card data-tour="dashboard-insights">
         <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles size={20} className="text-primary" />Assistente Inteligente</CardTitle></CardHeader>
         <CardContent><div className="animate-pulse space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-secondary/50 rounded-lg" />)}</div></CardContent>
       </Card>
@@ -96,12 +97,12 @@ export const SalonInsights = ({ salonId }: SalonInsightsProps) => {
 
   if (insights.length === 0) {
     return (
-      <Card className="glass-card" data-tour="dashboard-insights">
+      <Card data-tour="dashboard-insights">
         <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles size={20} className="text-primary" />Assistente Inteligente</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mb-4"><Lightbulb size={32} className="text-success" /></div>
-            <p className="font-medium text-foreground mb-1">Tudo em ordem! ✨</p>
+            <p className="font-medium text-foreground mb-1">Tudo em ordem!</p>
             <p className="text-sm text-muted-foreground">Nenhum insight no momento</p>
           </div>
         </CardContent>
@@ -110,17 +111,17 @@ export const SalonInsights = ({ salonId }: SalonInsightsProps) => {
   }
 
   return (
-    <Card className="glass-card" data-tour="dashboard-insights">
+    <Card data-tour="dashboard-insights">
       <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles size={20} className="text-primary" />Assistente Inteligente</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {insights.map((insight) => {
           const Icon = typeIcons[insight.insight_type] || Lightbulb;
           const colorClass = priorityColors[insight.priority] || priorityColors.medium;
           return (
-            <div key={insight.id} className="relative p-4 rounded-xl bg-secondary/50 border border-border/50">
-              <button onClick={() => dismissInsight(insight.id)} className="absolute top-2 right-2 p-1 rounded-full hover:bg-secondary"><X size={14} className="text-muted-foreground" /></button>
+            <div key={insight.id} className="relative p-4 pr-12 rounded-xl surface-2 border border-border/60">
+              <button type="button" onClick={() => dismissInsight(insight.id)} aria-label={`Dispensar: ${insight.title}`} className="absolute top-1 right-1 p-2 rounded-full hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"><X size={14} className="text-muted-foreground" aria-hidden /></button>
               <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colorClass} flex items-center justify-center flex-shrink-0`}><Icon size={20} className="text-white" /></div>
+                <div className={`w-10 h-10 rounded-lg ${colorClass} flex items-center justify-center flex-shrink-0`} aria-hidden><Icon size={20} /></div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-medium text-foreground text-sm">{insight.title}</p>

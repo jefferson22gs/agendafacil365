@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, BarChart3, Send, Eye, History, Trash2, CheckCircle2 } from "lucide-react";
+import { Loader2, BarChart3, Send, Eye, History, Trash2, CheckCircle2, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -95,19 +96,21 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
     <Card data-tour="whatsapp-insights">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><BarChart3 size={20} />Relatórios e Insights pelo WhatsApp</CardTitle>
-        <CardDescription>Receba os números do salão no seu WhatsApp. Faturamento considera apenas atendimentos marcados como concluídos.</CardDescription>
+        <CardDescription>Receba os números do estabelecimento no seu WhatsApp. Faturamento considera apenas atendimentos marcados como concluídos.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
           <p className="text-sm font-medium">Número que recebe os relatórios</p>
           {recipients.map(r => (
             <div key={r.id} className="flex items-center justify-between rounded-lg border p-3">
-              <span className="flex items-center gap-2">{r.verified_at ? <CheckCircle2 size={16} className="text-green-500" /> : <Loader2 size={16} className="text-amber-500" />}{r.phone}<span className="text-xs text-muted-foreground">{r.verified_at ? "verificado" : "aguardando código"}</span></span>
-              <Button size="sm" variant="ghost" aria-label="Remover número" disabled={!!busy} onClick={() => void run(`rm-${r.id}`, async () => { await invoke({ action: "remove_phone", recipientId: r.id }); await reload(); })}><Trash2 size={14} /></Button>
+              <span className="flex flex-wrap items-center gap-2 min-w-0"><span className="font-medium">{r.phone}</span>{r.verified_at
+                ? <Badge variant="success" className="gap-1"><CheckCircle2 size={12} aria-hidden />Verificado</Badge>
+                : <Badge variant="warning" className="gap-1"><Clock size={12} aria-hidden />Aguardando código</Badge>}</span>
+              <Button size="sm" variant="ghost" aria-label="Remover número" disabled={!!busy} onClick={() => void run(`rm-${r.id}`, async () => { await invoke({ action: "remove_phone", recipientId: r.id }); await reload(); })}><Trash2 size={14} aria-hidden /></Button>
             </div>
           ))}
           <div className="flex gap-2">
-            <Input placeholder="(11) 99999-9999" value={phone} onChange={e => setPhone(e.target.value)} />
+            <Input aria-label="Número de WhatsApp para relatórios" placeholder="(11) 99999-9999" value={phone} onChange={e => setPhone(e.target.value)} />
             <Button variant="outline" disabled={!!busy || !phone.trim()} onClick={() => void register()}>{busy === "register" && <Loader2 className="animate-spin mr-2" size={14} />}Enviar código</Button>
           </div>
           <p className="text-xs text-muted-foreground">Por segurança, o número precisa responder o código no WhatsApp antes de receber dados financeiros.</p>
@@ -124,7 +127,7 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-2"><Label htmlFor="ins-day">Dia do resumo semanal</Label>
-            <select id="ins-day" className="w-full border rounded p-2 bg-background" value={s.weekly_day} onChange={e => setS(p => ({ ...p, weekly_day: Number(e.target.value) }))}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></div>
+            <select id="ins-day" className="w-full h-11 border border-input rounded-[10px] px-3 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={s.weekly_day} onChange={e => setS(p => ({ ...p, weekly_day: Number(e.target.value) }))}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></div>
           <div className="space-y-2"><Label htmlFor="ins-time">Horário dos relatórios</Label>
             <Input id="ins-time" type="time" value={s.send_time} onChange={e => setS(p => ({ ...p, send_time: e.target.value }))} /></div>
         </div>
@@ -142,13 +145,13 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
           <Button variant="outline" disabled={!!busy} onClick={() => void run("now", async () => setPreview((await invoke({ action: "preview", kind: "monthly", mode: "current" })).text))}><BarChart3 size={14} className="mr-2" />Gerar mês até agora</Button>
           <Button variant="outline" disabled={!!busy || !verified} title={verified ? undefined : "Verifique um número primeiro"} onClick={() => void run("test", async () => { await invoke({ action: "send_test", kind: "weekly" }); toast({ title: "Teste enviado para a fila", description: "Chega no seu WhatsApp em instantes." }); await reload(); })}><Send size={14} className="mr-2" />Enviar teste ao meu WhatsApp</Button>
           <Button variant="outline" onClick={() => setShowHistory(true)}><History size={14} className="mr-2" />Ver histórico</Button>
-          <Button variant="gold" disabled={!!busy} onClick={() => void save()}>{busy === "save" && <Loader2 className="animate-spin mr-2" size={14} />}Salvar</Button>
+          <Button variant="brand" disabled={!!busy} onClick={() => void save()}>{busy === "save" && <Loader2 className="animate-spin mr-2" size={14} />}Salvar</Button>
         </div>
-        {!verified && (s.weekly_enabled || s.monthly_enabled || s.yearly_enabled || s.alerts_enabled) && <p className="text-sm text-amber-600">Nenhum número verificado: os relatórios ficam pausados até a verificação.</p>}
+        {!verified && (s.weekly_enabled || s.monthly_enabled || s.yearly_enabled || s.alerts_enabled) && <p className="text-sm text-warning" role="status">Nenhum número verificado: os relatórios ficam pausados até a verificação.</p>}
       </CardContent>
 
       <Dialog open={preview !== null} onOpenChange={o => !o && setPreview(null)}>
-        <DialogContent><DialogHeader><DialogTitle>Prévia do relatório</DialogTitle><DialogDescription>Calculado agora com os dados reais do salão.</DialogDescription></DialogHeader>
+        <DialogContent><DialogHeader><DialogTitle>Prévia do relatório</DialogTitle><DialogDescription>Calculado agora com os dados reais do estabelecimento.</DialogDescription></DialogHeader>
           <pre className="whitespace-pre-wrap text-sm bg-muted rounded p-3 max-h-[60vh] overflow-y-auto font-sans">{preview}</pre></DialogContent>
       </Dialog>
       <Dialog open={showHistory} onOpenChange={setShowHistory}>

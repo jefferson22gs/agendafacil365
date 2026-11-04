@@ -11,7 +11,8 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake, Download } from "lucide-react";
+import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake, Download, Building2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/page-header";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Tables } from "@/integrations/supabase/types";
@@ -73,7 +74,7 @@ const Clients = () => {
 
   const handleSubmit = async () => {
     if (!salonId) {
-      toast.error("Configure seu salão primeiro");
+      toast.error("Configure seu estabelecimento primeiro");
       return;
     }
 
@@ -165,8 +166,9 @@ const Clients = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando…</p>
         </div>
       </AdminLayout>
     );
@@ -175,12 +177,16 @@ const Clients = () => {
   if (!salonId) {
     return (
       <AdminLayout>
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <p className="text-muted-foreground mb-4">Configure seu salão primeiro</p>
-          <Button variant="gold" onClick={() => window.location.href = '/admin/settings'}>
-            Configurar Salão
-          </Button>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="Configure seu estabelecimento primeiro"
+          description="Cadastre o estabelecimento para continuar."
+          action={
+            <Button variant="brand" onClick={() => window.location.href = '/admin/settings'}>
+              Configurar estabelecimento
+            </Button>
+          }
+        />
       </AdminLayout>
     );
   }
@@ -188,12 +194,12 @@ const Clients = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-tour="clients-header">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">Clientes</h1>
-            <p className="text-muted-foreground mt-1">Gerencie sua base de clientes</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between" data-tour="clients-header">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Clientes</h2>
+            <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Gerencie sua base de clientes</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={() => navigate('/admin/export-contacts')}
@@ -207,7 +213,7 @@ const Clients = () => {
               if (!open) resetForm();
             }}>
               <DialogTrigger asChild>
-                <Button variant="gold" data-tour="clients-new-button">
+                <Button variant="brand" data-tour="clients-new-button">
                   <Plus size={18} className="mr-2" />
                   Novo Cliente
                 </Button>
@@ -268,7 +274,7 @@ const Clients = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit} data-tour="clients-save">
+                <Button variant="brand" onClick={handleSubmit} data-tour="clients-save">
                   {editingClient ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
@@ -290,7 +296,7 @@ const Clients = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="glass-card">
+          <Card>
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
                 <Users size={24} className="text-primary" />
@@ -305,22 +311,21 @@ const Clients = () => {
 
         {/* Clients List */}
         {filteredClients.length === 0 ? (
-          <Card className="glass-card" data-tour="clients-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Users size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-center">
-                {searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado ainda"}
-              </p>
-              <TrainingEmptyActions tourId="clients" className="mt-4" />
-            </CardContent>
-          </Card>
+          <div data-tour="clients-empty">
+            <EmptyState
+              icon={Users}
+              title={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado ainda"}
+              description={searchTerm ? "Confira a grafia ou busque por outro nome, e-mail ou telefone." : "Cadastre clientes manualmente ou importe os contatos do celular."}
+              action={<TrainingEmptyActions tourId="clients" />}
+            />
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="clients-list">
             {filteredClients.map((client) => (
-              <Card key={client.id} className="glass-card">
+              <Card key={client.id}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold text-xl">
+                    <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xl">
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex gap-2">
@@ -331,7 +336,7 @@ const Clients = () => {
                         data-tour="clients-edit"
                         aria-label="Editar cliente"
                       >
-                        <Edit2 size={16} />
+                        <Edit2 size={16} aria-hidden />
                       </Button>
                       <Button
                         variant="ghost"
@@ -340,11 +345,11 @@ const Clients = () => {
                         data-tour="clients-delete"
                         aria-label="Excluir cliente"
                       >
-                        <Trash2 size={16} className="text-destructive" />
+                        <Trash2 size={16} className="text-destructive" aria-hidden />
                       </Button>
                     </div>
                   </div>
-                  <h3 className="font-display text-lg font-bold text-foreground mb-3">
+                  <h3 className="text-lg font-semibold text-foreground mb-3">
                     {client.name}
                   </h3>
                   <div className="space-y-2 text-sm">
@@ -378,7 +383,7 @@ const Clients = () => {
                   {client.notes && (
                     <div className="mt-4 pt-4 border-t border-border">
                       <p className="text-xs text-muted-foreground line-clamp-2">
-                        📝 {client.notes}
+                        Obs.: {client.notes}
                       </p>
                     </div>
                   )}

@@ -18,11 +18,12 @@ export const SubscriptionWarningBanner = () => {
         subscription.status === 'pending' ||
         subscription.daysRemaining <= 1;
 
+    // Urgente = erro (destructive); aviso = atenção (warning). Ícone + texto, não só cor.
     const bgColor = isUrgent
-        ? "bg-gradient-to-r from-red-500/20 to-orange-500/20 border-red-500/30"
-        : "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30";
+        ? "bg-destructive/10 border-destructive/30"
+        : "bg-warning/10 border-warning/30";
 
-    const iconColor = isUrgent ? "text-red-500" : "text-yellow-500";
+    const iconColor = isUrgent ? "text-destructive" : "text-warning";
 
     return (
         <AnimatePresence>
@@ -30,15 +31,16 @@ export const SubscriptionWarningBanner = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
+                role={isUrgent ? "alert" : "status"}
                 className={`${bgColor} border-b px-4 py-3`}
             >
-                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${isUrgent ? 'bg-red-500/20' : 'bg-yellow-500/20'}`}>
+                <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-2 rounded-full flex-shrink-0 ${isUrgent ? 'bg-destructive/15' : 'bg-warning/15'}`}>
                             {isUrgent ? (
-                                <AlertTriangle className={`w-5 h-5 ${iconColor}`} />
+                                <AlertTriangle className={`w-5 h-5 ${iconColor}`} aria-hidden="true" />
                             ) : (
-                                <Clock className={`w-5 h-5 ${iconColor}`} />
+                                <Clock className={`w-5 h-5 ${iconColor}`} aria-hidden="true" />
                             )}
                         </div>
                         <div>
@@ -56,20 +58,23 @@ export const SubscriptionWarningBanner = () => {
                     <div className="flex items-center gap-2">
                         <Button
                             size="sm"
+                            variant="brand"
                             onClick={() => navigate('/admin/subscription')}
-                            className="gap-2"
+                            className="gap-2 h-11"
                         >
-                            <CreditCard className="w-4 h-4" />
+                            <CreditCard className="w-4 h-4" aria-hidden="true" />
                             {subscription.isTrial ? 'Assinar Agora' : 'Renovar'}
                         </Button>
 
                         {!isUrgent && (
                             <Button
-                                size="sm"
+                                size="icon"
                                 variant="ghost"
+                                className="h-11 w-11"
+                                aria-label="Dispensar aviso de assinatura"
                                 onClick={() => setDismissed(true)}
                             >
-                                <X className="w-4 h-4" />
+                                <X className="w-4 h-4" aria-hidden="true" />
                             </Button>
                         )}
                     </div>

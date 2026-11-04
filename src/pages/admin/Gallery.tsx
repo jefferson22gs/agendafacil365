@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Image, Plus, Eye, EyeOff, Link, Copy, Trash2, Camera } from "lucide-react";
+import { Image, Plus, Eye, EyeOff, Link, Copy, Trash2, Camera, CheckCircle2, CircleDashed } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
 
 interface GalleryItem {
   id: string;
@@ -325,8 +327,9 @@ const GalleryPage = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando galeria…</p>
         </div>
       </AdminLayout>
     );
@@ -336,22 +339,18 @@ const GalleryPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4" data-tour="gallery-header">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              Galeria Antes & Depois
-            </h1>
-            <p className="text-muted-foreground">
-              Documente transformações e compartilhe resultados
-            </p>
-          </div>
-
+        <div data-tour="gallery-header">
+          <PageHeader
+            className="mb-0"
+            title="Galeria Antes & Depois"
+            description="Documente transformações e compartilhe resultados."
+            actions={
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold" data-tour="gallery-new-button">
+              <Button variant="brand" data-tour="gallery-new-button">
                 <Plus size={18} className="mr-2" />
                 Nova Transformação
               </Button>
@@ -362,12 +361,12 @@ const GalleryPage = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Cliente</Label>
+                  <Label htmlFor="gallery-client">Cliente</Label>
                   <Select
                     value={formData.client_id}
                     onValueChange={(value) => setFormData({ ...formData, client_id: value })}
                   >
-                    <SelectTrigger data-tour="gallery-client">
+                    <SelectTrigger id="gallery-client" data-tour="gallery-client">
                       <SelectValue placeholder="Selecione o cliente" />
                     </SelectTrigger>
                     <SelectContent>
@@ -390,9 +389,10 @@ const GalleryPage = () => {
 
                     <TabsContent value="link" className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Link Imagem Antes</Label>
+                        <Label htmlFor="gallery-before-url">Link Imagem Antes</Label>
                         <div className="flex gap-2">
                           <Input
+                            id="gallery-before-url"
                             value={formData.before_image_url}
                             onChange={(e) => setFormData({ ...formData, before_image_url: e.target.value })}
                             placeholder="https://..."
@@ -400,9 +400,10 @@ const GalleryPage = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Link Imagem Depois</Label>
+                        <Label htmlFor="gallery-after-url">Link Imagem Depois</Label>
                         <div className="flex gap-2">
                           <Input
+                            id="gallery-after-url"
                             value={formData.after_image_url}
                             onChange={(e) => setFormData({ ...formData, after_image_url: e.target.value })}
                             placeholder="https://..."
@@ -413,28 +414,30 @@ const GalleryPage = () => {
 
                     <TabsContent value="upload" className="space-y-4" data-tour="gallery-upload-fields">
                       <div className="space-y-2">
-                        <Label>Upload "Antes"</Label>
+                        <Label htmlFor="gallery-before-file">Upload "Antes"</Label>
                         <div className="flex items-center gap-2">
                           <Input
+                            id="gallery-before-file"
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleFileUpload(e, 'before')}
                             disabled={uploading}
                           />
                         </div>
-                        {formData.before_image_url && <p className="text-xs text-green-500">Imagem carregada!</p>}
+                        {formData.before_image_url && <p className="text-xs text-success" role="status">Imagem carregada!</p>}
                       </div>
                       <div className="space-y-2">
-                        <Label>Upload "Depois"</Label>
+                        <Label htmlFor="gallery-after-file">Upload "Depois"</Label>
                         <div className="flex items-center gap-2">
                           <Input
+                            id="gallery-after-file"
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleFileUpload(e, 'after')}
                             disabled={uploading}
                           />
                         </div>
-                        {formData.after_image_url && <p className="text-xs text-green-500">Imagem carregada!</p>}
+                        {formData.after_image_url && <p className="text-xs text-success" role="status">Imagem carregada!</p>}
                       </div>
                     </TabsContent>
 
@@ -467,13 +470,16 @@ const GalleryPage = () => {
                         </div>
                       )}
 
-                      <div className="flex gap-4 mt-4 text-xs">
-                        <div>
-                          <span className="font-bold">Antes:</span> {formData.before_image_url ? '✅ Definida' : '❌ Pendente'}
-                        </div>
-                        <div>
-                          <span className="font-bold">Depois:</span> {formData.after_image_url ? '✅ Definida' : '❌ Pendente'}
-                        </div>
+                      {/* Situação de cada foto com texto + ícone (sem depender de emoji/cor) */}
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        <Badge variant={formData.before_image_url ? 'success' : 'warning'} className="gap-1">
+                          {formData.before_image_url ? <CheckCircle2 size={12} aria-hidden /> : <CircleDashed size={12} aria-hidden />}
+                          Antes: {formData.before_image_url ? 'definida' : 'pendente'}
+                        </Badge>
+                        <Badge variant={formData.after_image_url ? 'success' : 'warning'} className="gap-1">
+                          {formData.after_image_url ? <CheckCircle2 size={12} aria-hidden /> : <CircleDashed size={12} aria-hidden />}
+                          Depois: {formData.after_image_url ? 'definida' : 'pendente'}
+                        </Badge>
                       </div>
                     </TabsContent>
                   </Tabs>
@@ -498,8 +504,9 @@ const GalleryPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Descrição</Label>
+                  <Label htmlFor="gallery-description">Descrição</Label>
                   <Input
+                    id="gallery-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Descrição da transformação"
@@ -507,12 +514,12 @@ const GalleryPage = () => {
                 </div>
 
                 <div className="space-y-2" data-tour="gallery-visibility">
-                  <Label>Visibilidade</Label>
+                  <Label htmlFor="gallery-visibility">Visibilidade</Label>
                   <Select
                     value={formData.visibility}
                     onValueChange={(value) => setFormData({ ...formData, visibility: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="gallery-visibility">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -527,30 +534,26 @@ const GalleryPage = () => {
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button data-tour="gallery-save" type="submit" variant="gold" className="flex-1" disabled={uploading}>
+                  <Button data-tour="gallery-save" type="submit" variant="brand" className="flex-1" disabled={uploading}>
                     {uploading ? 'Enviando...' : 'Adicionar'}
                   </Button>
                 </div>
               </form>
             </DialogContent>
           </Dialog>
+            }
+          />
         </div>
 
         {/* Gallery Grid */}
         {gallery.length === 0 ? (
-          <Card className="glass-card" data-tour="gallery-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Image size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">Nenhuma transformação registrada</p>
-              <p className="text-sm text-muted-foreground">
-                Adicione fotos antes e depois dos seus trabalhos
-              </p>
-            </CardContent>
-          </Card>
+          <div data-tour="gallery-empty">
+            <EmptyState icon={Image} title="Nenhuma transformação registrada" description="Adicione fotos antes e depois dos seus trabalhos." />
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="gallery-list">
             {gallery.map((item) => (
-              <Card key={item.id} className="glass-card overflow-hidden">
+              <Card key={item.id} className="overflow-hidden">
                 <div className="grid grid-cols-2 gap-1">
                   <div className="aspect-square bg-secondary/50 flex items-center justify-center relative group">
                     {item.before_image_url ? (
@@ -584,18 +587,18 @@ const GalleryPage = () => {
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-medium text-foreground">{item.client?.name || 'Cliente'}</p>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{item.client?.name || 'Cliente'}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(item.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-11 w-11"
                         data-tour="gallery-toggle-visibility"
                         aria-label="Alterar visibilidade da transformação"
                         onClick={() => toggleVisibility(item.id, item.visibility)}
@@ -610,7 +613,7 @@ const GalleryPage = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11"
                           data-tour="gallery-share"
                           aria-label="Copiar link da transformação"
                           onClick={() => copyShareLink(item.share_token!)}
@@ -621,7 +624,7 @@ const GalleryPage = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-11 w-11"
                         data-tour="gallery-delete"
                         aria-label="Excluir transformação"
                         onClick={() => handleDelete(item.id)}
@@ -634,16 +637,11 @@ const GalleryPage = () => {
                     <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
                   )}
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${item.visibility === 'public'
-                      ? 'bg-success/20 text-success'
-                      : item.visibility === 'link'
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-muted text-muted-foreground'
-                      }`}>
+                    <Badge variant={item.visibility === 'public' ? 'success' : item.visibility === 'link' ? 'info' : 'secondary'}>
                       {item.visibility === 'public' && 'Pública'}
                       {item.visibility === 'private' && 'Privada'}
                       {item.visibility === 'link' && 'Link'}
-                    </span>
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>

@@ -629,19 +629,19 @@ export const BroadcastMessagesComponent = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge className="bg-green-500/20 text-green-400"><CheckCircle size={12} className="mr-1" /> Concluído</Badge>;
+        return <Badge variant="success"><CheckCircle size={12} className="mr-1" /> Concluído</Badge>;
       case 'processing':
-        return <Badge className="bg-blue-500/20 text-blue-400"><Loader2 size={12} className="mr-1 animate-spin" /> Enviando</Badge>;
+        return <Badge variant="info"><Loader2 size={12} className="mr-1 animate-spin" /> Enviando</Badge>;
       case 'stopped':
-        return <Badge className="bg-orange-500/20 text-orange-400"><AlertTriangle size={12} className="mr-1" /> Parado</Badge>;
+        return <Badge variant="warning"><AlertTriangle size={12} className="mr-1" /> Parado</Badge>;
       case 'failed':
-        return <Badge className="bg-red-500/20 text-red-400"><XCircle size={12} className="mr-1" /> Falhou</Badge>;
+        return <Badge variant="danger"><XCircle size={12} className="mr-1" /> Falhou</Badge>;
       case 'scheduled':
-        return <Badge className="bg-purple-500/20 text-purple-400"><Clock size={12} className="mr-1" /> Agendado</Badge>;
+        return <Badge variant="info"><Clock size={12} className="mr-1" /> Agendado</Badge>;
       case 'uncertain':
-        return <Badge className="bg-amber-500/20 text-amber-400"><AlertTriangle size={12} className="mr-1" /> Verificar</Badge>;
+        return <Badge variant="warning"><AlertTriangle size={12} className="mr-1" /> Verificar</Badge>;
       default:
-        return <Badge className="bg-gray-500/20 text-gray-400"><Clock size={12} className="mr-1" /> Pendente</Badge>;
+        return <Badge variant="secondary"><Clock size={12} className="mr-1" /> Pendente</Badge>;
     }
   };
 
@@ -650,9 +650,9 @@ export const BroadcastMessagesComponent = () => {
       case 'database':
         return <Badge variant="outline" className="text-xs">Cliente</Badge>;
       case 'whatsapp':
-        return <Badge variant="outline" className="text-xs text-green-400 border-green-400">WhatsApp</Badge>;
+        return <Badge variant="outline" className="text-xs text-success border-success/40">WhatsApp</Badge>;
       case 'manual':
-        return <Badge variant="outline" className="text-xs text-blue-400 border-blue-400">Manual</Badge>;
+        return <Badge variant="outline" className="text-xs text-primary border-primary/40">Manual</Badge>;
       default:
         return null;
     }
@@ -661,11 +661,11 @@ export const BroadcastMessagesComponent = () => {
   if (!isConnected) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <Card className="bg-yellow-500/10 border-yellow-500/30" data-tour="broadcast-disconnected">
+        <Card className="bg-warning/10 border-warning/30" data-tour="broadcast-disconnected">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="text-yellow-500" />
-              WhatsApp Desconectado
+              <AlertTriangle className="text-warning" aria-hidden />
+              WhatsApp desconectado
             </CardTitle>
             <CardDescription>
               Conecte seu WhatsApp primeiro para usar o disparador de mensagens
@@ -965,8 +965,8 @@ export const BroadcastMessagesComponent = () => {
                       </div>
                       <p className="text-sm line-clamp-2 mb-2">{broadcast.message}</p>
                       <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span className="text-green-400">✓ {broadcast.sent_count || 0}</span>
-                        <span className="text-red-400">✗ {broadcast.failed_count || 0}</span>
+                        <span className="text-success">Enviadas: {broadcast.sent_count || 0}</span>
+                        <span className="text-destructive">Falhas: {broadcast.failed_count || 0}</span>
                         <span>Total: {broadcast.total_recipients}</span>
                       </div>
                       <Button
@@ -1093,11 +1093,11 @@ export const BroadcastMessagesComponent = () => {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Enviados</p>
-                      <p className="text-lg font-bold text-green-400">{selectedBroadcast.sent_count || 0}</p>
+                      <p className="text-lg font-bold text-success">{selectedBroadcast.sent_count || 0}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Falhas</p>
-                      <p className="text-lg font-bold text-red-400">{selectedBroadcast.failed_count || 0}</p>
+                      <p className="text-lg font-bold text-destructive">{selectedBroadcast.failed_count || 0}</p>
                     </div>
                   </div>
 
@@ -1148,27 +1148,28 @@ export const BroadcastMessagesComponent = () => {
                         key={msg.id}
                         className={`p-3 rounded-lg border ${
                           msg.status === 'sent'
-                            ? 'bg-green-500/10 border-green-500/30'
+                            ? 'bg-success/10 border-success/30'
                             : msg.status === 'failed'
-                            ? 'bg-red-500/10 border-red-500/30'
-                            : 'bg-gray-500/10 border-gray-500/30'
+                            ? 'bg-destructive/10 border-destructive/30'
+                            : 'bg-muted border-border'
                         }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               {msg.status === 'sent' ? (
-                                <CheckCircle size={16} className="text-green-400" />
+                                <CheckCircle size={16} className="text-success" aria-hidden />
                               ) : msg.status === 'failed' ? (
-                                <XCircle size={16} className="text-red-400" />
+                                <XCircle size={16} className="text-destructive" aria-hidden />
                               ) : (
-                                <Clock size={16} className="text-gray-400" />
+                                <Clock size={16} className="text-muted-foreground" aria-hidden />
                               )}
                               <span className="font-medium">{msg.recipient_name || 'Sem nome'}</span>
+                              <span className="sr-only">{msg.status === 'sent' ? '(enviada)' : msg.status === 'failed' ? '(falhou)' : '(pendente)'}</span>
                             </div>
                             <p className="text-sm text-muted-foreground">{msg.recipient_phone}</p>
                             {msg.error_message && (
-                              <p className="text-xs text-red-400 mt-1">
+                              <p className="text-xs text-destructive mt-1">
                                 Erro: {msg.error_message}
                               </p>
                             )}

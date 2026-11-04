@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Interface em Inter; fallback system-ui mantém a UI legível offline. A marca é SVG em curvas (não depende de fonte). */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,78 +9,90 @@
 @import './styles/improvements.css';
 @import './styles/public-salon.css';
 
+/*
+ * Agenda Fácil 365 — tokens (valores HSL sem wrapper, consumidos como hsl(var(--x)) no Tailwind).
+ * Claro é o padrão em :root; escuro em .dark (mesma classe que o Tailwind usa em darkMode: ["class"]).
+ * Fonte das cores: rebrand-assets/brand/paleta.json.
+ */
 @layer base {
   :root {
-    /* SysHair Premium Dark Theme */
-    --background: 220 20% 6%;
-    --foreground: 40 15% 95%;
+    --background: 218 100% 98%;        /* #F4F8FF */
+    --foreground: 221 51% 16%;         /* #14213D */
 
-    --card: 220 18% 10%;
-    --card-foreground: 40 15% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 51% 16%;
 
-    --popover: 220 18% 12%;
-    --popover-foreground: 40 15% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 51% 16%;
 
-    /* Gold accent - Luxury barbershop feel */
-    --primary: 43 74% 49%;
-    --primary-foreground: 220 20% 6%;
+    --primary: 221 83% 53%;            /* #2563EB — fundo de ação, texto branco 5.2:1 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 224 76% 48%;      /* #1D4ED8 */
+    --primary-tint: 213 97% 78%;       /* #93C5FD — versão clara para texto/foco no escuro */
+    --primary-text: var(--primary);    /* texto/link azul sobre superfície clara (5.2:1) */
 
-    --secondary: 220 15% 15%;
-    --secondary-foreground: 40 15% 90%;
+    --secondary: 214 60% 95%;
+    --secondary-foreground: 221 51% 16%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 214 45% 94%;
+    --muted-foreground: 215 19% 35%;   /* #475569 */
 
-    --accent: 43 74% 49%;
-    --accent-foreground: 220 20% 6%;
+    --accent: 214 95% 93%;             /* realce suave (hover de menus) */
+    --accent-foreground: 221 51% 16%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 40 15% 95%;
+    --destructive: 0 74% 42%;          /* #B91C1C */
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 220 20% 6%;
+    --success: 142 72% 29%;            /* #15803D */
+    --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 6%;
+    --warning: 26 90% 37%;             /* #B45309 */
+    --warning-foreground: 0 0% 100%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 15%;
-    --ring: 43 74% 49%;
+    --border: 213 27% 84%;             /* #CBD5E1 */
+    --input: 213 27% 84%;
+    --ring: var(--primary);
 
     --radius: 0.75rem;
 
-    /* Custom colors for SysHair */
-    --gold: 43 74% 49%;
-    --gold-light: 43 74% 65%;
-    --gold-dark: 43 74% 35%;
-    
-    --surface-1: 220 18% 8%;
-    --surface-2: 220 18% 12%;
-    --surface-3: 220 15% 16%;
+    --brand-sky: 198 93% 60%;          /* #38BDF8 — apenas decorativo */
+    --brand-navy: 221 51% 16%;
 
-    /* Gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(43 74% 49%), hsl(38 80% 55%));
-    --gradient-dark: linear-gradient(180deg, hsl(220 20% 8%), hsl(220 20% 4%));
-    --gradient-card: linear-gradient(145deg, hsl(220 18% 12%), hsl(220 18% 8%));
-    --gradient-shine: linear-gradient(90deg, transparent, hsl(43 74% 49% / 0.1), transparent);
+    --surface-1: 218 60% 97%;
+    --surface-2: 214 50% 94%;
+    --surface-3: 214 40% 90%;
 
-    /* Shadows */
-    --shadow-sm: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 8px 24px -8px hsl(0 0% 0% / 0.4);
-    --shadow-lg: 0 16px 48px -16px hsl(0 0% 0% / 0.5);
-    --shadow-gold: 0 8px 32px -8px hsl(43 74% 49% / 0.3);
-    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.15);
+    /* Gradientes discretos (sem dourado) */
+    --gradient-brand: linear-gradient(135deg, hsl(221 83% 53%), hsl(224 76% 48%));
+    --gradient-dark: linear-gradient(180deg, hsl(221 51% 16%), hsl(220 49% 8%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(218 60% 97%));
+    --gradient-shine: linear-gradient(90deg, transparent, hsl(221 83% 53% / 0.08), transparent);
 
-    /* Sidebar */
-    --sidebar-background: 220 18% 8%;
-    --sidebar-foreground: 40 15% 90%;
-    --sidebar-primary: 43 74% 49%;
-    --sidebar-primary-foreground: 220 20% 6%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 40 15% 95%;
-    --sidebar-border: 220 15% 15%;
-    --sidebar-ring: 43 74% 49%;
-    
+    /* Sombras leves */
+    --shadow-sm: 0 1px 2px hsl(221 51% 16% / 0.06), 0 1px 3px hsl(221 51% 16% / 0.08);
+    --shadow-md: 0 4px 12px -2px hsl(221 51% 16% / 0.10);
+    --shadow-lg: 0 12px 32px -8px hsl(221 51% 16% / 0.16);
+    --shadow-brand: 0 6px 20px -8px hsl(221 83% 53% / 0.45);
+    --shadow-glow: 0 0 32px hsl(221 83% 53% / 0.12);
+
+    /* Sidebar navy em ambos os modos; logo branco integral */
+    --sidebar-background: 221 51% 16%;
+    --sidebar-foreground: 218 100% 98%;
+    --sidebar-muted: 213 27% 84%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 221 40% 24%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 221 35% 24%;
+    --sidebar-ring: var(--primary-tint);
+
+    /* Gráficos (Recharts / chart.tsx) */
+    --chart-1: 221 83% 53%;
+    --chart-2: 198 93% 45%;
+    --chart-3: 142 72% 29%;
+    --chart-4: 26 90% 45%;
+    --chart-5: 262 83% 58%;
+
     /* Mobile-first spacing */
     --spacing-touch: 44px;
     --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -88,35 +101,60 @@
     --spacing-safe-right: env(safe-area-inset-right, 0px);
   }
 
-  .light {
-    --background: 40 20% 98%;
-    --foreground: 220 20% 10%;
+  .dark {
+    color-scheme: dark;
+    --background: 220 49% 8%;          /* #0B1220 */
+    --foreground: 218 100% 98%;        /* #F4F8FF */
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card: 221 51% 16%;               /* #14213D */
+    --card-foreground: 218 100% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover: 221 48% 18%;
+    --popover-foreground: 218 100% 98%;
 
-    --primary: 43 74% 42%;
-    --primary-foreground: 0 0% 100%;
+    /* --primary/--primary-hover herdam de :root (botão #2563EB + branco nos dois modos) */
+    --primary-text: var(--primary-tint); /* #93C5FD — azul oficial não serve como texto pequeno no escuro */
 
-    --secondary: 40 15% 94%;
-    --secondary-foreground: 220 20% 15%;
+    --secondary: 221 40% 21%;
+    --secondary-foreground: 218 100% 98%;
 
-    --muted: 40 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 221 40% 20%;
+    --muted-foreground: 213 27% 84%;   /* #CBD5E1 */
 
-    --accent: 43 74% 42%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 221 40% 24%;
+    --accent-foreground: 218 100% 98%;
 
-    --border: 40 15% 88%;
-    --input: 40 15% 90%;
-    --ring: 43 74% 42%;
+    --destructive: 0 72% 51%;          /* #DC2626 — branco 4.8:1 */
+    --destructive-foreground: 0 0% 100%;
 
-    --surface-1: 40 15% 96%;
-    --surface-2: 40 15% 92%;
-    --surface-3: 40 15% 88%;
+    --success: 142 69% 58%;            /* #4ADE80 */
+    --success-foreground: 220 49% 8%;
+
+    --warning: 38 92% 50%;             /* #F59E0B */
+    --warning-foreground: 220 49% 8%;
+
+    --border: 215 25% 27%;             /* #334155 */
+    --input: 215 25% 27%;
+    --ring: var(--primary-tint);
+
+    --surface-1: 220 45% 10%;
+    --surface-2: 221 45% 14%;
+    --surface-3: 221 40% 18%;
+
+    --gradient-card: linear-gradient(145deg, hsl(221 51% 16%), hsl(220 45% 11%));
+
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.4);
+    --shadow-md: 0 6px 18px -6px hsl(0 0% 0% / 0.5);
+    --shadow-lg: 0 14px 40px -12px hsl(0 0% 0% / 0.6);
+
+    --sidebar-background: 222 52% 11%;
+    --sidebar-border: 215 25% 22%;
+
+    --chart-1: 213 94% 68%;
+    --chart-2: 198 93% 60%;
+    --chart-3: 142 69% 58%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 255 92% 76%;
   }
 }
 
@@ -150,8 +188,21 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Inter', system-ui, sans-serif;
     @apply font-semibold tracking-tight;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* Touch-friendly form elements */
@@ -172,23 +223,8 @@
     box-shadow: var(--shadow-md);
   }
 
-  .gold-glow {
-    box-shadow: var(--shadow-gold);
-  }
-
-  .text-gradient-gold {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-gold);
-  }
-
-  .btn-gold {
-    background: var(--gradient-gold);
-    @apply text-primary-foreground font-medium transition-all duration-300;
-  }
-
-  .btn-gold:hover {
-    box-shadow: var(--shadow-gold);
-    transform: translateY(-2px);
+  .brand-glow {
+    box-shadow: var(--shadow-brand);
   }
 
   .surface-1 {
@@ -252,7 +288,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      hsl(var(--gold) / 0.1),
+      hsl(var(--primary) / 0.1),
       transparent
     );
     background-size: 200% 100%;
@@ -272,14 +308,6 @@
     50% { transform: translateY(-20px); }
   }
 
-  .animate-pulse-gold {
-    animation: pulse-gold 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-gold {
-    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--gold) / 0.4); }
-    50% { box-shadow: 0 0 20px 10px hsl(var(--gold) / 0); }
-  }
 
   /* Card hover effects */
   .card-interactive {

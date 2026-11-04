@@ -11,7 +11,6 @@ import {
     MapPin,
     Clock,
     Phone,
-    Scissors,
     Users,
     CheckCircle2,
     ArrowRight,
@@ -41,7 +40,7 @@ interface SalonFormData {
 }
 
 const STEPS = [
-    { id: 1, title: "Dados do Salão", icon: Store },
+    { id: 1, title: "Dados do estabelecimento", icon: Store },
     { id: 2, title: "Localização", icon: MapPin },
     { id: 3, title: "Horários", icon: Clock },
     { id: 4, title: "Contato", icon: Phone },
@@ -146,7 +145,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
 
             if (error) throw error;
 
-            toast.success("Salão configurado com sucesso! 🎉");
+            toast.success("Estabelecimento configurado com sucesso!");
             
             // Limpar seller_id do localStorage após uso
             if (sellerId) {
@@ -156,7 +155,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
             onComplete();
         } catch (error: any) {
             console.error("Error creating salon:", error);
-            toast.error(error.message || "Erro ao criar salão");
+            toast.error(error.message || "Erro ao criar estabelecimento");
         } finally {
             setLoading(false);
         }
@@ -173,17 +172,17 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
                         className="space-y-4"
                     >
                         <div className="text-center mb-6">
-                            <Scissors className="w-16 h-16 mx-auto text-primary mb-4" />
-                            <h2 className="text-2xl font-bold text-foreground">Vamos configurar seu salão!</h2>
+                            <Store className="w-16 h-16 mx-auto text-primary mb-4" aria-hidden />
+                            <h2 className="text-2xl font-bold text-foreground">Vamos configurar seu estabelecimento!</h2>
                             <p className="text-muted-foreground">Qual é o nome do seu estabelecimento?</p>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="name">Nome do Salão *</Label>
+                            <Label htmlFor="name">Nome do estabelecimento *</Label>
                             <Input
                                 id="name"
                                 value={formData.name}
                                 onChange={(e) => updateField("name", e.target.value)}
-                                placeholder="Ex: Salão Beleza & Estilo"
+                                placeholder="Ex: Studio Beleza & Estilo"
                                 className="text-lg py-6"
                             />
                         </div>
@@ -201,7 +200,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
                         <div className="text-center mb-6">
                             <MapPin className="w-16 h-16 mx-auto text-primary mb-4" />
                             <h2 className="text-2xl font-bold text-foreground">Onde você está localizado?</h2>
-                            <p className="text-muted-foreground">Informe o endereço do seu salão</p>
+                            <p className="text-muted-foreground">Informe o endereço do seu estabelecimento</p>
                         </div>
                         <div className="space-y-4">
                             <div className="space-y-2">
@@ -279,7 +278,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
                                         <Button
                                             key={day.id}
                                             type="button"
-                                            variant={formData.working_days.includes(day.id) ? "gold" : "outline"}
+                                            variant={formData.working_days.includes(day.id) ? "brand" : "outline"}
                                             size="sm"
                                             onClick={() => toggleDay(day.id)}
                                             className="w-12"
@@ -346,9 +345,9 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
                                 <Sparkles className="w-20 h-20 mx-auto text-primary mb-4" />
                             </motion.div>
                             <h2 className="text-2xl font-bold text-foreground">Tudo pronto!</h2>
-                            <p className="text-muted-foreground">Confira os dados do seu salão</p>
+                            <p className="text-muted-foreground">Confira os dados do seu estabelecimento</p>
                         </div>
-                        <Card className="glass-card">
+                        <Card>
                             <CardContent className="p-6 space-y-4">
                                 <div className="flex items-center gap-3">
                                     <Store className="text-primary" />
@@ -403,7 +402,8 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
                                     : "bg-secondary text-muted-foreground"
                                 }`}
                         >
-                            <step.icon size={18} />
+                            <step.icon size={18} aria-hidden />
+                            <span className="sr-only">{`Etapa ${step.id}: ${step.title}${step.id === currentStep ? " (atual)" : ""}`}</span>
                         </div>
                     ))}
                 </div>
@@ -414,7 +414,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
             </div>
 
             {/* Content */}
-            <Card className="glass-card">
+            <Card>
                 <CardContent className="p-6">
                     <AnimatePresence mode="wait">
                         {renderStepContent()}
@@ -433,7 +433,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
 
                         {currentStep < STEPS.length ? (
                             <Button
-                                variant="gold"
+                                variant="brand"
                                 onClick={handleNext}
                                 disabled={!canProceed()}
                             >
@@ -442,7 +442,7 @@ export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWiz
                             </Button>
                         ) : (
                             <Button
-                                variant="gold"
+                                variant="brand"
                                 onClick={handleComplete}
                                 disabled={loading}
                             >

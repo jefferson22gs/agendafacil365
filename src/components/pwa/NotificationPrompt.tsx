@@ -91,22 +91,24 @@ export const NotificationPrompt = ({ salonId, clientId, onDismiss }: Notificatio
           exit={{ y: 100, opacity: 0 }}
           className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[90]"
         >
-          <Card className="glass-card border-primary/20 shadow-gold overflow-hidden">
+          <Card role="dialog" aria-labelledby="notification-prompt-title" className="relative bg-card border-border shadow-lg overflow-hidden">
             <CardContent className="p-4">
               <button
+                type="button"
                 onClick={handleDismiss}
-                className="absolute top-3 right-3 p-1 rounded-lg hover:bg-secondary transition-colors"
+                aria-label="Fechar aviso de notificações"
+                className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X size={18} className="text-muted-foreground" />
+                <X size={18} className="text-muted-foreground" aria-hidden="true" />
               </button>
 
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center flex-shrink-0">
-                  <Bell size={24} className="text-primary-foreground" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Bell size={24} className="text-primary" aria-hidden="true" />
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                <div className="flex-1 min-w-0 pr-8">
+                  <h3 id="notification-prompt-title" className="font-display text-lg font-bold text-foreground mb-1">
                     Ativar notificações?
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -115,18 +117,19 @@ export const NotificationPrompt = ({ salonId, clientId, onDismiss }: Notificatio
 
                   <div className="flex items-center gap-2">
                     <Button
-                      variant="gold"
+                      variant="brand"
                       size="sm"
                       onClick={handleEnable}
                       disabled={loading}
-                      className="flex-1"
+                      className="flex-1 h-11"
                     >
-                      <Bell size={16} className="mr-2" />
+                      <Bell size={16} className="mr-2" aria-hidden="true" />
                       Ativar
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="h-11"
                       onClick={handleDismiss}
                       disabled={loading}
                     >
@@ -178,7 +181,7 @@ export const NotificationSettings = () => {
   const handleTestNotification = async () => {
     // Mostrar toast como feedback - notificação real virá via push
     toast.info('Notificações estão ativadas!', {
-      description: 'Você receberá notificações do salão.',
+      description: 'Você receberá notificações do estabelecimento.',
     });
   };
 
@@ -235,7 +238,7 @@ export const NotificationSettings = () => {
           </div>
 
           <Button
-            variant={isSubscribed ? 'outline' : 'gold'}
+            variant={isSubscribed ? 'outline' : 'brand'}
             size="sm"
             onClick={handleToggle}
             disabled={loading}

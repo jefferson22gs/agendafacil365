@@ -31,7 +31,7 @@ const mockGoals: Goal[] = [
         target: 20000,
         unit: 'R$',
         icon: <DollarSign className="w-5 h-5" />,
-        color: 'from-green-500 to-emerald-500',
+        color: 'success',
         period: 'Dezembro 2024'
     },
     {
@@ -41,7 +41,7 @@ const mockGoals: Goal[] = [
         target: 200,
         unit: '',
         icon: <Calendar className="w-5 h-5" />,
-        color: 'from-blue-500 to-cyan-500',
+        color: 'primary',
         period: 'Este mês'
     },
     {
@@ -51,7 +51,7 @@ const mockGoals: Goal[] = [
         target: 30,
         unit: '',
         icon: <Users className="w-5 h-5" />,
-        color: 'from-purple-500 to-pink-500',
+        color: 'primary',
         period: 'Este mês'
     },
     {
@@ -61,10 +61,14 @@ const mockGoals: Goal[] = [
         target: 5,
         unit: '⭐',
         icon: <Award className="w-5 h-5" />,
-        color: 'from-yellow-500 to-orange-500',
+        color: 'warning',
         period: 'Geral'
     },
 ];
+
+// Tom do ícone e da barra por meta (tokens da marca; sem gradiente).
+const GOAL_TONE: Record<string, string> = { success: 'bg-success/10 text-success', primary: 'bg-primary/10 text-primary', warning: 'bg-warning/10 text-warning' };
+const GOAL_BAR: Record<string, string> = { success: 'bg-success', primary: 'bg-primary', warning: 'bg-warning' };
 
 interface GoalsCardProps {
     salonId?: string;
@@ -74,7 +78,7 @@ export const GoalsCard = ({ salonId }: GoalsCardProps) => {
     const [goals] = useState<Goal[]>(mockGoals);
 
     return (
-        <Card className="glass-card">
+        <Card>
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
@@ -101,7 +105,7 @@ export const GoalsCard = ({ salonId }: GoalsCardProps) => {
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${goal.color} flex items-center justify-center text-white`}>
+                                    <div className={`w-8 h-8 rounded-lg ${GOAL_TONE[goal.color]} flex items-center justify-center`} aria-hidden>
                                         {goal.icon}
                                     </div>
                                     <div>
@@ -128,12 +132,12 @@ export const GoalsCard = ({ salonId }: GoalsCardProps) => {
                                     initial={{ width: 0 }}
                                     animate={{ width: `${percentage}%` }}
                                     transition={{ duration: 1, delay: index * 0.1 }}
-                                    className={`absolute top-0 left-0 h-2 rounded-full bg-gradient-to-r ${goal.color}`}
+                                    className={`absolute top-0 left-0 h-2 rounded-full ${GOAL_BAR[goal.color]}`}
                                 />
                             </div>
 
                             <div className="flex items-center justify-between mt-1">
-                                <span className={`text-xs font-medium ${isCompleted ? 'text-green-500' : percentage >= 75 ? 'text-primary' : 'text-muted-foreground'
+                                <span className={`text-xs font-medium ${isCompleted ? 'text-success' : percentage >= 75 ? 'text-primary' : 'text-muted-foreground'
                                     }`}>
                                     {isCompleted ? '✅ Meta atingida!' : `${percentage.toFixed(0)}% concluído`}
                                 </span>
@@ -154,10 +158,10 @@ export const GoalsCard = ({ salonId }: GoalsCardProps) => {
                 <div className="pt-4 border-t border-border/50">
                     <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-green-500" />
+                            <TrendingUp className="w-4 h-4 text-success" />
                             <span className="text-muted-foreground">Tendência semanal</span>
                         </div>
-                        <span className="text-green-500 font-medium">+12% vs. semana passada</span>
+                        <span className="text-success font-medium">+12% vs. semana passada</span>
                     </div>
                 </div>
             </CardContent>

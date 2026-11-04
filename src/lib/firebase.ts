@@ -1,6 +1,7 @@
 // Firebase Configuration for Push Notifications
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
+import { registerAppServiceWorker } from "./serviceWorker";
 
 // Firebase config from console
 const firebaseConfig = {
@@ -43,14 +44,9 @@ export const requestFCMToken = async (): Promise<string | null> => {
 
         if ('serviceWorker' in navigator) {
             try {
-                // Registrar o SW específico do Firebase Messaging
-                swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-                    scope: '/'
-                });
-                console.log('✅ Firebase SW registrado:', swRegistration.scope);
-
-                // Aguardar SW estar ativo
-                await navigator.serviceWorker.ready;
+                // Produção: worker único /sw.js (já importa os handlers FCM). Dev: worker do Firebase.
+                swRegistration = await registerAppServiceWorker('/firebase-messaging-sw.js');
+                console.log('✅ SW de push pronto:', swRegistration?.scope);
             } catch (err) {
                 console.error('Erro ao registrar Firebase SW:', err);
             }

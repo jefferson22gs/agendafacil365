@@ -120,22 +120,23 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
 
     const getRiskColor = (level: string) => {
         switch (level) {
-            case 'critical': return 'bg-red-500/20 text-red-400 border-red-500/30';
-            case 'high': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-            case 'medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-            default: return 'bg-green-500/20 text-green-400 border-green-500/30';
+            case 'critical': return 'bg-destructive/20 text-destructive border-destructive/30';
+            // alto = vermelho suave (distinto de crítico); médio = aviso
+            case 'high': return 'bg-destructive/10 text-destructive border-destructive/20';
+            case 'medium': return 'bg-warning/20 text-warning border-warning/30';
+            default: return 'bg-success/20 text-success border-success/30';
         }
     };
 
     return (
-        <Card className="glass-card">
+        <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                         <Brain className="w-5 h-5 text-primary" />
                         BI Preditivo com IA
                     </CardTitle>
-                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                    <Badge variant="info">
                         <Sparkles size={12} className="mr-1" />
                         Machine Learning
                     </Badge>
@@ -177,7 +178,7 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                                     <h4 className="font-medium text-foreground">Previsão de Faturamento</h4>
                                     <p className="text-sm text-muted-foreground">Próximos 3 meses baseado em ML</p>
                                 </div>
-                                <div className="flex items-center gap-2 text-green-500">
+                                <div className="flex items-center gap-2 text-success">
                                     <TrendingUp size={18} />
                                     <span className="font-bold">+15%</span>
                                     <span className="text-sm text-muted-foreground">tendência</span>
@@ -193,8 +194,8 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                                                 <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorPrevisto" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -224,7 +225,7 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                                         <Area
                                             type="monotone"
                                             dataKey="previsto"
-                                            stroke="#8B5CF6"
+                                            stroke="hsl(var(--chart-2))"
                                             fillOpacity={1}
                                             fill="url(#colorPrevisto)"
                                             strokeWidth={2}
@@ -269,9 +270,9 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                         </div>
 
                         {/* Insights */}
-                        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                        <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
                             <div className="flex items-start gap-3">
-                                <Lightbulb className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                                <Lightbulb className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                                 <div>
                                     <p className="text-sm font-medium text-foreground">💡 Insight da IA</p>
                                     <p className="text-xs text-muted-foreground mt-1">
@@ -326,7 +327,7 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <Badge className={getRiskColor(client.riskLevel)}>
+                                            <Badge variant="outline" className={getRiskColor(client.riskLevel)}>
                                                 {client.riskScore}% risco
                                             </Badge>
                                         </div>
@@ -334,10 +335,10 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
 
                                     <div className="mt-3 flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-sm">
-                                            <Lightbulb size={14} className="text-yellow-500" />
+                                            <Lightbulb size={14} className="text-warning" />
                                             <span className="text-muted-foreground">{client.suggestedAction}</span>
                                         </div>
-                                        <Button size="sm" variant="gold">
+                                        <Button size="sm" variant="brand">
                                             Executar Ação
                                             <ChevronRight size={14} className="ml-1" />
                                         </Button>
@@ -367,7 +368,7 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.1 }}
-                                    className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/20"
+                                    className="p-4 rounded-xl bg-primary/5 border border-primary/20"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -381,7 +382,7 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                                             <Badge variant="secondary">
                                                 {insight.probability}% chance
                                             </Badge>
-                                            <span className="text-sm text-green-500 font-medium">
+                                            <span className="text-sm text-success font-medium">
                                                 +R$ {insight.avgTicketIncrease}
                                             </span>
                                         </div>
@@ -390,14 +391,14 @@ export const BIPredictive = ({ salonId }: BIPredictiveProps) => {
                             ))}
                         </div>
 
-                        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30">
+                        <div className="p-4 rounded-xl bg-success/10 border border-success/30">
                             <div className="flex items-start gap-3">
-                                <DollarSign className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                                <DollarSign className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                                 <div>
                                     <p className="text-sm font-medium text-foreground">💰 Potencial de Receita</p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Aplicando estas recomendações de cross-sell, você pode aumentar o ticket médio em até
-                                        <span className="text-green-400 font-bold"> R$ 63,75</span> por atendimento.
+                                        <span className="text-success font-bold"> R$ 63,75</span> por atendimento.
                                     </p>
                                 </div>
                             </div>

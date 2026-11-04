@@ -10,7 +10,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node -e \"const fs=require('fs'),p=require('path'),{spawnSync}=require('child_process');const f=['tests/whatsapp','tests/rebrand'].flatMap(d=>fs.readdirSync(d).filter(n=>n.endsWith('.test.cjs')).map(n=>p.join(d,n)));process.exit(spawnSync(process.execPath,['--test',...f],{stdio:'inherit'}).status)\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Package, Edit2, Trash2, Percent, X } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
 
 interface PackageItem {
   service_id: string;
@@ -332,8 +333,9 @@ const PackagesPage = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando pacotes…</p>
         </div>
       </AdminLayout>
     );
@@ -343,22 +345,18 @@ const PackagesPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div data-tour="packages-header">
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              Pacotes de Serviços
-            </h1>
-            <p className="text-muted-foreground">
-              Crie pacotes promocionais com múltiplos serviços (combos)
-            </p>
-          </div>
-          
+        <div data-tour="packages-header">
+          <PageHeader
+            className="mb-0"
+            title="Pacotes de Serviços"
+            description="Crie pacotes promocionais com múltiplos serviços (combos)."
+            actions={
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold" data-tour="packages-new-button">
+              <Button variant="brand" data-tour="packages-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Pacote
               </Button>
@@ -534,7 +532,7 @@ const PackagesPage = () => {
                   </Button>
                   <Button 
                     type="submit" 
-                    variant="gold" 
+                    variant="brand" 
                     className="flex-1"
                     data-tour="packages-save"
                     disabled={formData.items.length === 0}
@@ -545,27 +543,23 @@ const PackagesPage = () => {
               </form>
             </DialogContent>
           </Dialog>
+            }
+          />
         </div>
 
         {/* Packages Grid */}
         {packages.length === 0 ? (
-          <Card className="glass-card" data-tour="packages-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Package size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">Nenhum pacote criado</p>
-              <p className="text-sm text-muted-foreground">
-                Crie combos com múltiplos serviços para oferecer descontos
-              </p>
-            </CardContent>
-          </Card>
+          <div data-tour="packages-empty">
+            <EmptyState icon={Package} title="Nenhum pacote criado" description="Crie combos com múltiplos serviços para oferecer descontos." />
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="packages-list">
             {packages.map((pkg: any) => (
-              <Card key={pkg.id} className="glass-card">
+              <Card key={pkg.id}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
-                      <Package size={24} className="text-primary-foreground" />
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center" aria-hidden>
+                      <Package size={24} />
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(pkg)} data-tour="packages-edit" aria-label="Editar pacote">
@@ -577,7 +571,7 @@ const PackagesPage = () => {
                     </div>
                   </div>
 
-                  <h3 className="font-display text-lg font-bold text-foreground mb-2">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
                     {pkg.name}
                   </h3>
 
@@ -589,7 +583,7 @@ const PackagesPage = () => {
                           <span className="text-muted-foreground">
                             {item.service_name}
                           </span>
-                          <span className="text-xs bg-primary/10 px-2 py-1 rounded">
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded tabular-nums">
                             {item.quantity}x
                           </span>
                         </div>
@@ -603,7 +597,7 @@ const PackagesPage = () => {
                         R$ {pkg.price.toFixed(2)}
                       </p>
                       <div className="flex items-center gap-1 text-xs text-success">
-                        <Percent size={12} />
+                        <Percent size={12} aria-hidden />
                         <span>{pkg.discount_percent}% de desconto</span>
                       </div>
                     </div>

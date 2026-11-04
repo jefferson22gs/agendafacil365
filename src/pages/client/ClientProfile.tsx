@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/icons/Logo";
+import { EmptyState } from "@/components/ui/page-header";
+import { AppointmentStatusBadge } from "@/components/admin/AppointmentStatusBadge";
 import { toast } from "sonner";
 import { 
   User,
@@ -138,31 +140,13 @@ const ClientProfile = () => {
     navigate('/');
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-success/20 text-success';
-      case 'completed': return 'bg-primary/20 text-primary';
-      case 'cancelled': return 'bg-destructive/20 text-destructive';
-      default: return 'bg-warning/20 text-warning';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'Confirmado';
-      case 'completed': return 'Concluído';
-      case 'cancelled': return 'Cancelado';
-      case 'pending': return 'Pendente';
-      default: return status;
-    }
-  };
-
   const displayName = profileData.full_name || profile?.full_name || user?.email?.split('@')[0] || 'Cliente';
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3" role="status">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+        <p className="text-sm text-muted-foreground">Carregando seu perfil…</p>
       </div>
     );
   }
@@ -170,17 +154,17 @@ const ClientProfile = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
+      <header className="sticky top-0 z-30 bg-background/95 border-b border-border">
         <div className="container px-4">
           <div className="flex items-center justify-between h-16">
             <Logo size="sm" />
-            <div className="flex items-center gap-4">
-              <Button variant="gold" size="sm" onClick={() => navigate('/booking')}>
-                <Calendar size={16} className="mr-2" />
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button variant="brand" size="sm" onClick={() => navigate('/booking')}>
+                <Calendar size={16} className="mr-2" aria-hidden />
                 Novo Agendamento
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleSignOut}>
-                <LogOut size={20} />
+              <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sair da conta">
+                <LogOut size={20} aria-hidden />
               </Button>
             </div>
           </div>
@@ -189,27 +173,27 @@ const ClientProfile = () => {
 
       <main className="container px-4 py-6 max-w-4xl mx-auto">
         {/* Profile Header */}
-        <Card className="glass-card mb-6">
+        <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground text-3xl font-bold">
+              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-3xl font-bold shrink-0" aria-hidden>
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <div className="text-center md:text-left flex-1">
-                <h1 className="font-display text-2xl font-bold text-foreground">
+              <div className="text-center md:text-left flex-1 min-w-0">
+                <h1 className="text-2xl font-semibold text-foreground break-words">
                   Olá, {displayName}!
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground break-all">
                   {user?.email}
                 </p>
               </div>
               <div className="flex gap-4">
                 <div className="text-center px-4">
-                  <p className="text-2xl font-bold text-foreground">{stats.totalAppointments}</p>
+                  <p className="text-2xl font-bold text-foreground tabular-nums">{stats.totalAppointments}</p>
                   <p className="text-xs text-muted-foreground">Agendamentos</p>
                 </div>
                 <div className="text-center px-4 border-l border-border">
-                  <p className="text-2xl font-bold text-primary">R$ {stats.totalSpent.toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-primary tabular-nums">R$ {stats.totalSpent.toFixed(0)}</p>
                   <p className="text-xs text-muted-foreground">Total Gasto</p>
                 </div>
               </div>
@@ -220,56 +204,58 @@ const ClientProfile = () => {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <Button
-            variant={activeTab === 'history' ? 'gold' : 'outline'}
+            variant={activeTab === 'history' ? 'brand' : 'outline'}
             onClick={() => setActiveTab('history')}
             className="flex-1 sm:flex-none"
+            aria-pressed={activeTab === 'history'}
           >
-            <History size={16} className="mr-2" />
+            <History size={16} className="mr-2" aria-hidden />
             Histórico
           </Button>
           <Button
-            variant={activeTab === 'profile' ? 'gold' : 'outline'}
+            variant={activeTab === 'profile' ? 'brand' : 'outline'}
             onClick={() => setActiveTab('profile')}
             className="flex-1 sm:flex-none"
+            aria-pressed={activeTab === 'profile'}
           >
-            <Settings size={16} className="mr-2" />
+            <Settings size={16} className="mr-2" aria-hidden />
             Meus Dados
           </Button>
         </div>
 
         {/* Tab Content */}
         {activeTab === 'history' && (
-          <Card className="glass-card">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <History size={20} className="text-primary" />
+                <History size={20} className="text-primary" aria-hidden />
                 Histórico de Agendamentos
               </CardTitle>
             </CardHeader>
             <CardContent>
               {appointments.length === 0 ? (
-                <div className="text-center py-12">
-                  <Calendar size={48} className="mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    Você ainda não tem agendamentos
-                  </p>
-                  <Button variant="gold" onClick={() => navigate('/booking')}>
-                    Fazer Primeiro Agendamento
-                  </Button>
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  title="Você ainda não tem agendamentos"
+                  description="Quando você agendar um horário, ele aparecerá aqui."
+                  className="border-0 bg-transparent py-8"
+                  action={
+                    <Button variant="brand" onClick={() => navigate('/booking')}>
+                      Fazer Primeiro Agendamento
+                    </Button>
+                  }
+                />
               ) : (
-                <div className="space-y-3">
+                <ul className="space-y-3">
                   {appointments.map((appointment) => (
-                    <div
+                    <li
                       key={appointment.id}
-                      className="p-4 rounded-xl bg-secondary/50 border border-border"
+                      className="p-4 rounded-xl surface-2 border border-border"
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(appointment.status)}`}>
-                              {getStatusLabel(appointment.status)}
-                            </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <AppointmentStatusBadge status={appointment.status} />
                             <span className="text-sm text-muted-foreground">
                               {format(new Date(appointment.date), "dd 'de' MMM", { locale: ptBR })}
                             </span>
@@ -277,42 +263,42 @@ const ClientProfile = () => {
                           <p className="font-medium text-foreground">
                             {appointment.services?.name}
                           </p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
-                              <Clock size={14} />
+                              <Clock size={14} aria-hidden />
                               {appointment.start_time.slice(0, 5)}
                             </span>
                             <span className="flex items-center gap-1">
-                              <User size={14} />
+                              <User size={14} aria-hidden />
                               {appointment.professionals?.name || 'Profissional'}
                             </span>
                           </div>
                           {appointment.salons && (
                             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                              <MapPin size={14} />
+                              <MapPin size={14} aria-hidden />
                               {appointment.salons.name}
                             </p>
                           )}
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-foreground">
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-foreground tabular-nums">
                             R$ {appointment.final_price?.toFixed(2)}
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </CardContent>
           </Card>
         )}
 
         {activeTab === 'profile' && (
-          <Card className="glass-card">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User size={20} className="text-primary" />
+                <User size={20} className="text-primary" aria-hidden />
                 Meus Dados
               </CardTitle>
             </CardHeader>
@@ -351,15 +337,15 @@ const ClientProfile = () => {
               </div>
 
               <Button 
-                variant="gold" 
+                variant="brand" 
                 className="w-full mt-6"
                 onClick={handleSaveProfile}
                 disabled={saving}
               >
                 {saving ? (
-                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  <Loader2 size={16} className="mr-2 animate-spin" aria-hidden />
                 ) : (
-                  <Save size={16} className="mr-2" />
+                  <Save size={16} className="mr-2" aria-hidden />
                 )}
                 Salvar Alterações
               </Button>

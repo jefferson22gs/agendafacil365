@@ -18,6 +18,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { StatCard } from "@/components/admin/StatCard";
 
 interface Client {
     id: string;
@@ -140,7 +142,7 @@ export default function ExportContacts() {
                 vcfContent += `BDAY:${birthDate}\n`;
             }
 
-            vcfContent += `NOTE:Cliente exportado do SysHair em ${new Date().toLocaleDateString('pt-BR')}\n`;
+            vcfContent += `NOTE:Cliente exportado do Agenda Fácil 365 em ${new Date().toLocaleDateString('pt-BR')}\n`;
             vcfContent += 'END:VCARD\n';
         }
 
@@ -232,57 +234,22 @@ export default function ExportContacts() {
 
     return (
         <AdminLayout>
-            <div className="container mx-auto py-8 px-4">
-                <div className="max-w-4xl mx-auto space-y-6">
-                    {/* Header */}
+            <div className="max-w-4xl mx-auto">
+                <div className="space-y-6">
+                    {/* Header — a ação principal (Exportar) fica no fim, pois depende da seleção abaixo */}
                     <div data-tour="export-contacts-header">
-                        <h1 className="text-3xl font-bold">Exportar Clientes</h1>
-                        <p className="text-muted-foreground mt-2">
-                            Exporte seus clientes em formato VCF (vCard) ou CSV
-                        </p>
+                        <PageHeader
+                            className="mb-0"
+                            title="Exportar Clientes"
+                            description="Exporte seus clientes em formato VCF (vCard) ou CSV."
+                        />
                     </div>
 
                     {/* Estatísticas */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Total de Clientes</p>
-                                        <p className="text-2xl font-bold">{clients.length}</p>
-                                    </div>
-                                    <Users className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Selecionados</p>
-                                        <p className="text-2xl font-bold">{selectedClients.size}</p>
-                                    </div>
-                                    <CheckCircle2 className="h-8 w-8 text-green-500" />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Formato</p>
-                                        <p className="text-2xl font-bold uppercase">{exportFormat}</p>
-                                    </div>
-                                    {exportFormat === 'vcf' ? (
-                                        <FileText className="h-8 w-8 text-blue-500" />
-                                    ) : (
-                                        <FileSpreadsheet className="h-8 w-8 text-green-500" />
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <StatCard icon={Users} tone="neutral" label="Total de Clientes" value={clients.length} />
+                        <StatCard icon={CheckCircle2} label="Selecionados" value={selectedClients.size} />
+                        <StatCard icon={exportFormat === 'vcf' ? FileText : FileSpreadsheet} label="Formato" value={<span className="uppercase">{exportFormat}</span>} />
                     </div>
 
                     {/* Formato de Exportação */}
@@ -295,11 +262,11 @@ export default function ExportContacts() {
                         </CardHeader>
                         <CardContent>
                             <RadioGroup data-tour="export-contacts-format" value={exportFormat} onValueChange={(value: any) => setExportFormat(value)}>
-                                <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer">
+                                <div className="flex items-center space-x-2 p-4 border border-border rounded-xl hover:bg-accent cursor-pointer has-[:checked]:border-primary">
                                     <RadioGroupItem value="vcf" id="vcf" />
                                     <Label htmlFor="vcf" className="flex-1 cursor-pointer">
                                         <div className="flex items-center gap-3">
-                                            <FileText className="h-5 w-5 text-blue-500" />
+                                            <FileText className="h-5 w-5 text-primary shrink-0" aria-hidden />
                                             <div>
                                                 <p className="font-medium">VCF (vCard)</p>
                                                 <p className="text-sm text-muted-foreground">
@@ -310,11 +277,11 @@ export default function ExportContacts() {
                                     </Label>
                                 </div>
 
-                                <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer">
+                                <div className="flex items-center space-x-2 p-4 border border-border rounded-xl hover:bg-accent cursor-pointer has-[:checked]:border-primary">
                                     <RadioGroupItem value="csv" id="csv" />
                                     <Label htmlFor="csv" className="flex-1 cursor-pointer">
                                         <div className="flex items-center gap-3">
-                                            <FileSpreadsheet className="h-5 w-5 text-green-500" />
+                                            <FileSpreadsheet className="h-5 w-5 text-primary shrink-0" aria-hidden />
                                             <div>
                                                 <p className="font-medium">CSV (Excel)</p>
                                                 <p className="text-sm text-muted-foreground">
@@ -331,7 +298,7 @@ export default function ExportContacts() {
                     {/* Lista de Clientes */}
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <CardTitle>Selecionar Clientes</CardTitle>
                                     <CardDescription>
@@ -350,13 +317,13 @@ export default function ExportContacts() {
                         </CardHeader>
                         <CardContent>
                             {loading ? (
-                                <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                <div className="flex flex-col items-center justify-center gap-3 py-12" role="status">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+                                    <p className="text-sm text-muted-foreground">Carregando clientes…</p>
                                 </div>
                             ) : clients.length === 0 ? (
-                                <div className="text-center py-12" data-tour="export-contacts-empty">
-                                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                                    <p className="text-muted-foreground">Nenhum cliente cadastrado</p>
+                                <div data-tour="export-contacts-empty">
+                                    <EmptyState icon={Users} title="Nenhum cliente cadastrado" description="Cadastre ou importe clientes para poder exportá-los." className="border-0 bg-transparent" />
                                 </div>
                             ) : (
                                 <ScrollArea className="h-[400px] pr-4" data-tour="export-contacts-list">
@@ -364,20 +331,21 @@ export default function ExportContacts() {
                                         {clients.map((client) => (
                                             <div
                                                 key={client.id}
-                                                className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                                                className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 border border-border rounded-xl hover:bg-accent cursor-pointer"
                                                 onClick={() => toggleClient(client.id)}
                                             >
                                                 <Checkbox
+                                                    aria-label={`Selecionar ${client.name}`}
                                                     checked={selectedClients.has(client.id)}
                                                     onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => toggleClient(client.id)}
                                                 />
-                                                <div className="flex-1">
-                                                    <p className="font-medium">{client.name}</p>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium truncate">{client.name}</p>
                                                     <p className="text-sm text-muted-foreground">{client.phone}</p>
                                                 </div>
                                                 {client.email && (
-                                                    <p className="text-sm text-muted-foreground">{client.email}</p>
+                                                    <p className="text-sm text-muted-foreground break-all">{client.email}</p>
                                                 )}
                                             </div>
                                         ))}
@@ -400,6 +368,7 @@ export default function ExportContacts() {
                             )}
 
                             <Button
+                                variant="brand"
                                 onClick={handleExport}
                                 data-tour="export-contacts-download"
                                 disabled={exporting || selectedClients.size === 0}
@@ -408,12 +377,12 @@ export default function ExportContacts() {
                             >
                                 {exporting ? (
                                     <>
-                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
                                         Exportando...
                                     </>
                                 ) : (
                                     <>
-                                        <Download className="mr-2 h-5 w-5" />
+                                        <Download className="mr-2 h-5 w-5" aria-hidden />
                                         Exportar {selectedClients.size} Cliente{selectedClients.size !== 1 ? 's' : ''}
                                     </>
                                 )}

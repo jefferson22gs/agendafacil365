@@ -75,10 +75,11 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
-          dark: "hsl(var(--gold-dark))",
+        brand: {
+          DEFAULT: "hsl(var(--primary))",
+          hover: "hsl(var(--primary-hover))",
+          sky: "hsl(var(--brand-sky))",
+          navy: "hsl(var(--brand-navy))",
         },
         surface: {
           1: "hsl(var(--surface-1))",
@@ -94,10 +95,19 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+          muted: "hsl(var(--sidebar-muted))",
+        },
+      },
+      // text-primary usa token próprio: no escuro o azul oficial não tem contraste para texto pequeno.
+      textColor: {
+        primary: {
+          DEFAULT: "hsl(var(--primary-text))",
+          foreground: "hsl(var(--primary-foreground))",
         },
       },
       fontFamily: {
-        display: ["Playfair Display", "serif"],
+        // `font-display` mantido como alias de Inter para não quebrar classes existentes.
+        display: ["Inter", "system-ui", "sans-serif"],
         sans: ["Inter", "system-ui", "sans-serif"],
       },
       borderRadius: {
@@ -111,7 +121,7 @@ export default {
         sm: "var(--shadow-sm)",
         md: "var(--shadow-md)",
         lg: "var(--shadow-lg)",
-        gold: "var(--shadow-gold)",
+        brand: "var(--shadow-brand)",
         glow: "var(--shadow-glow)",
       },
       keyframes: {
@@ -147,10 +157,6 @@ export default {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-20px)" },
         },
-        "pulse-gold": {
-          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--gold) / 0.4)" },
-          "50%": { boxShadow: "0 0 20px 10px hsl(var(--gold) / 0)" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -161,7 +167,6 @@ export default {
         "scale-in": "scale-in 0.3s ease-out forwards",
         shimmer: "shimmer 2s infinite",
         float: "float 6s ease-in-out infinite",
-        "pulse-gold": "pulse-gold 2s ease-in-out infinite",
       },
     },
   },

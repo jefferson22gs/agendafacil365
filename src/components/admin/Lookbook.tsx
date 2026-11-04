@@ -121,14 +121,14 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
 
     return (
         <>
-            <Card className="glass-card" data-tour="advanced-lookbook-panel">
+            <Card data-tour="advanced-lookbook-panel">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                             <Image className="w-5 h-5 text-primary" />
                             Lookbook Social
                         </CardTitle>
-                        <Button variant="gold" size="sm" data-tour="advanced-lookbook-new">
+                        <Button variant="brand" size="sm" data-tour="advanced-lookbook-new">
                             <Sparkles size={16} className="mr-1" />
                             Novo Post
                         </Button>
@@ -292,7 +292,7 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
                                 <div className="flex items-center gap-4 mb-4">
                                     <button
                                         onClick={() => toggleLike(selectedPost.id)}
-                                        className="flex items-center gap-2 text-muted-foreground hover:text-red-500 transition-colors"
+                                        className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors"
                                     >
                                         <Heart
                                             size={24}
@@ -304,14 +304,14 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
                                         <MessageCircle size={24} />
                                         <span>{selectedPost.comments}</span>
                                     </button>
-                                    <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors ml-auto">
+                                    <button type="button" aria-label="Compartilhar" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors ml-auto">
                                         <Share2 size={24} />
                                     </button>
                                 </div>
 
                                 {/* CTA Buttons */}
                                 <div className="mt-auto space-y-3">
-                                    <Button variant="gold" className="w-full" size="lg" data-tour="advanced-lookbook-cta">
+                                    <Button variant="brand" className="w-full" size="lg" data-tour="advanced-lookbook-cta">
                                         <Calendar size={18} className="mr-2" />
                                         Quero esse look! Agendar agora
                                     </Button>

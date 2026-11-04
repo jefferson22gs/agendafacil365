@@ -1,4 +1,4 @@
-// Service Worker para PWA SysHair
+// LEGADO: não é servido em produção (o build gera dist/sw.js via Workbox no mesmo caminho). Mantido só por histórico.
 const CACHE_NAME = 'syshair-v1';
 const urlsToCache = [
   '/',
@@ -81,7 +81,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'SysHair', options)
+    self.registration.showNotification(data.title || 'Agenda Fácil 365', options)
   );
 });
 

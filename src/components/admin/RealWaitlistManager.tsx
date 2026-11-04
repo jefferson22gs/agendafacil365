@@ -289,7 +289,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
 
             {/* Lista */}
             {waitlist.length === 0 ? (
-                <Card className="glass-card" data-tour="advanced-waitlist-empty">
+                <Card data-tour="advanced-waitlist-empty">
                     <CardContent className="p-8 text-center">
                         <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium mb-2">Fila de espera vazia</h3>
@@ -309,7 +309,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                 exit={{ opacity: 0, x: -100 }}
                                 transition={{ delay: index * 0.05 }}
                             >
-                                <Card className="glass-card">
+                                <Card>
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-4">

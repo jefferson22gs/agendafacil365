@@ -13,12 +13,12 @@ export const importContactsArticles: Article[] = [
     tourId: "import-contacts",
     steps: [
       {
-        text: "Se você exportou os contatos do celular, pode enviar o arquivo aqui. Ele costuma terminar com .vcf.",
+        text: "Abra Importar Contatos, no grupo Relacionamento do menu. Se você exportou os contatos do celular, pode enviar o arquivo aqui. Ele costuma terminar com .vcf.",
         image: { src: "/training/import-contacts/vcf-card.webp", alt: "Opção Arquivo VCF", pending: true },
       },
       { text: "Clique em Arquivo VCF ou em Selecionar Arquivo e escolha o arquivo no seu aparelho." },
       { text: "O sistema lê nomes e telefones válidos. Contatos repetidos pelo telefone são juntados." },
-      { text: "Confira a lista antes de importar. Desmarque contatos que não devem entrar no SysHair." },
+      { text: "Confira a lista antes de importar. Desmarque contatos que não devem entrar no Agenda Fácil 365." },
       { text: "Clique em Importar Contatos. Os contatos selecionados serão salvos como clientes." },
     ],
     keywords: ["vcf", "arquivo", "contatos do celular", "exportei contatos", "importar agenda"],
@@ -38,7 +38,7 @@ export const importContactsArticles: Article[] = [
         text: "Toque em Selecionar Contatos na opção Contatos do Celular.",
         image: { src: "/training/import-contacts/phone-card.webp", alt: "Opção Contatos do Celular", pending: true },
       },
-      { text: "Se o navegador permitir, escolha os contatos que quer trazer para o SysHair." },
+      { text: "Se o navegador permitir, escolha os contatos que quer trazer para o Agenda Fácil 365." },
       { text: "Confira a lista carregada e deixe marcado só quem deve virar cliente." },
       { text: "Clique em Importar Contatos para salvar." },
     ],

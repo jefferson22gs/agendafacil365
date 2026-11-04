@@ -20,7 +20,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
     console.log('📱 Mensagem recebida em background:', payload);
 
-    const notificationTitle = payload.notification?.title || payload.data?.title || 'SysHair';
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'Agenda Fácil 365';
     const notificationOptions = {
         body: payload.notification?.body || payload.data?.body || 'Você tem uma nova notificação!',
         icon: payload.notification?.icon || '/pwa-192x192.png',
@@ -116,7 +116,7 @@ self.addEventListener('push', (event) => {
 
             // Se só tiver data, mostrar notificação manualmente
             if (data.data) {
-                const notificationTitle = data.data.title || 'SysHair';
+                const notificationTitle = data.data.title || 'Agenda Fácil 365';
                 const notificationOptions = {
                     body: data.data.body || 'Você tem uma nova notificação!',
                     icon: '/pwa-192x192.png',

@@ -85,10 +85,10 @@ const categoryLabels = {
 };
 
 const categoryColors = {
-    confirmation: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    reminder: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    followup: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    promotion: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+    confirmation: "bg-success/10 text-success border-success/20",
+    reminder: "bg-warning/10 text-warning border-warning/20",
+    followup: "bg-primary/10 text-primary border-primary/20",
+    promotion: "bg-primary/10 text-primary border-primary/20",
 };
 
 export function WhatsAppTemplates() {
@@ -216,7 +216,7 @@ Mantenha o texto conciso e direto.`,
     const categories = ["all", "confirmation", "reminder", "followup", "promotion"] as const;
 
     return (
-        <Card className="glass-card">
+        <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="text-primary" />
@@ -227,7 +227,7 @@ Mantenha o texto conciso e direto.`,
                     if (!open) resetForm();
                 }}>
                     <DialogTrigger asChild>
-                        <Button variant="gold" size="sm">
+                        <Button variant="brand" size="sm">
                             <Plus size={16} className="mr-2" />
                             Novo Template
                         </Button>
@@ -256,7 +256,7 @@ Mantenha o texto conciso e direto.`,
                                             <Button
                                                 key={cat}
                                                 type="button"
-                                                variant={formData.category === cat ? "gold" : "outline"}
+                                                variant={formData.category === cat ? "brand" : "outline"}
                                                 size="sm"
                                                 onClick={() => setFormData({ ...formData, category: cat })}
                                                 className="justify-start"
@@ -301,7 +301,7 @@ Mantenha o texto conciso e direto.`,
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                                 Cancelar
                             </Button>
-                            <Button variant="gold" onClick={handleSave}>
+                            <Button variant="brand" onClick={handleSave}>
                                 Salvar
                             </Button>
                         </div>
@@ -343,8 +343,9 @@ Mantenha o texto conciso e direto.`,
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8"
+                                                        className="h-10 w-10"
                                                         onClick={() => handleCopy(template)}
+                                                        aria-label={`Copiar modelo ${template.name}`}
                                                     >
                                                         {copiedId === template.id ? (
                                                             <Check size={14} className="text-success" />
@@ -355,16 +356,18 @@ Mantenha o texto conciso e direto.`,
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8"
+                                                        className="h-10 w-10"
                                                         onClick={() => handleEdit(template)}
+                                                        aria-label={`Editar modelo ${template.name}`}
                                                     >
                                                         <Edit2 size={14} />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8"
+                                                        className="h-10 w-10"
                                                         onClick={() => handleDelete(template.id)}
+                                                        aria-label={`Excluir modelo ${template.name}`}
                                                     >
                                                         <Trash2 size={14} className="text-destructive" />
                                                     </Button>

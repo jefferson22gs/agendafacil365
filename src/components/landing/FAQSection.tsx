@@ -1,22 +1,27 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, HelpCircle, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { BRAND } from "@/config/brand";
+import { getSupportWhatsAppLink } from "@/config/contact";
+import { cn } from "@/lib/utils";
 
+// Preços, desconto, teste e regras copiados da versão anterior — não alterar sem validação comercial.
 const faqs = [
     {
         category: "Geral",
         questions: [
             {
-                question: "O que é o SysHair?",
-                answer: "O SysHair é um sistema de gestão completo para salões de beleza, barbearias e estúdios de estética. Ele automatiza agendamentos, gerencia clientes, controla finanças e muito mais - tudo em uma única plataforma acessível pelo celular ou computador."
+                question: `O que é o ${BRAND.name}?`,
+                answer: `O ${BRAND.name} é um sistema de agendamento online e gestão para negócios de serviços, como salões de beleza, barbearias e estúdios de estética. Ele automatiza agendamentos, gerencia clientes, controla finanças e muito mais - tudo em uma única plataforma acessível pelo celular ou computador.`
             },
             {
                 question: "Preciso instalar algum programa?",
-                answer: "Não! O SysHair funciona 100% na nuvem. Você pode acessar pelo navegador do celular, tablet ou computador. Também oferecemos um app PWA que pode ser instalado na tela inicial do seu dispositivo para acesso rápido."
+                answer: `Não! O ${BRAND.name} funciona 100% na nuvem. Você pode acessar pelo navegador do celular, tablet ou computador. Também oferecemos um app PWA que pode ser instalado na tela inicial do seu dispositivo para acesso rápido.`
             },
             {
                 question: "O sistema funciona offline?",
-                answer: "Sim! Mesmo sem internet, você consegue consultar sua agenda e dados dos clientes. Quando a conexão voltar, tudo é sincronizado automaticamente."
+                answer: "O app pode ser instalado na tela inicial do celular, mas é preciso estar conectado à internet para agendar e consultar a agenda."
             }
         ]
     },
@@ -24,8 +29,8 @@ const faqs = [
         category: "Pagamento",
         questions: [
             {
-                question: "Quanto custa o SysHair?",
-                answer: "O SysHair oferece dois planos: Mensal (R$ 39,90/mês) e Anual (R$ 400,00/ano com 15% de desconto). Ambos incluem TODAS as funcionalidades, sem limite de profissionais ou agendamentos."
+                question: `Quanto custa o ${BRAND.name}?`,
+                answer: `O ${BRAND.name} oferece dois planos: Mensal (R$ 39,90/mês) e Anual (R$ 400,00/ano com 15% de desconto). Ambos incluem TODAS as funcionalidades, sem limite de profissionais ou agendamentos.`
             },
             {
                 question: "Vale a pena assinar o plano anual?",
@@ -33,7 +38,7 @@ const faqs = [
             },
             {
                 question: "Posso testar antes de assinar?",
-                answer: "Sim! Oferecemos 21 dias de teste grátis com acesso a todas as funcionalidades. Você não precisa cadastrar cartão de crédito para começar o trial."
+                answer: "Sim! Ao criar sua conta você tem 21 dias de teste grátis com acesso a todas as funcionalidades, sem cadastrar cartão de crédito. A assinatura (mensal ou anual) é feita depois, pelo Mercado Pago."
             },
             {
                 question: "Como funciona o pagamento?",
@@ -41,7 +46,7 @@ const faqs = [
             },
             {
                 question: "Vocês cobram taxa sobre os agendamentos?",
-                answer: "Não! Diferente de outros sistemas, não cobramos nenhuma taxa sobre os serviços realizados no seu salão. O valor da assinatura é fixo."
+                answer: "Não! Diferente de outros sistemas, não cobramos nenhuma taxa sobre os serviços realizados no seu negócio. O valor da assinatura é fixo."
             }
         ]
     },
@@ -50,11 +55,11 @@ const faqs = [
         questions: [
             {
                 question: "Como funciona a integração com WhatsApp?",
-                answer: "Você conecta o WhatsApp do seu salão ao SysHair e o sistema envia automaticamente: confirmações de agendamento, lembretes 24h e 1h antes, pesquisas de satisfação e mensagens de aniversário. Tudo automático!"
+                answer: `Você conecta o WhatsApp do seu negócio ao ${BRAND.name} e o sistema envia automaticamente: confirmações de agendamento, lembretes antes do horário (você escolhe a antecedência), avisos de cancelamento e reagendamento e mensagens de aniversário. Cada automação pode ser ativada separadamente.`
             },
             {
                 question: "Meus clientes conseguem agendar sozinhos?",
-                answer: "Sim! Você recebe um link personalizado (ex: syshair.app/seu-salao) que pode compartilhar nas redes sociais. Os clientes acessam, escolhem o serviço, profissional e horário - sem precisar ligar."
+                answer: "Sim! Você recebe um link próprio do seu negócio (ex.: …/s/seu-negocio) que pode compartilhar nas redes sociais. Os clientes acessam, escolhem o serviço, profissional e horário - sem precisar ligar."
             },
             {
                 question: "Posso gerenciar múltiplas unidades?",
@@ -71,11 +76,12 @@ const faqs = [
         questions: [
             {
                 question: "Como funciona o suporte?",
-                answer: "Oferecemos suporte via WhatsApp, e-mail e chat dentro do sistema. Nosso tempo médio de resposta é de 2 horas em dias úteis. Também temos uma central de ajuda com tutoriais em vídeo."
+                // ponytail: removidos "tempo médio de resposta de 2 horas" e "tutoriais em vídeo" (não verificados).
+                answer: "Oferecemos suporte via WhatsApp, e-mail e chat dentro do sistema. Também há uma central de ajuda com tutoriais dentro do painel."
             },
             {
                 question: "Vocês ajudam a migrar meus dados?",
-                answer: "Sim! Nossa equipe ajuda você a importar sua lista de clientes e configurar todos os serviços. A migração é gratuita e geralmente leva menos de 1 hora."
+                answer: "Sim! Nossa equipe ajuda você a importar sua lista de clientes e configurar todos os serviços. A migração é gratuita."
             },
             {
                 question: "E se eu quiser cancelar?",
@@ -87,141 +93,59 @@ const faqs = [
 
 export const FAQSection = () => {
     const [activeCategory, setActiveCategory] = useState("Geral");
-    const [openQuestion, setOpenQuestion] = useState<string | null>(null);
-
     const currentFAQs = faqs.find(f => f.category === activeCategory)?.questions || [];
 
     return (
-        <section className="py-24 relative overflow-hidden" id="faq">
-            <div className="absolute inset-0 bg-surface-1" />
-            <div className="absolute top-1/2 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl -translate-y-1/2" />
-
-            <div className="container relative z-10 px-4">
-                {/* Section Header */}
-                <div className="text-center max-w-2xl mx-auto mb-12">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6"
-                    >
-                        <HelpCircle className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium text-primary">Dúvidas frequentes</span>
-                    </motion.div>
-
-                    <motion.h2
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.1 }}
-                        className="font-display text-4xl md:text-5xl font-bold mb-4"
-                    >
-                        Perguntas{' '}
-                        <span className="text-gradient-gold">frequentes</span>
-                    </motion.h2>
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.2 }}
-                        className="text-lg text-muted-foreground"
-                    >
-                        Tudo que você precisa saber para começar
-                    </motion.p>
+        <section id="faq" aria-labelledby="faq-title" className="scroll-mt-20 bg-surface-1 py-16 md:py-24">
+            <div className="container px-4">
+                <div className="mx-auto mb-10 max-w-2xl text-center">
+                    <h2 id="faq-title" className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                        Perguntas frequentes
+                    </h2>
+                    <p className="mt-4 text-lg text-muted-foreground">Tudo que você precisa saber para começar.</p>
                 </div>
 
-                {/* Category Tabs */}
-                <div className="flex flex-wrap justify-center gap-3 mb-10">
-                    {faqs.map((category) => (
-                        <motion.button
-                            key={category.category}
-                            onClick={() => {
-                                setActiveCategory(category.category);
-                                setOpenQuestion(null);
-                            }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${activeCategory === category.category
-                                ? 'bg-gradient-to-r from-primary to-gold-light text-primary-foreground shadow-gold'
-                                : 'bg-card/50 text-muted-foreground border border-border/50 hover:border-primary/50 hover:text-foreground'
-                                }`}
+                <div role="group" aria-label="Categorias de perguntas" className="mb-8 flex flex-wrap justify-center gap-2">
+                    {faqs.map(({ category }) => (
+                        <button
+                            key={category}
+                            type="button"
+                            aria-pressed={activeCategory === category}
+                            onClick={() => setActiveCategory(category)}
+                            className={cn(
+                                "h-11 rounded-full px-5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                activeCategory === category
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                            )}
                         >
-                            {category.category}
-                        </motion.button>
+                            {category}
+                        </button>
                     ))}
                 </div>
 
-                {/* FAQ Accordion */}
-                <div className="max-w-3xl mx-auto space-y-4">
-                    <AnimatePresence mode="wait">
-                        {currentFAQs.map((faq, index) => (
-                            <motion.div
-                                key={faq.question}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="glass-card rounded-2xl overflow-hidden"
-                            >
-                                <button
-                                    onClick={() => setOpenQuestion(openQuestion === faq.question ? null : faq.question)}
-                                    className="w-full flex items-center justify-between p-6 text-left"
-                                >
-                                    <span className="font-medium text-foreground pr-4">{faq.question}</span>
-                                    <motion.div
-                                        animate={{ rotate: openQuestion === faq.question ? 180 : 0 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="flex-shrink-0"
-                                    >
-                                        <ChevronDown className={`w-5 h-5 transition-colors ${openQuestion === faq.question ? 'text-primary' : 'text-muted-foreground'
-                                            }`} />
-                                    </motion.div>
-                                </button>
+                <Accordion key={activeCategory} type="single" collapsible className="mx-auto max-w-3xl space-y-3">
+                    {currentFAQs.map((faq) => (
+                        <AccordionItem key={faq.question} value={faq.question} className="rounded-2xl border border-border bg-card px-6 shadow-sm">
+                            <AccordionTrigger className="min-h-11 text-left text-base font-medium text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
+                                {faq.question}
+                            </AccordionTrigger>
+                            <AccordionContent className="text-base leading-relaxed text-muted-foreground">
+                                {faq.answer}
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
 
-                                <AnimatePresence>
-                                    {openQuestion === faq.question && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.3, ease: "easeInOut" }}
-                                        >
-                                            <div className="px-6 pb-6 pt-0">
-                                                <div className="h-px bg-border/50 mb-4" />
-                                                <p className="text-muted-foreground leading-relaxed">
-                                                    {faq.answer}
-                                                </p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                <div className="mt-12 text-center">
+                    <p className="mb-4 text-muted-foreground">Não encontrou sua dúvida?</p>
+                    <Button asChild variant="outline" size="lg">
+                        <a href={getSupportWhatsAppLink('support')} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle aria-hidden />
+                            Fale conosco no WhatsApp
+                        </a>
+                    </Button>
                 </div>
-
-                {/* Contact CTA */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-center mt-12"
-                >
-                    <p className="text-muted-foreground mb-4">
-                        Não encontrou sua dúvida?
-                    </p>
-                    <motion.a
-                        href="https://wa.me/5511999999999"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-green-500 text-white font-medium hover:bg-green-600 transition-colors shadow-lg"
-                    >
-                        <MessageCircle size={20} />
-                        Fale conosco no WhatsApp
-                    </motion.a>
-                </motion.div>
             </div>
         </section>
     );

@@ -16,7 +16,7 @@ export const statusSchedulerArticles: Article[] = [
         text: "Abra Agendador de Status. Ele serve para deixar posts prontos e publicar no Status do WhatsApp do salão no horário escolhido.",
         image: { src: "/training/status-scheduler/calendar.webp", alt: "Calendário do Agendador de Status", pending: true },
       },
-      { text: "Confira o aviso de conexão. Se o WhatsApp estiver desconectado, vá pelo menu até WhatsApp e conecte por lá; o botão Conectar WhatsApp desta tela não possui ação no código atual." },
+      { text: "Confira o aviso de conexão. Se o WhatsApp estiver desconectado, abra WhatsApp no grupo Relacionamento do menu e conecte por lá. O botão Conectar WhatsApp do aviso leva direto para essa tela." },
       {
         text: "Clique em Agendar Post. Escolha Imagem, Vídeo ou Texto e selecione a mídia quando necessário.",
         image: { src: "/training/status-scheduler/new-dialog.webp", alt: "Formulário para agendar Status", pending: true },
@@ -30,7 +30,7 @@ export const statusSchedulerArticles: Article[] = [
       },
     ],
     notes: [
-      "O botão Conectar WhatsApp exibido no alerta desta tela não tem handler no código atual. Oriente o usuário a ir para a tela WhatsApp pelo menu.",
+      "O botão Conectar WhatsApp exibido no alerta desta tela abre a tela WhatsApp, onde a conexão é feita.",
       "Ao abrir, esta tela lê salons, whatsapp_instances e scheduled_posts. Não grava no banco até salvar, editar ou excluir um post.",
       "Gerar com IA usa uma chave Gemini ativa cadastrada no banco do Super Admin.",
     ],

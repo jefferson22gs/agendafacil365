@@ -29,6 +29,8 @@ import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { safeHexColor } from "@/config/brand";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 
 interface Professional {
@@ -128,7 +130,7 @@ const PublicProfessional = () => {
                 .maybeSingle();
 
             if (salonError || !salonData) {
-                setError("Salão não encontrado");
+                setError("Estabelecimento não encontrado");
                 setLoading(false);
                 return;
             }
@@ -414,12 +416,14 @@ const PublicProfessional = () => {
         }
     };
 
-    const primaryColor = salon?.primary_color || '#D4AF37';
+    // Cor do estabelecimento (só HEX válido; ausente/inválida cai no azul padrão)
+    const primaryColor = safeHexColor(salon?.primary_color);
 
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} />
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} aria-hidden="true" />
+                <span className="sr-only">Carregando</span>
             </div>
         );
     }
@@ -427,11 +431,11 @@ const PublicProfessional = () => {
     if (error || !salon || !professional) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center p-4">
-                <div className="text-center max-w-md">
-                    <AlertCircle size={48} className="mx-auto text-destructive mb-4" />
+                <div className="text-center max-w-md" role="alert">
+                    <AlertCircle size={48} className="mx-auto text-destructive mb-4" aria-hidden="true" />
                     <h1 className="text-2xl font-bold text-foreground mb-2">Ops!</h1>
                     <p className="text-muted-foreground mb-6">{error || "Página não encontrada"}</p>
-                    <Button onClick={() => navigate(`/s/${salonSlug}`)}>Voltar ao Salão</Button>
+                    <Button onClick={() => navigate(`/s/${salonSlug}`)}>Voltar ao estabelecimento</Button>
                 </div>
             </div>
         );
@@ -486,9 +490,9 @@ const PublicProfessional = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap justify-center gap-3">
                         <Button variant="outline" onClick={() => navigate(`/s/${salonSlug}`)}>
-                            Voltar ao Salão
+                            Voltar ao estabelecimento
                         </Button>
                         {salon.whatsapp && (
                             <Button
@@ -570,7 +574,7 @@ const PublicProfessional = () => {
                 {step === 1 && (
                     <div className="max-w-4xl mx-auto">
                         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 mb-6">
+                            <TabsList className="grid w-full grid-cols-3 mb-6 h-auto">
                                 <TabsTrigger value="services" className="flex items-center gap-2">
                                     <Scissors size={16} />
                                     Serviços
@@ -586,7 +590,7 @@ const PublicProfessional = () => {
                             </TabsList>
 
                             <TabsContent value="services">
-                                <div className="bg-card border border-border rounded-3xl p-6">
+                                <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
                                     <h2 className="text-xl font-bold mb-4">Selecione os serviços</h2>
 
                                     {services.length === 0 ? (
@@ -598,16 +602,18 @@ const PublicProfessional = () => {
                                         <div className="grid gap-3">
                                             {services.map((service) => (
                                                 <button
+                                                    type="button"
                                                     key={service.id}
+                                                    aria-pressed={isInCart(service.id)}
                                                     onClick={() => isInCart(service.id) ? removeFromCart(service.id) : addToCart(service)}
-                                                    className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                                                    className="relative flex items-center gap-3 sm:gap-4 p-4 rounded-2xl border-2 transition-all text-left"
                                                     style={{
                                                         borderColor: isInCart(service.id) ? primaryColor : 'hsl(var(--border))',
                                                         backgroundColor: isInCart(service.id) ? `${primaryColor}08` : 'transparent'
                                                     }}
                                                 >
-                                                    <span className="text-2xl">{service.icon || '✂️'}</span>
-                                                    <div className="flex-1">
+                                                    <span className="text-2xl" aria-hidden="true">{service.icon || '✂️'}</span>
+                                                    <div className="flex-1 min-w-0">
                                                         <p className="font-medium text-foreground">{service.name}</p>
                                                         {service.description && (
                                                             <p className="text-sm text-muted-foreground line-clamp-1">{service.description}</p>
@@ -617,11 +623,12 @@ const PublicProfessional = () => {
                                                             {service.duration_minutes}min
                                                         </div>
                                                     </div>
-                                                    <p className="text-lg font-bold text-foreground">
+                                                    <p className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">
                                                         R$ {service.price.toFixed(2)}
                                                     </p>
                                                     <div
-                                                        className="w-6 h-6 rounded-full flex items-center justify-center border-2"
+                                                        className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center border-2"
+                                                        aria-hidden="true"
                                                         style={{
                                                             borderColor: primaryColor,
                                                             backgroundColor: isInCart(service.id) ? primaryColor : 'transparent'
@@ -668,7 +675,7 @@ const PublicProfessional = () => {
                             </TabsContent>
 
                             <TabsContent value="gallery">
-                                <div className="bg-card border border-border rounded-3xl p-6">
+                                <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
                                     <h2 className="text-xl font-bold mb-4">Trabalhos de {professional.name}</h2>
 
                                     {gallery.length === 0 ? (
@@ -718,7 +725,7 @@ const PublicProfessional = () => {
                             </TabsContent>
 
                             <TabsContent value="about">
-                                <div className="bg-card border border-border rounded-3xl p-6">
+                                <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
                                     <h2 className="text-xl font-bold mb-4">Sobre {professional.name}</h2>
 
                                     {professional.bio ? (
@@ -776,7 +783,7 @@ const PublicProfessional = () => {
                 {/* Step 2: Date & Time */}
                 {step === 2 && (
                     <div className="max-w-4xl mx-auto">
-                        <div className="bg-card border border-border rounded-3xl p-6">
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold">Escolha data e horário</h2>
                                 <Button variant="ghost" onClick={() => setStep(1)}>
@@ -818,7 +825,9 @@ const PublicProfessional = () => {
                                                 <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
                                                     {availableSlots.map((slot) => (
                                                         <button
+                                                            type="button"
                                                             key={slot}
+                                                            aria-pressed={selectedTime === slot}
                                                             onClick={() => setSelectedTime(slot)}
                                                             className="p-3 rounded-lg text-sm font-medium border transition-colors"
                                                             style={{
@@ -859,7 +868,7 @@ const PublicProfessional = () => {
                 {/* Step 3: Confirm */}
                 {step === 3 && (
                     <div className="max-w-lg mx-auto">
-                        <div className="bg-card border border-border rounded-3xl p-6">
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold">Confirme seu agendamento</h2>
                                 <Button variant="ghost" onClick={() => setStep(2)}>
@@ -905,25 +914,31 @@ const PublicProfessional = () => {
 
                             {/* Dados do cliente */}
                             <div className="space-y-4">
-                                <div>
-                                    <Label>Seu nome *</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="proClientName">Seu nome *</Label>
                                     <Input
+                                        id="proClientName"
+                                        autoComplete="name"
                                         placeholder="Nome completo"
                                         value={clientName}
                                         onChange={(e) => setClientName(e.target.value)}
                                     />
                                 </div>
-                                <div>
-                                    <Label>WhatsApp *</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="proClientPhone">WhatsApp *</Label>
                                     <Input
+                                        id="proClientPhone"
+                                        type="tel"
+                                        autoComplete="tel"
                                         placeholder="(00) 00000-0000"
                                         value={clientPhone}
                                         onChange={(e) => setClientPhone(e.target.value)}
                                     />
                                 </div>
-                                <div>
-                                    <Label>Data de nascimento</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="proClientBirthday">Data de nascimento</Label>
                                     <Input
+                                        id="proClientBirthday"
                                         type="date"
                                         value={clientBirthday}
                                         onChange={(e) => setClientBirthday(e.target.value)}
@@ -946,7 +961,7 @@ const PublicProfessional = () => {
                                         </label>
                                         <p className="text-sm text-muted-foreground">
                                             Concordo que o profissional tire fotos do meu procedimento para compor o portfólio,
-                                            conforme os <button onClick={() => setShowTerms(true)} className="text-primary underline hover:text-primary/80">Termos de Uso de Imagem</button>.
+                                            conforme os <button type="button" onClick={() => setShowTerms(true)} className="text-primary underline hover:text-primary/80">Termos de Uso de Imagem</button>.
                                         </p>
                                     </div>
                                 </div>
@@ -966,7 +981,7 @@ const PublicProfessional = () => {
                                             <p>
                                                 2. <strong>Finalidade:</strong> As imagens serão utilizadas exclusivamente para fins de divulgação do trabalho profissional (portfólio), podendo ser veiculadas em:
                                                 <ul className="list-disc pl-5 mt-1">
-                                                    <li>Redes sociais do profissional e do salão (Instagram, Facebook, etc.);</li>
+                                                    <li>Redes sociais do profissional e do estabelecimento (Instagram, Facebook, etc.);</li>
                                                     <li>Site oficial;</li>
                                                     <li>Materiais impressos de divulgação.</li>
                                                 </ul>

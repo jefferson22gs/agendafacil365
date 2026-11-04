@@ -21,7 +21,7 @@ const TOGGLES: { key: Flags; label: string; hint: string }[] = [
   { key: "cancellation_enabled", label: "Aviso de cancelamento", hint: "Avisa o cliente quando o horário é cancelado." },
   { key: "reschedule_enabled", label: "Aviso de remarcação", hint: "Envia o novo dia e horário quando o agendamento muda." },
   { key: "birthday_enabled", label: "Mensagem de aniversário", hint: "Parabéns no dia do aniversário do cliente." },
-  { key: "chatbot_booking_enabled", label: "Chatbot pode criar agendamentos", hint: "O cliente precisa responder CONFIRMAR. O pedido fica pendente até o salão confirmar." },
+  { key: "chatbot_booking_enabled", label: "Chatbot pode criar agendamentos", hint: "O cliente precisa responder CONFIRMAR. O pedido fica pendente até o estabelecimento confirmar." },
 ];
 
 // Mesmos valores aceitos pela constraint do banco.
@@ -67,13 +67,13 @@ export function AutomationSettings({ salonId }: { salonId: string }) {
     toast(error ? { title: "Não foi possível salvar. Tente novamente.", variant: "destructive" } : { title: "Mensagens automáticas salvas." });
   };
 
-  if (loading) return <Card><CardContent className="p-6 flex justify-center"><Loader2 className="animate-spin" /></CardContent></Card>;
+  if (loading) return <Card><CardContent className="p-6 flex items-center justify-center gap-2 text-sm text-muted-foreground" role="status"><Loader2 className="animate-spin" aria-hidden />Carregando mensagens automáticas…</CardContent></Card>;
 
   return (
     <Card data-tour="whatsapp-automations">
       <CardHeader>
         <CardTitle>Mensagens automáticas</CardTitle>
-        <CardDescription>Escolha o que o sistema envia sozinho pelo WhatsApp do salão. Tudo começa desligado.</CardDescription>
+        <CardDescription>Escolha o que o sistema envia sozinho pelo WhatsApp do estabelecimento. Tudo começa desligado.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {TOGGLES.map(t => (
@@ -87,12 +87,12 @@ export function AutomationSettings({ salonId }: { salonId: string }) {
             <p className="text-sm font-medium mb-3">Quando enviar o lembrete</p>
             <div className="flex flex-wrap gap-2">
               {REMINDER_OPTIONS.map(o => (
-                <Button key={o.minutes} type="button" size="sm" variant={settings.reminder_minutes.includes(o.minutes) ? "default" : "outline"} onClick={() => toggleReminder(o.minutes)}>{o.label}</Button>
+                <Button key={o.minutes} type="button" size="sm" variant={settings.reminder_minutes.includes(o.minutes) ? "default" : "outline"} aria-pressed={settings.reminder_minutes.includes(o.minutes)} onClick={() => toggleReminder(o.minutes)}>{o.label}</Button>
               ))}
             </div>
           </div>
         )}
-        <div className="flex justify-end"><Button variant="gold" disabled={saving} onClick={() => void save()}>{saving && <Loader2 className="animate-spin mr-2" size={16} />}Salvar</Button></div>
+        <div className="flex justify-end"><Button variant="brand" disabled={saving} onClick={() => void save()}>{saving && <Loader2 className="animate-spin mr-2" size={16} />}Salvar</Button></div>
       </CardContent>
     </Card>
   );

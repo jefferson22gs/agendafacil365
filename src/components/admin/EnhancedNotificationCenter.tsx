@@ -44,33 +44,33 @@ interface EnhancedNotificationCenterProps {
 const typeConfig = {
     appointment: {
         icon: Calendar,
-        color: "text-blue-500",
-        bgColor: "bg-blue-500/10",
+        color: "text-primary",
+        bgColor: "bg-primary/10",
     },
     payment: {
         icon: DollarSign,
-        color: "text-emerald-500",
-        bgColor: "bg-emerald-500/10",
+        color: "text-success",
+        bgColor: "bg-success/10",
     },
     review: {
         icon: Star,
-        color: "text-amber-500",
-        bgColor: "bg-amber-500/10",
+        color: "text-warning",
+        bgColor: "bg-warning/10",
     },
     message: {
         icon: MessageSquare,
-        color: "text-purple-500",
-        bgColor: "bg-purple-500/10",
+        color: "text-primary",
+        bgColor: "bg-primary/10",
     },
     client: {
         icon: Users,
-        color: "text-pink-500",
-        bgColor: "bg-pink-500/10",
+        color: "text-primary",
+        bgColor: "bg-primary/10",
     },
     system: {
         icon: Settings,
-        color: "text-gray-500",
-        bgColor: "bg-gray-500/10",
+        color: "text-muted-foreground",
+        bgColor: "bg-muted",
     },
 };
 
@@ -152,7 +152,8 @@ function NotificationItem({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="h-9 w-9"
+                        aria-label="Marcar como lida"
                         onClick={(e) => {
                             e.stopPropagation();
                             onMarkAsRead?.(notification.id);
@@ -164,7 +165,8 @@ function NotificationItem({
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    className="h-9 w-9 text-destructive hover:text-destructive"
+                    aria-label="Excluir notificação"
                     onClick={(e) => {
                         e.stopPropagation();
                         onDelete?.(notification.id);
@@ -204,7 +206,7 @@ export function EnhancedNotificationCenter({
     };
 
     return (
-        <Card className={cn("glass-card", className)}>
+        <Card className={className}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="flex items-center gap-2">
                     <Bell className="text-primary" />
@@ -238,7 +240,7 @@ export function EnhancedNotificationCenter({
                         return (
                             <Button
                                 key={type}
-                                variant={filter === type ? "gold" : "outline"}
+                                variant={filter === type ? "brand" : "outline"}
                                 size="sm"
                                 onClick={() => setFilter(type)}
                                 className="flex-shrink-0"

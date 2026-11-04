@@ -18,7 +18,7 @@ function ArticleLink({ article, onOpen }: { article: Article; onOpen: (a: Articl
     <button
       type="button"
       onClick={() => onOpen(article)}
-      className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-secondary"
+      className="w-full min-h-[44px] flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
     >
       <BookOpen size={16} className="text-muted-foreground flex-shrink-0" aria-hidden />
       <span className="flex-1 min-w-0 truncate">{article.title}</span>
@@ -111,7 +111,7 @@ export default function HelpPanel() {
             <button
               type="button"
               onClick={() => (nextTask?.tourId ? void startTour(nextTask.tourId) : goCenter())}
-              className="w-full flex items-center gap-3 rounded-xl border border-border p-3 text-left hover:bg-secondary"
+              className="w-full flex items-center gap-3 rounded-xl border border-border p-3 text-left hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ListChecks size={20} className="text-primary flex-shrink-0" aria-hidden />
               <span className="flex-1 min-w-0">

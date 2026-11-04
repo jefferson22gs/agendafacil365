@@ -233,7 +233,7 @@ export function AddToWaitlistForm({ salonId, onSuccess, className }: AddToWaitli
                                 <Button
                                     key={p}
                                     type="button"
-                                    variant={formData.priority === p ? "gold" : "outline"}
+                                    variant={formData.priority === p ? "brand" : "outline"}
                                     size="sm"
                                     onClick={() => setFormData({ ...formData, priority: p })}
                                 >
@@ -242,7 +242,7 @@ export function AddToWaitlistForm({ salonId, onSuccess, className }: AddToWaitli
                             ))}
                         </div>
                     </div>
-                    <Button type="submit" variant="gold" className="w-full" disabled={loading}>
+                    <Button type="submit" variant="brand" className="w-full" disabled={loading}>
                         {loading ? "Adicionando..." : "Adicionar à Fila"}
                     </Button>
                 </form>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { BRAND } from '@/config/brand';
 
 const Install = () => {
   const { isInstallable, isInstalled, installApp } = usePWA();
@@ -30,41 +31,43 @@ const Install = () => {
 
   if (isInstalled) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="text-center"
         >
           <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-success/10 flex items-center justify-center">
-            <Check size={40} className="text-success" />
+            <Check size={40} className="text-success" aria-hidden="true" />
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             App Instalado!
           </h1>
           <p className="text-muted-foreground mb-6">
-            O SysHair já está instalado no seu dispositivo
+            O {BRAND.name} já está instalado no seu dispositivo
           </p>
-          <Link to="/">
-            <Button variant="gold">
-              Ir para o App
-            </Button>
-          </Link>
+          <Button asChild variant="brand" size="lg">
+            <Link to="/">Ir para o app</Link>
+          </Button>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/50">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/" className="p-2 -ml-2 rounded-xl hover:bg-secondary transition-colors">
-            <ArrowLeft size={24} />
+          <Link
+            to="/"
+            aria-label="Voltar ao início"
+            className="flex h-11 w-11 -ml-2 items-center justify-center rounded-xl hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ArrowLeft size={24} aria-hidden="true" />
           </Link>
           <div>
-            <h1 className="font-display text-xl font-bold text-foreground">Instalar SysHair</h1>
+            <h1 className="font-display text-xl font-bold text-foreground">Instalar {BRAND.name}</h1>
             <p className="text-sm text-muted-foreground">Tenha o app na sua tela inicial</p>
           </div>
         </div>
@@ -77,11 +80,9 @@ const Install = () => {
           animate={{ y: 0, opacity: 1 }}
           className="text-center mb-8"
         >
-          <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center shadow-gold">
-            <span className="text-4xl font-display font-bold text-primary-foreground">S</span>
-          </div>
+          <img src={BRAND.assets.appIcon} alt="" aria-hidden="true" className="w-24 h-24 mx-auto mb-6 rounded-3xl shadow-md" />
           <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-            Instale o SysHair
+            Instale o {BRAND.name}
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto">
             Acesse rapidamente, receba notificações e use offline
@@ -95,13 +96,13 @@ const Install = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="glass-card border-primary/30 bg-primary/5">
+            <Card className="border-primary/30 bg-card">
               <CardContent className="p-6 text-center">
                 <p className="text-foreground mb-4 font-medium">
                   Seu navegador suporta instalação direta!
                 </p>
-                <Button variant="gold" size="lg" onClick={handleInstall} className="w-full max-w-xs">
-                  <Download size={20} className="mr-2" />
+                <Button variant="brand" size="lg" onClick={handleInstall} className="w-full max-w-xs">
+                  <Download size={20} className="mr-2" aria-hidden="true" />
                   Instalar Agora
                 </Button>
               </CardContent>
@@ -115,22 +116,24 @@ const Install = () => {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 hide-scrollbar">
-            {[
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 hide-scrollbar" role="group" aria-label="Escolha seu dispositivo">
+            {([
               { id: 'ios', label: 'iPhone / iPad', icon: Smartphone },
               { id: 'android', label: 'Android', icon: Smartphone },
               { id: 'desktop', label: 'Computador', icon: Monitor },
-            ].map((tab) => (
+            ] as const).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl whitespace-nowrap transition-all ${
+                type="button"
+                aria-pressed={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex min-h-11 items-center gap-2 px-4 py-3 rounded-xl whitespace-nowrap transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   activeTab === tab.id
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                 }`}
               >
-                <tab.icon size={18} />
+                <tab.icon size={18} aria-hidden="true" />
                 {tab.label}
               </button>
             ))}
@@ -138,7 +141,7 @@ const Install = () => {
 
           {/* iOS Instructions */}
           {activeTab === 'ios' && (
-            <Card className="glass-card">
+            <Card className="bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Smartphone size={20} className="text-primary" />
@@ -179,7 +182,7 @@ const Install = () => {
 
           {/* Android Instructions */}
           {activeTab === 'android' && (
-            <Card className="glass-card">
+            <Card className="bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Smartphone size={20} className="text-primary" />
@@ -220,7 +223,7 @@ const Install = () => {
 
           {/* Desktop Instructions */}
           {activeTab === 'desktop' && (
-            <Card className="glass-card">
+            <Card className="bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Monitor size={20} className="text-primary" />
@@ -240,7 +243,7 @@ const Install = () => {
                 <InstallStep 
                   number={2}
                   title="Clique no ícone de instalação"
-                  description="Ou use o menu do navegador (⋮) > 'Instalar SysHair'"
+                  description={`Ou use o menu do navegador (⋮) > 'Instalar ${BRAND.name}'`}
                   icon={<MoreVertical size={20} />}
                 />
                 <InstallStep 
@@ -270,7 +273,7 @@ const Install = () => {
               { title: 'Funciona offline', description: 'Veja sua agenda sem internet' },
               { title: 'Tela cheia', description: 'Experiência de app nativo' },
             ].map((benefit, index) => (
-              <Card key={index} className="glass-card">
+              <Card key={index} className="bg-card">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <Check size={18} className="text-primary" />

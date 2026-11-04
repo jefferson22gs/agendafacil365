@@ -156,5 +156,5 @@ export async function answerCommand(ctx: SalonCtx, cmd: AdminCommand, showProfes
   if (error) throw new WhatsAppError("persistence_failed", 503);
   if (!data?.length) return "✅ Nenhum agendamento aguardando confirmação.";
   const n = (r: unknown) => (Array.isArray(r) ? r[0] : r as { name?: string } | null)?.name ?? "";
-  return [`⏳ Pendentes de confirmação — ${data.length}`, "", ...data.map(a => `${a.date.split("-").reverse().join("/")} ${String(a.start_time).slice(0, 5)} · ${a.client_name ?? "Cliente"} · ${n(a.services)}`), "", "Confirme pela agenda do SysHair."].join("\n");
+  return [`⏳ Pendentes de confirmação — ${data.length}`, "", ...data.map(a => `${a.date.split("-").reverse().join("/")} ${String(a.start_time).slice(0, 5)} · ${a.client_name ?? "Cliente"} · ${n(a.services)}`), "", "Confirme pela agenda do Agenda Fácil 365."].join("\n");
 }

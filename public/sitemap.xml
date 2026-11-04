@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Só páginas de marketing indexáveis. Páginas /s/:slug de estabelecimentos ficam fora até haver geração server-side por tenant. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://agendafacil365.com.br/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://agendafacil365.com.br/register</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://agendafacil365.com.br/install</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+</urlset>

@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { StatCard } from "@/components/admin/StatCard";
 import { 
   Building2, 
   Plus, 
@@ -166,8 +169,9 @@ const MultiUnitsPage = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="status">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" aria-hidden></div>
+          <p className="text-sm text-muted-foreground">Carregando unidades…</p>
         </div>
       </AdminLayout>
     );
@@ -177,155 +181,85 @@ const MultiUnitsPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4" data-tour="multi-units-header">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              Multi-Unidades
-            </h1>
-            <p className="text-muted-foreground">
-              {group ? `Grupo: ${group.name}` : 'Gerencie múltiplas unidades do seu negócio'}
-            </p>
-          </div>
-          
-          {!group && (
+        <div data-tour="multi-units-header">
+          <PageHeader
+            className="mb-0"
+            title="Multi-Unidades"
+            description={group ? `Grupo: ${group.name}` : 'Gerencie múltiplas unidades do seu negócio.'}
+            actions={!group && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="gold" data-tour="multi-units-create-button">
+                <Button variant="brand" data-tour="multi-units-create-button">
                   <Plus size={18} className="mr-2" />
                   Criar Grupo
                 </Button>
               </DialogTrigger>
               <DialogContent data-tour="multi-units-dialog">
                 <DialogHeader>
-                  <DialogTitle>Criar Grupo de Salões</DialogTitle>
+                  <DialogTitle>Criar grupo de unidades</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Nome do Grupo</Label>
+                    <Label htmlFor="multi-units-group-name">Nome do Grupo</Label>
                     <Input
+                      id="multi-units-group-name"
                       data-tour="multi-units-group-name"
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
                       placeholder="Ex: Rede Beauty Hair"
                     />
                   </div>
-                  <Button variant="gold" className="w-full" onClick={createGroup} data-tour="multi-units-save">
+                  <Button variant="brand" className="w-full" onClick={createGroup} data-tour="multi-units-save">
                     Criar Grupo
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           )}
+          />
         </div>
 
         {/* Consolidated Stats */}
         {group && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4" data-tour="multi-units-totals">
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                    <DollarSign size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      R$ {totalStats.revenue.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Faturamento Total</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                    <Calendar size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {totalStats.appointments}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Agendamentos</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Users size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {totalStats.clients}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Clientes Total</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
-                    <Building2 size={20} className="text-primary-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {units.length}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Unidades</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="multi-units-totals">
+            <StatCard icon={DollarSign} tone="success" label="Faturamento Total" value={`R$ ${totalStats.revenue.toFixed(2)}`} />
+            <StatCard icon={Calendar} label="Agendamentos" value={totalStats.appointments} />
+            <StatCard icon={Users} label="Clientes Total" value={totalStats.clients} />
+            <StatCard icon={Building2} tone="neutral" label="Unidades" value={units.length} />
           </div>
         )}
 
         {/* Units Grid */}
         {units.length === 0 ? (
-          <Card className="glass-card" data-tour="multi-units-empty">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Building2 size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">Nenhuma unidade encontrada</p>
-              <p className="text-sm text-muted-foreground">
-                Configure seu primeiro salão para começar
-              </p>
-            </CardContent>
-          </Card>
+          <div data-tour="multi-units-empty">
+            <EmptyState icon={Building2} title="Nenhuma unidade encontrada" description="Configure seu primeiro estabelecimento para começar." />
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="multi-units-list">
             {units.map((unit) => (
-              <Card key={unit.id} className="glass-card">
+              <Card key={unit.id}>
                 <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
-                        <Building2 size={24} className="text-primary-foreground" />
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center" aria-hidden>
+                        <Building2 size={24} />
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">{unit.name}</CardTitle>
+                      <div className="min-w-0">
+                        <CardTitle className="text-lg truncate">{unit.name}</CardTitle>
                         <p className="text-xs text-muted-foreground">
                           {unit.city && unit.state ? `${unit.city}, ${unit.state}` : 'Sem localização'}
                         </p>
                       </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      unit.is_active ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'
-                    }`}>
+                    <Badge variant={unit.is_active ? 'success' : 'secondary'}>
                       {unit.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-lg font-bold text-primary">
+                      <p className="text-lg font-bold text-primary tabular-nums">
                         R$ {(unit.stats?.revenue || 0).toFixed(0)}
                       </p>
                       <p className="text-xs text-muted-foreground">Faturamento</p>
@@ -351,21 +285,21 @@ const MultiUnitsPage = () => {
 
         {/* Info Card */}
         {!group && units.length > 0 && (
-          <Card className="glass-card border-primary/30">
+          <Card className="border-primary/30">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center" aria-hidden>
                   <BarChart3 size={24} className="text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">
                     Expanda seu negócio
                   </h3>
                   <p className="text-sm text-muted-foreground mb-3">
                     Crie um grupo para gerenciar múltiplas unidades, ver relatórios consolidados 
                     e comparar o desempenho entre suas unidades.
                   </p>
-                  <Button variant="gold" size="sm" onClick={() => setIsDialogOpen(true)}>
+                  <Button variant="brand" size="sm" onClick={() => setIsDialogOpen(true)}>
                     <Plus size={16} className="mr-2" />
                     Criar Grupo de Franquias
                   </Button>

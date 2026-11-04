@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Clock, Users, Phone, CheckCircle2, ArrowRight } from "lucide-react";
-import { Logo } from "@/components/icons/Logo";
+import { BRAND } from "@/config/brand";
 import { motion } from "framer-motion";
 
 interface WaitlistEntry {
@@ -55,7 +55,7 @@ const PublicWaitlist = () => {
             });
         } catch (error) {
             console.error("Error fetching salon:", error);
-            toast.error("Salão não encontrado");
+            toast.error("Estabelecimento não encontrado");
         } finally {
             setLoading(false);
         }
@@ -102,7 +102,7 @@ const PublicWaitlist = () => {
         return (
             <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center p-4">
                 <Card className="max-w-md w-full glass-card text-center p-8">
-                    <h2 className="text-xl font-bold mb-2">Salão não encontrado</h2>
+                    <h2 className="text-xl font-bold mb-2">Estabelecimento não encontrado</h2>
                     <p className="text-muted-foreground">Verifique o link e tente novamente</p>
                 </Card>
             </div>
@@ -114,7 +114,14 @@ const PublicWaitlist = () => {
             <div className="max-w-md mx-auto space-y-6">
                 {/* Header */}
                 <div className="text-center">
-                    <Logo size="lg" className="mx-auto mb-4" />
+                    {/* Identidade do estabelecimento prevalece; sem logo, só o nome. */}
+                    {salon.logo_url && (
+                        <img
+                            src={salon.logo_url}
+                            alt=""
+                            className="w-20 h-20 mx-auto mb-4 rounded-2xl object-cover border border-border bg-card"
+                        />
+                    )}
                     <h1 className="text-2xl font-bold">{salon.name}</h1>
                     <p className="text-muted-foreground">Fila de Espera</p>
                 </div>
@@ -207,7 +214,7 @@ const PublicWaitlist = () => {
                                 </div>
                                 <Button
                                     type="submit"
-                                    variant="gold"
+                                    variant="brand"
                                     className="w-full"
                                     disabled={submitting}
                                 >
@@ -228,7 +235,7 @@ const PublicWaitlist = () => {
                 {/* Footer */}
                 <div className="text-center text-xs text-muted-foreground">
                     <p>Desenvolvido por Código Base</p>
-                    <p>Sistema SysHair</p>
+                    <p>{BRAND.poweredBy}</p>
                 </div>
             </div>
         </div>

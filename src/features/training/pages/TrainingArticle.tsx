@@ -55,7 +55,7 @@ export default function TrainingArticle() {
   if (!article) return (
     <AdminLayout><div className="max-w-3xl mx-auto"><p className="text-lg font-medium">Tutorial não encontrado.</p><Button variant="link" asChild><Link to="/admin/training">Voltar à Central de Treinamento</Link></Button></div></AdminLayout>
   );
-  if (!isAdminArea) return <AdminLayout><p>O treinamento é destinado à administração do salão.</p></AdminLayout>;
+  if (!isAdminArea) return <AdminLayout><p>O treinamento é destinado à administração do estabelecimento.</p></AdminLayout>;
 
   return (
     <AdminLayout>
@@ -67,7 +67,7 @@ export default function TrainingArticle() {
           <p className="text-muted-foreground mt-2">{article.summary}</p>
           <div className="flex gap-4 items-center text-sm text-muted-foreground mt-3"><span className="inline-flex items-center gap-1"><Clock size={15} aria-hidden /> Cerca de {article.minutes} min</span><span className="capitalize">{article.difficulty}</span><span>Versão {article.version}</span></div>
           <div className="flex flex-wrap gap-2 mt-4">
-            {article.tourId && <Button variant="gold" onClick={() => void startTour(article.tourId!)}><PlayCircle size={18} className="mr-2" aria-hidden /> Me mostre onde fazer</Button>}
+            {article.tourId && <Button variant="brand" onClick={() => void startTour(article.tourId!)}><PlayCircle size={18} className="mr-2" aria-hidden /> Me mostre onde fazer</Button>}
             {article.route && <Button variant="outline" asChild><Link to={article.route}><ExternalLink size={16} className="mr-2" aria-hidden /> Abrir tela</Link></Button>}
           </div>
         </header>

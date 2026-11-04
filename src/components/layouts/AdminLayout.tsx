@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "@/components/icons/Logo";
 import { Button } from "@/components/ui/button";
@@ -54,31 +54,60 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/admin", shortLabel: "Início" },
-  { icon: Calendar, label: "Agendamentos", path: "/admin/appointments", shortLabel: "Agenda" },
-  { icon: Users, label: "Clientes", path: "/admin/clients", shortLabel: "Clientes" },
-  { icon: Upload, label: "Importar Contatos", path: "/admin/import-contacts", shortLabel: "Importar", isNew: true },
-  { icon: UserCog, label: "Profissionais", path: "/admin/professionals", shortLabel: "Equipe" },
-  { icon: ClipboardList, label: "Serviços", path: "/admin/services", shortLabel: "Serviços" },
-  { icon: Gift, label: "Cupons", path: "/admin/coupons", shortLabel: "Cupons" },
-  { icon: Package, label: "Pacotes", path: "/admin/packages", shortLabel: "Pacotes" },
-  { icon: DollarSign, label: "Financeiro", path: "/admin/financial", shortLabel: "Financeiro" },
-  { icon: BarChart3, label: "Analytics", path: "/admin/analytics", shortLabel: "Analytics" },
-  { icon: Smartphone, label: "WhatsApp", path: "/admin/whatsapp", shortLabel: "WhatsApp", isNew: true },
-  { icon: Bot, label: "Chatbot IA", path: "/admin/chatbot", shortLabel: "Chatbot", isNew: true },
-  { icon: CalendarDays, label: "Agendador Status", path: "/admin/status-scheduler", shortLabel: "Status", isNew: true },
-  { icon: Send, label: "Disparador", path: "/admin/broadcast", shortLabel: "Disparo", isNew: true },
-  { icon: Brain, label: "Recursos Avançados", path: "/admin/advanced", shortLabel: "Avançado" },
-  { icon: ShoppingBag, label: "Produtos", path: "/admin/products", shortLabel: "Produtos" },
-  { icon: Star, label: "Avaliações", path: "/admin/reviews", shortLabel: "Avaliações" },
-  { icon: Image, label: "Galeria", path: "/admin/gallery", shortLabel: "Galeria" },
-  { icon: Building2, label: "Multi-Unidades", path: "/admin/multi-units", shortLabel: "Unidades" },
-  { icon: Crown, label: "Minha Assinatura", path: "/admin/subscription", shortLabel: "Assinatura" },
-  { icon: Megaphone, label: "Marketing", path: "/admin/marketing", shortLabel: "Marketing" },
-  { icon: Settings, label: "Configurações", path: "/admin/settings", shortLabel: "Config" },
-  { icon: GraduationCap, label: "Central de Treinamento", path: "/admin/training", shortLabel: "Ajuda" },
+// Mesmos 23 destinos de antes, agrupados. Paths e data-tour (sidebarId) inalterados.
+const menuGroups = [
+  {
+    title: "Operação",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/admin", shortLabel: "Início" },
+      { icon: Calendar, label: "Agendamentos", path: "/admin/appointments", shortLabel: "Agenda" },
+      { icon: Users, label: "Clientes", path: "/admin/clients", shortLabel: "Clientes" },
+      { icon: UserCog, label: "Profissionais", path: "/admin/professionals", shortLabel: "Equipe" },
+      { icon: ClipboardList, label: "Serviços", path: "/admin/services", shortLabel: "Serviços" },
+    ],
+  },
+  {
+    title: "Gestão",
+    items: [
+      { icon: DollarSign, label: "Financeiro", path: "/admin/financial", shortLabel: "Financeiro" },
+      { icon: BarChart3, label: "Analytics", path: "/admin/analytics", shortLabel: "Analytics" },
+      { icon: Package, label: "Pacotes", path: "/admin/packages", shortLabel: "Pacotes" },
+      { icon: Gift, label: "Cupons", path: "/admin/coupons", shortLabel: "Cupons" },
+      { icon: ShoppingBag, label: "Produtos", path: "/admin/products", shortLabel: "Produtos" },
+      { icon: Building2, label: "Multi-Unidades", path: "/admin/multi-units", shortLabel: "Unidades" },
+      { icon: Brain, label: "Recursos Avançados", path: "/admin/advanced", shortLabel: "Avançado" },
+    ],
+  },
+  {
+    title: "Relacionamento",
+    items: [
+      { icon: Smartphone, label: "WhatsApp", path: "/admin/whatsapp", shortLabel: "WhatsApp", isNew: true },
+      { icon: Bot, label: "Chatbot IA", path: "/admin/chatbot", shortLabel: "Chatbot", isNew: true },
+      { icon: Send, label: "Disparador", path: "/admin/broadcast", shortLabel: "Disparo", isNew: true },
+      { icon: CalendarDays, label: "Agendador Status", path: "/admin/status-scheduler", shortLabel: "Status", isNew: true },
+      { icon: Megaphone, label: "Marketing", path: "/admin/marketing", shortLabel: "Marketing" },
+      { icon: Star, label: "Avaliações", path: "/admin/reviews", shortLabel: "Avaliações" },
+      { icon: Image, label: "Galeria", path: "/admin/gallery", shortLabel: "Galeria" },
+      { icon: Upload, label: "Importar Contatos", path: "/admin/import-contacts", shortLabel: "Importar", isNew: true },
+    ],
+  },
+  {
+    title: "Configurações e ajuda",
+    items: [
+      { icon: Settings, label: "Configurações", path: "/admin/settings", shortLabel: "Config" },
+      { icon: Crown, label: "Minha Assinatura", path: "/admin/subscription", shortLabel: "Assinatura" },
+      { icon: GraduationCap, label: "Central de Treinamento", path: "/admin/training", shortLabel: "Ajuda" },
+    ],
+  },
 ];
+const menuItems = menuGroups.flatMap(g => g.items);
+
+// Título do cabeçalho também para sub-rotas sem item próprio.
+const EXTRA_TITLES: Record<string, string> = { "/admin/export-contacts": "Exportar Contatos" };
+const pageTitle = (pathname: string) =>
+  menuItems.find(i => i.path === pathname)?.label
+  ?? EXTRA_TITLES[pathname]
+  ?? (pathname.startsWith("/admin/training/") ? "Central de Treinamento" : "Dashboard");
 
 // Bottom navigation items (mobile only) - most used features
 const bottomNavItems = [
@@ -109,6 +138,29 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // Drawer mobile: Esc fecha, foco entra no drawer e volta ao botão que abriu.
+  const sidebarRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    sidebarRef.current?.querySelector<HTMLElement>("button")?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+      if (e.key !== "Tab" || !sidebarRef.current) return;
+      const f = sidebarRef.current.querySelectorAll<HTMLElement>("button, a[href]");
+      if (!f.length) return;
+      const [first, last] = [f[0], f[f.length - 1]];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      openerRef.current?.focus?.();
+    };
+  }, [sidebarOpen]);
 
   const fetchSalonData = async () => {
     if (!user) return;
@@ -146,100 +198,107 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Sidebar - Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-brand-navy/50 backdrop-blur-[2px] z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50",
-        "w-[280px] lg:w-64 bg-sidebar border-r border-sidebar-border",
-        "transform transition-transform duration-300 ease-in-out",
-        "safe-top safe-bottom",
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      )}>
+      {/* Sidebar navy (logo branco integral) */}
+      <aside
+        ref={sidebarRef}
+        id="admin-sidebar"
+        aria-label="Menu principal"
+        className={cn(
+          "fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50",
+          "w-[280px] lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
+          "transform transition-transform duration-300 ease-in-out",
+          "safe-top safe-bottom",
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
         <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-            <Logo size="sm" />
+          <div className="flex items-center justify-between gap-2 px-4 h-16 border-b border-sidebar-border">
+            <Logo size="sm" variant="white" className="max-w-[184px]" />
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 text-sidebar-foreground hover:text-sidebar-primary touch-target"
+              className="lg:hidden p-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent touch-target"
+              aria-label="Fechar menu"
             >
-              <X size={24} />
+              <X size={22} aria-hidden />
             </button>
           </div>
 
-          {/* Salon Selector */}
-          <div className="p-4">
+          {/* Estabelecimento */}
+          <div className="p-3">
             <button
               onClick={() => navigate('/admin/settings')}
               data-tour={LAYOUT_IDS.salonSelector}
-              className="w-full flex items-center justify-between p-3 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors touch-target"
+              className="w-full flex items-center justify-between gap-2 p-3 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors touch-target focus-visible:ring-2 focus-visible:ring-sidebar-ring"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0" aria-hidden>
                   {salonName ? salonName.charAt(0).toUpperCase() : displayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="font-medium text-sidebar-foreground text-sm truncate">
-                    {salonName || "Configurar Salão"}
+                  <p className="font-semibold text-sidebar-foreground text-sm truncate">
+                    {salonName || "Configurar estabelecimento"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Administrador
-                  </p>
+                  <p className="text-xs text-sidebar-muted">Administrador</p>
                 </div>
               </div>
-              <ChevronDown size={16} className="text-muted-foreground flex-shrink-0" />
+              <Settings size={16} className="text-sidebar-muted flex-shrink-0" aria-hidden />
             </button>
           </div>
 
-          {/* Offline indicator */}
           {!isOnline && (
-            <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 flex items-center gap-2 text-warning text-sm">
-              <WifiOff size={16} />
+            <div role="status" className="mx-3 mb-2 px-3 py-2 rounded-lg bg-white/10 border border-white/15 flex items-center gap-2 text-sidebar-foreground text-sm">
+              <WifiOff size={16} aria-hidden />
               <span>Modo offline</span>
             </div>
           )}
 
-          {/* Navigation */}
-          <nav className="flex-1 px-3 py-2 overflow-y-auto momentum-scroll" data-tour={LAYOUT_IDS.sidebar}>
-            <ul className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <li key={item.label}>
-                    <button
-                      data-tour={sidebarId(item.path)}
-                      aria-current={isActive ? "page" : undefined}
-                      onClick={() => {
-                        navigate(item.path);
-                        setSidebarOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors touch-target",
-                        isActive
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent/80'
-                      )}
-                    >
-                      <item.icon size={20} className="flex-shrink-0" />
-                      <span className="font-medium truncate">{item.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+          {/* Navegação agrupada */}
+          <nav className="flex-1 px-3 pb-3 overflow-y-auto momentum-scroll" data-tour={LAYOUT_IDS.sidebar}>
+            {menuGroups.map((group) => (
+              <div key={group.title} className="mt-3 first:mt-0">
+                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">{group.title}</p>
+                <ul className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const isActive = location.pathname === item.path || (item.path === "/admin/training" && location.pathname.startsWith("/admin/training/"));
+                    return (
+                      <li key={item.path}>
+                        <button
+                          data-tour={sidebarId(item.path)}
+                          aria-current={isActive ? "page" : undefined}
+                          onClick={() => {
+                            navigate(item.path);
+                            setSidebarOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                            isActive
+                              ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold'
+                              : 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-white'
+                          )}
+                        >
+                          <item.icon size={18} className="flex-shrink-0" aria-hidden />
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
           </nav>
 
-          {/* Sidebar Footer */}
-          <div className="p-4 border-t border-sidebar-border safe-bottom">
+          <div className="p-3 border-t border-sidebar-border safe-bottom">
             <button
               onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors touch-target"
+              className="w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
             >
-              <LogOut size={20} />
+              <LogOut size={18} aria-hidden />
               <span className="font-medium">Sair</span>
             </button>
           </div>
@@ -250,39 +309,42 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0">
         {/* Top Header */}
         <header className="sticky-header">
-          <div className="flex items-center justify-between px-4 lg:px-8 h-14 lg:h-16">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-4 lg:px-8 h-14 lg:h-16">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 text-foreground touch-target -ml-2"
+                className="lg:hidden p-2 rounded-lg text-foreground hover:bg-secondary touch-target -ml-2"
                 aria-label="Abrir menu"
+                aria-expanded={sidebarOpen}
+                aria-controls="admin-sidebar"
                 data-tour={LAYOUT_IDS.menuButton}
               >
-                <Menu size={24} />
+                <Menu size={24} aria-hidden />
               </button>
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-semibold text-foreground truncate">
-                  {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
+              <Logo size="sm" showText={false} className="hidden sm:inline-flex lg:hidden" />
+              <div className="min-w-0">
+                <p className="hidden sm:block text-xs text-muted-foreground truncate">{salonName || "Painel"}</p>
+                <h1 className="text-base sm:text-lg font-semibold text-foreground truncate">
+                  {pageTitle(location.pathname)}
                 </h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <HelpButton />
               <ThemeSelector />
 
-              {/* Indicador de Notificações em Tempo Real */}
               {isConnected && (
-                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs text-green-600 font-medium">Tempo Real</span>
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/10 border border-success/20" role="status">
+                  <span className="w-2 h-2 rounded-full bg-success" aria-hidden />
+                  <span className="text-xs text-success font-medium">Tempo real</span>
                 </div>
               )}
 
               <div data-tour={LAYOUT_IDS.notifications}>
                 <NotificationBell />
               </div>
-              <div className="hidden sm:flex w-10 h-10 rounded-full bg-gradient-to-br from-primary to-gold-light items-center justify-center text-primary-foreground font-bold">
+              <div className="hidden sm:flex w-9 h-9 rounded-full bg-primary items-center justify-center text-primary-foreground text-sm font-semibold" title={displayName} aria-hidden>
                 {displayName.charAt(0).toUpperCase()}
               </div>
             </div>
@@ -293,7 +355,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         <SubscriptionWarningBanner />
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           {children}
         </main>
       </div>
@@ -310,13 +372,16 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                 key={item.label}
                 data-tour={isMenu ? LAYOUT_IDS.bottomMenu : `bottom-${sidebarId(item.path)}`}
                 onClick={() => handleBottomNavClick(item.path)}
+                aria-current={isActive ? "page" : undefined}
+                aria-expanded={isMenu ? sidebarOpen : undefined}
+                aria-controls={isMenu ? "admin-sidebar" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[60px] touch-target",
-                  isActive ? "text-primary" : "text-muted-foreground",
+                  "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[60px] touch-target rounded-lg",
+                  isActive ? "text-primary font-semibold" : "text-muted-foreground",
                   isMenu && sidebarOpen && "text-primary"
                 )}
               >
-                <item.icon size={22} />
+                <item.icon size={22} aria-hidden />
                 <span className="text-[10px] font-medium">{item.label}</span>
               </button>
             );

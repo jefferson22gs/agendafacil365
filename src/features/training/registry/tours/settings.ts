@@ -3,20 +3,20 @@ import type { TourDef } from "../../types";
 export const settingsInfoTour: TourDef = {
   id: "settings-info",
   version: 1,
-  title: "Dados do salão",
+  title: "Dados do estabelecimento",
   description: "Preencha nome, endereço e formas de contato do estabelecimento.",
   category: "settings",
   route: "/admin/settings",
   steps: [
     {
       target: "settings-header",
-      title: "Configure seu salão",
-      body: "Aqui você cria ou atualiza os dados do salão. As alterações dos campos só ficam gravadas quando você clica em Salvar.",
+      title: "Configure seu estabelecimento",
+      body: "Aqui você cria ou atualiza os dados do estabelecimento. As alterações dos campos só ficam gravadas quando você clica em Salvar.",
     },
     {
       target: "settings-name",
-      title: "Nome do salão",
-      body: "Informe o nome que seus clientes conhecem. Este campo é obrigatório para salvar o salão.",
+      title: "Nome do estabelecimento",
+      body: "Informe o nome que seus clientes conhecem. Este campo é obrigatório para salvar o cadastro.",
     },
     {
       target: "settings-slug",

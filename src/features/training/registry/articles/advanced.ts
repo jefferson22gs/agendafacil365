@@ -6,7 +6,7 @@ export const advancedArticles: Article[] = [
     summary: "Conheça as seis abas e seus limites antes de usá-las.", category: "advanced", difficulty: "avançado", minutes: 3,
     route: "/admin/advanced", tourId: "advanced",
     steps: [
-      { text: "Abra Recursos Avançados pelo menu. As abas são BI & IA, Fidelidade, Fila de Espera, Indicações, Lookbook e Metas.", image: { src: "/training/advanced/tabs.webp", alt: "Abas dos recursos avançados", pending: true } },
+      { text: "Abra Recursos Avançados, no grupo Gestão do menu. As abas são BI & IA, Fidelidade, Fila de Espera, Indicações, Lookbook e Metas.", image: { src: "/training/advanced/tabs.webp", alt: "Abas dos recursos avançados", pending: true } },
       { text: "Use BI para consultar histórico; Fidelidade para consultar pontos; Fila de Espera para organizar interessados em vagas." },
       { text: "Indicações mostra códigos e registros; Metas acompanha objetivos. Lookbook é uma vitrine de exemplos, diferente da Galeria com trabalhos reais." },
       { text: "Leia o guia de cada aba antes de alterar dados ou prometer benefícios ao cliente." },
@@ -76,7 +76,7 @@ export const advancedArticles: Article[] = [
       { text: "Abra Lookbook. Os três trabalhos mostrados são exemplos, com imagens externas, nomes, valores e contagens fictícios." },
       { text: "Clique em uma foto para abrir os detalhes. Passe o mouse ou o dedo sobre a imagem para comparar antes e depois.", image: { src: "/training/advanced/lookbook-detail.webp", alt: "Comparador antes e depois do Lookbook demonstrativo", pending: true } },
       { text: "Não use Novo Post, comentar, compartilhar, Agendar agora ou Ver perfil como funções prontas: esses botões não têm ação ligada." },
-      { text: "Para registrar fotos de seus clientes, abra Galeria no menu. O Lookbook não carrega esses registros." },
+      { text: "Para registrar fotos de seus clientes, abra Galeria, no grupo Relacionamento do menu. O Lookbook não carrega esses registros." },
     ],
     notes: ["Lookbook usa mockPosts, não os dados do salão. Curtidas só alteram o estado da tela, sem salvar ou publicar."],
     keywords: ["Lookbook", "vitrine", "fotos", "antes depois", "post", "exemplo", "galeria"],

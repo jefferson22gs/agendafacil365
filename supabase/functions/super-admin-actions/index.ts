@@ -140,7 +140,7 @@ serve(async (req) => {
                 // Salvar notificação no banco
                 await supabaseAdmin.from("notifications").insert({
                     salon_id: salonId,
-                    title: data?.title || "Aviso do SysHair",
+                    title: data?.title || "Aviso do Agenda Fácil 365",
                     message: data?.message,
                     type: data?.type || "admin",
                     status: "sent"
@@ -155,7 +155,7 @@ serve(async (req) => {
                 for (const salon of allSalons || []) {
                     await supabaseAdmin.from("notifications").insert({
                         salon_id: salon.id,
-                        title: data?.title || "Comunicado SysHair",
+                        title: data?.title || "Comunicado Agenda Fácil 365",
                         message: data?.message,
                         type: "broadcast",
                         status: "sent"

@@ -8,7 +8,7 @@ export const advancedTour: TourDef = {
     { target: "advanced-header", title: "Ferramentas avançadas", body: "Aqui ficam análise, fidelidade, fila, indicações, Lookbook e metas. Nem tudo é automático: cada guia explica o que realmente funciona." },
     { target: "advanced-tabs", title: "Escolha uma aba", body: "As abas separam as ferramentas. Use o guia específico de cada uma para conhecer seus campos e cuidados." },
     { target: "advanced-bi-tab", title: "BI & IA", body: "Consulte histórico e sugestões. A previsão usa uma regra simples; as chances de venda cruzada são ilustrativas." },
-    { target: "advanced-lookbook-tab", title: "Lookbook demonstrativo", body: "Esta aba mostra fotos e nomes de exemplo. Para registrar trabalhos reais, use Galeria no menu." },
+    { target: "advanced-lookbook-tab", title: "Lookbook demonstrativo", body: "Esta aba mostra fotos e nomes de exemplo. Para registrar trabalhos reais, use Galeria, no grupo Relacionamento do menu." },
     { title: "Cuidados ao abrir abas", body: "Metas recalcula e pode atualizar registros ao abrir. Indicações pode criar um código para o primeiro cliente automaticamente; conheça esses avisos antes de explorar." },
     { title: "Próximo passo", body: "Escolha o guia da ferramenta que precisa. Para começar com dados reais, confira seus serviços, clientes e agendamentos." },
   ],
@@ -86,7 +86,7 @@ export const advancedLookbookTour: TourDef = {
     { target: "advanced-lookbook-grid", title: "Conhecer um exemplo", body: "Clique em uma foto para abrir os detalhes do exemplo.", mode: "waitForClick", fallbackBody: "O Lookbook mostra três exemplos de transformação; nenhuma foto pertence aos registros do seu salão." },
     { target: "advanced-lookbook-slider", title: "Comparar antes e depois", body: "Mova o dedo ou o mouse sobre a foto para comparar as duas imagens. Isso só muda a visualização do exemplo.", fallbackBody: "Abra uma foto para ver o comparador antes e depois." },
     { target: "advanced-lookbook-cta", title: "Agendamento sem função", body: "Agendar agora e Ver perfil ainda não têm ação ligada. Comentários, compartilhar e Novo Post também não estão ligados a funções reais.", fallbackBody: "Os detalhes mostram botões de agendar e perfil sem função ligada nesta versão." },
-    { title: "Registrar trabalhos reais", body: "Vá a Galeria no menu para adicionar fotos de clientes. Curtidas no Lookbook ficam só na tela e não publicam nada." },
+    { title: "Registrar trabalhos reais", body: "Vá a Galeria, no grupo Relacionamento do menu, para adicionar fotos de clientes. Curtidas no Lookbook ficam só na tela e não publicam nada." },
   ],
 };
 

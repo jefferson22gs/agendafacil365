@@ -4,20 +4,20 @@ import type { TourDef } from "../../types";
 export const overviewTour: TourDef = {
   id: "overview",
   version: 1,
-  title: "Conheça o SysHair",
+  title: "Conheça o Agenda Fácil 365",
   description: "Um passeio rápido pelas principais áreas do painel.",
   category: "start",
   route: "/admin",
   steps: [
     {
-      title: "Bem-vindo ao SysHair",
+      title: "Bem-vindo ao Agenda Fácil 365",
       body: "Em menos de 2 minutos você vai saber onde fica cada coisa. Você pode sair a qualquer momento em \"Pular\" ou com a tecla Esc.",
     },
     {
       target: "layout-sidebar",
       desktopOnly: true,
       title: "Menu principal",
-      body: "Todas as áreas do sistema ficam neste menu. A tela aberta fica destacada.",
+      body: "Todas as áreas do sistema ficam neste menu, organizado em grupos: Operação, Gestão, Relacionamento e Configurações e ajuda. A tela aberta fica destacada.",
     },
     {
       target: "layout-bottom-nav",
@@ -29,13 +29,13 @@ export const overviewTour: TourDef = {
       target: "sidebar-appointments",
       desktopOnly: true,
       title: "Agendamentos",
-      body: "Aqui você vê a agenda do dia, marca horários e acompanha o status de cada atendimento.",
+      body: "No grupo Operação, Agendamentos mostra a agenda do dia, marca horários e acompanha o status de cada atendimento.",
     },
     {
       target: "sidebar-clients",
       desktopOnly: true,
       title: "Clientes",
-      body: "Cadastro e histórico dos seus clientes. Você também pode importar os contatos do celular.",
+      body: "Cadastro e histórico dos seus clientes. Para importar os contatos do celular, use Importar Contatos, no grupo Relacionamento.",
     },
     {
       target: "sidebar-services",
@@ -47,13 +47,13 @@ export const overviewTour: TourDef = {
       target: "sidebar-whatsapp",
       desktopOnly: true,
       title: "WhatsApp",
-      body: "Conecte o WhatsApp do salão para usar mensagens automáticas, disparos e o assistente com IA.",
+      body: "No grupo Relacionamento, conecte o WhatsApp do estabelecimento para usar mensagens automáticas, disparos e o assistente com IA.",
     },
     {
       target: "sidebar-financial",
       desktopOnly: true,
       title: "Financeiro",
-      body: "Faturamento e comissões calculados a partir dos atendimentos concluídos.",
+      body: "No grupo Gestão: faturamento e comissões calculados a partir dos atendimentos concluídos.",
     },
     {
       target: "layout-bottom-menu",
@@ -68,7 +68,7 @@ export const overviewTour: TourDef = {
     },
     {
       title: "Tudo pronto para começar",
-      body: "Siga a lista \"Primeiros passos\" no Início. Ela mostra o que falta para o seu salão receber agendamentos.",
+      body: "Siga a lista \"Primeiros passos\" no Início. Ela mostra o que falta para o seu estabelecimento receber agendamentos. Minha Assinatura e a Central de Treinamento ficam em Configurações e ajuda.",
     },
   ],
 };

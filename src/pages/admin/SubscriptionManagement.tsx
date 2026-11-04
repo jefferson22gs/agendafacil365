@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { useSubscription, SubscriptionStatus } from "@/hooks/useSubscription";
 import { cn } from "@/lib/utils";
+import { BRAND, displayPlanName } from "@/config/brand";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -35,13 +36,13 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const statusConfig: Record<SubscriptionStatus, { label: string; color: string; icon: any }> = {
-    trial: { label: 'Período de Teste', color: 'bg-blue-500', icon: Gift },
-    active: { label: 'Ativa', color: 'bg-green-500', icon: Check },
-    pending: { label: 'Pagamento Pendente', color: 'bg-yellow-500', icon: Clock },
-    cancelled: { label: 'Cancelada', color: 'bg-gray-500', icon: X },
-    expired: { label: 'Expirada', color: 'bg-red-500', icon: AlertTriangle },
-    blocked: { label: 'Bloqueada', color: 'bg-red-600', icon: AlertTriangle },
-    none: { label: 'Sem Assinatura', color: 'bg-gray-400', icon: X },
+    trial: { label: 'Período de Teste', color: 'bg-warning text-warning-foreground', icon: Gift },
+    active: { label: 'Ativa', color: 'bg-success text-success-foreground', icon: Check },
+    pending: { label: 'Pagamento Pendente', color: 'bg-warning text-warning-foreground', icon: Clock },
+    cancelled: { label: 'Cancelada', color: 'bg-muted text-foreground', icon: X },
+    expired: { label: 'Expirada', color: 'bg-destructive text-destructive-foreground', icon: AlertTriangle },
+    blocked: { label: 'Bloqueada', color: 'bg-destructive text-destructive-foreground', icon: AlertTriangle },
+    none: { label: 'Sem Assinatura', color: 'bg-muted text-foreground', icon: X },
 };
 
 const PLANS = {
@@ -110,7 +111,7 @@ const SubscriptionManagement = () => {
         return (
             <AdminLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                    <div role="status" aria-label="Carregando assinatura" className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin motion-reduce:animate-none" />
                 </div>
             </AdminLayout>
         );
@@ -124,13 +125,13 @@ const SubscriptionManagement = () => {
         <AdminLayout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div data-tour="subscription-header">
                         <h1 className="font-display text-3xl font-bold text-foreground">
                             Minha Assinatura
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Gerencie sua assinatura do SysHair Premium
+                            Gerencie sua assinatura do {displayPlanName(null)}
                         </p>
                     </div>
                     <Button
@@ -140,7 +141,7 @@ const SubscriptionManagement = () => {
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                     >
-                        <RefreshCw size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        <RefreshCw size={16} aria-hidden="true" className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                         Atualizar status
                     </Button>
                 </div>
@@ -149,17 +150,17 @@ const SubscriptionManagement = () => {
                     {/* Main Subscription Card */}
                     <div className="lg:col-span-2">
                         <Card className="glass-card overflow-hidden">
-                            <div className="bg-gradient-to-r from-primary to-gold-light p-6 text-primary-foreground">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Crown size={32} />
+                            <div className="bg-gradient-to-r from-primary to-brand-hover p-6 text-primary-foreground">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <Crown size={32} className="flex-shrink-0" aria-hidden="true" />
                                         <div>
-                                            <h2 className="text-xl font-bold">{subscription?.planName || 'SysHair Premium'}</h2>
+                                            <h2 className="text-xl font-bold">{displayPlanName(subscription?.planName)}</h2>
                                             <p className="text-white/80 text-sm">Plano Único - Tudo Incluso</p>
                                         </div>
                                     </div>
-                                    <Badge className={`${config.color} text-white`} data-tour="subscription-status">
-                                        <StatusIcon size={14} className="mr-1" />
+                                    <Badge className={`${config.color} border-0`} data-tour="subscription-status">
+                                        <StatusIcon size={14} className="mr-1" aria-hidden="true" />
                                         {config.label}
                                     </Badge>
                                 </div>
@@ -172,13 +173,13 @@ const SubscriptionManagement = () => {
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         data-tour="subscription-trial"
-                                        className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30"
+                                        className="p-4 rounded-xl bg-warning/10 border border-warning/30"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <Gift className="w-8 h-8 text-blue-500" />
+                                            <Gift className="w-8 h-8 text-warning flex-shrink-0" aria-hidden="true" />
                                             <div className="flex-1">
-                                                <p className="font-semibold text-blue-400">Período de Teste Gratuito</p>
-                                                <p className="text-sm text-blue-300/70">
+                                                <p className="font-semibold text-foreground">Período de Teste Gratuito</p>
+                                                <p className="text-sm text-muted-foreground">
                                                     {subscription.daysRemaining > 0
                                                         ? `Restam ${subscription.daysRemaining} dia${subscription.daysRemaining > 1 ? 's' : ''} de teste`
                                                         : 'Seu período de teste expira hoje!'
@@ -186,14 +187,14 @@ const SubscriptionManagement = () => {
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-2xl font-bold text-blue-400">{subscription.daysRemaining}</p>
-                                                <p className="text-xs text-blue-300/70">dias restantes</p>
+                                                <p className="text-2xl font-bold text-warning">{subscription.daysRemaining}</p>
+                                                <p className="text-xs text-muted-foreground">dias restantes</p>
                                             </div>
                                         </div>
 
                                         {subscription.daysRemaining <= 3 && (
                                             <Button
-                                                variant="gold"
+                                                variant="brand"
                                                 size="sm"
                                                 className="w-full mt-4"
                                                 onClick={handleSubscribe}
@@ -210,19 +211,20 @@ const SubscriptionManagement = () => {
                                     <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="p-4 rounded-xl bg-red-500/10 border border-red-500/30"
+                                        role="alert"
+                                        className="p-4 rounded-xl bg-destructive/10 border border-destructive/30"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <AlertTriangle className="w-8 h-8 text-red-500" />
+                                            <AlertTriangle className="w-8 h-8 text-destructive flex-shrink-0" aria-hidden="true" />
                                             <div>
-                                                <p className="font-semibold text-red-400">Assinatura Inativa</p>
-                                                <p className="text-sm text-red-300/70">
+                                                <p className="font-semibold text-destructive">Assinatura Inativa</p>
+                                                <p className="text-sm text-muted-foreground">
                                                     Seu acesso está limitado. Renove para continuar usando todas as funcionalidades.
                                                 </p>
                                             </div>
                                         </div>
                                         <Button
-                                            variant="gold"
+                                            variant="brand"
                                             size="sm"
                                             className="w-full mt-4"
                                             data-tour="subscription-renew"
@@ -243,7 +245,7 @@ const SubscriptionManagement = () => {
                                                 <>
                                                     <Crown size={18} className="text-primary" />
                                                     Anual
-                                                    <Badge className="bg-green-500 text-white text-xs">-15%</Badge>
+                                                    <Badge className="bg-success text-success-foreground border-0 text-xs">-15%</Badge>
                                                 </>
                                             ) : (
                                                 <>
@@ -262,7 +264,7 @@ const SubscriptionManagement = () => {
                                             R$ {subscription?.amount?.toFixed(2).replace('.', ',') || (subscription?.planType === 'annual' ? '400,00' : '39,90')}
                                         </p>
                                         {subscription?.planType === 'annual' && (
-                                            <p className="text-xs text-green-500 mt-1">
+                                            <p className="text-xs text-success mt-1">
                                                 Equivale a R$ 33,33/mês
                                             </p>
                                         )}
@@ -294,7 +296,7 @@ const SubscriptionManagement = () => {
                                                 })}
                                             </p>
                                             {subscription?.daysRemaining && subscription.daysRemaining <= 30 && (
-                                                <p className="text-xs text-orange-500 mt-1">
+                                                <p className="text-xs text-warning mt-1">
                                                     {subscription.daysRemaining} dias restantes
                                                 </p>
                                             )}
@@ -308,6 +310,8 @@ const SubscriptionManagement = () => {
                                         <p className="text-sm font-medium text-foreground mb-3">Escolha seu plano:</p>
                                         <div className="grid grid-cols-2 gap-3 mb-4" data-tour="subscription-plans">
                                             <button
+                                                type="button"
+                                                aria-pressed={selectedPlan === 'monthly'}
                                                 onClick={() => setSelectedPlan('monthly')}
                                                 className={cn(
                                                     "p-4 rounded-xl border-2 transition-all text-left",
@@ -324,6 +328,8 @@ const SubscriptionManagement = () => {
                                                 <p className="text-xs text-muted-foreground">/mês</p>
                                             </button>
                                             <button
+                                                type="button"
+                                                aria-pressed={selectedPlan === 'annual'}
                                                 onClick={() => setSelectedPlan('annual')}
                                                 className={cn(
                                                     "p-4 rounded-xl border-2 transition-all text-left relative",
@@ -332,7 +338,7 @@ const SubscriptionManagement = () => {
                                                         : "border-border hover:border-primary/50"
                                                 )}
                                             >
-                                                <Badge className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] border-0">
+                                                <Badge className="absolute -top-2 -right-2 bg-success text-success-foreground text-[10px] border-0">
                                                     -15%
                                                 </Badge>
                                                 <div className="flex items-center gap-2 mb-1">
@@ -340,7 +346,7 @@ const SubscriptionManagement = () => {
                                                     <span className="font-semibold">Anual</span>
                                                 </div>
                                                 <p className="text-xl font-bold text-primary">R$ 400,00</p>
-                                                <p className="text-xs text-green-500">Economize R$ 78,80</p>
+                                                <p className="text-xs text-success">Economize R$ 78,80</p>
                                             </button>
                                         </div>
                                     </div>
@@ -350,7 +356,7 @@ const SubscriptionManagement = () => {
                                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50">
                                     {subscription?.isTrial || !subscription?.isActive ? (
                                         <Button
-                                            variant="gold"
+                                            variant="brand"
                                             className="flex-1"
                                             data-tour="subscription-subscribe"
                                             onClick={handleSubscribe}
@@ -378,7 +384,7 @@ const SubscriptionManagement = () => {
                                     {subscription?.isActive && !subscription?.isTrial && (
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-500/10" data-tour="subscription-cancel">
+                                                <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" data-tour="subscription-cancel">
                                                     Cancelar assinatura
                                                 </Button>
                                             </AlertDialogTrigger>
@@ -387,7 +393,7 @@ const SubscriptionManagement = () => {
                                                     <AlertDialogTitle>Tem certeza que deseja cancelar?</AlertDialogTitle>
                                                     <AlertDialogDescription>
                                                         Ao cancelar sua assinatura, você perderá acesso a todas as funcionalidades
-                                                        do SysHair Premium no final do período atual. Esta ação não pode ser desfeita.
+                                                        do {displayPlanName(subscription?.planName)} no final do período atual. Esta ação não pode ser desfeita.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
@@ -395,7 +401,7 @@ const SubscriptionManagement = () => {
                                                     <AlertDialogAction
                                                         data-tour="subscription-cancel-confirm"
                                                         onClick={handleCancelSubscription}
-                                                        className="bg-red-500 hover:bg-red-600"
+                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                                     >
                                                         Sim, cancelar
                                                     </AlertDialogAction>
@@ -430,7 +436,7 @@ const SubscriptionManagement = () => {
                                     'Suporte prioritário',
                                 ].map((feature, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <Check size={16} className="text-green-500" />
+                                        <Check size={16} className="text-success flex-shrink-0" aria-hidden="true" />
                                         <span className="text-sm text-foreground">{feature}</span>
                                     </div>
                                 ))}
@@ -447,7 +453,7 @@ const SubscriptionManagement = () => {
                                     variant="outline"
                                     size="sm"
                                     data-tour="subscription-support"
-                                    onClick={() => window.open('https://wa.me/5511986262240?text=Olá! Tenho uma dúvida sobre minha assinatura do SysHair.', '_blank')}
+                                    onClick={() => window.open(`https://wa.me/5511986262240?text=${encodeURIComponent(`Olá! Tenho uma dúvida sobre minha assinatura do ${BRAND.name}.`)}`, '_blank')}
                                 >
                                     Falar com Código Base
                                 </Button>

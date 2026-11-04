@@ -60,19 +60,19 @@ export function PeriodComparison({
     };
 
     const trendColors = {
-        up: "text-emerald-500",
-        down: "text-rose-500",
+        up: "text-success",
+        down: "text-destructive",
         neutral: "text-muted-foreground",
     };
 
     const trendBgColors = {
-        up: "bg-emerald-500/10",
-        down: "bg-rose-500/10",
+        up: "bg-success/10",
+        down: "bg-destructive/10",
         neutral: "bg-muted",
     };
 
     return (
-        <Card className={cn("glass-card", className)}>
+        <Card className={className}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg">Comparativo de Períodos</CardTitle>
                 <Select value={selectedPeriod} onValueChange={handlePeriodChange}>

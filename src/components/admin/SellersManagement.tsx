@@ -191,7 +191,7 @@ export const SellersManagement = () => {
             } else if (commissionsData) {
                 const enrichedCommissions = commissionsData.map((c: any) => ({
                     ...c,
-                    salon_name: c.salons?.name || "Salão não encontrado"
+                    salon_name: c.salons?.name || "Estabelecimento não encontrado"
                 }));
                 setCommissions(enrichedCommissions);
             }
@@ -439,13 +439,13 @@ export const SellersManagement = () => {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "paid":
-                return <Badge className="bg-green-500/20 text-green-400">Paga</Badge>;
+                return <Badge variant="success">Paga</Badge>;
             case "approved":
-                return <Badge className="bg-blue-500/20 text-blue-400">Aprovada</Badge>;
+                return <Badge variant="info">Aprovada</Badge>;
             case "rejected":
-                return <Badge className="bg-red-500/20 text-red-400">Rejeitada</Badge>;
+                return <Badge variant="danger">Rejeitada</Badge>;
             case "pending":
-                return <Badge className="bg-yellow-500/20 text-yellow-400">Pendente</Badge>;
+                return <Badge variant="warning">Pendente</Badge>;
             default:
                 return <Badge>{status}</Badge>;
         }
@@ -481,7 +481,7 @@ export const SellersManagement = () => {
         <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-primary/20">
@@ -495,11 +495,11 @@ export const SellersManagement = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-500/20">
-                                <CheckCircle className="w-5 h-5 text-green-500" />
+                            <div className="p-2 rounded-lg bg-success/20">
+                                <CheckCircle className="w-5 h-5 text-success" />
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{activeSellers}</p>
@@ -509,14 +509,14 @@ export const SellersManagement = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-yellow-500/20">
-                                <Clock className="w-5 h-5 text-yellow-500" />
+                            <div className="p-2 rounded-lg bg-warning/20">
+                                <Clock className="w-5 h-5 text-warning" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-yellow-500">
+                                <p className="text-2xl font-bold text-warning">
                                     R$ {totalPending.toFixed(0)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Aprovar</p>
@@ -525,14 +525,14 @@ export const SellersManagement = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-500/20">
-                                <DollarSign className="w-5 h-5 text-blue-500" />
+                            <div className="p-2 rounded-lg bg-primary/20">
+                                <DollarSign className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-blue-500">
+                                <p className="text-2xl font-bold text-primary">
                                     R$ {totalToPay.toFixed(0)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Pagar</p>
@@ -541,14 +541,14 @@ export const SellersManagement = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-purple-500/20">
-                                <TrendingUp className="w-5 h-5 text-purple-500" />
+                            <div className="p-2 rounded-lg bg-primary/20">
+                                <TrendingUp className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-purple-500">
+                                <p className="text-2xl font-bold text-primary">
                                     R$ {totalPaidThisMonth.toFixed(0)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Pago este mês</p>
@@ -557,11 +557,11 @@ export const SellersManagement = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card">
+                <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-500/20">
-                                <Building2 className="w-5 h-5 text-green-500" />
+                            <div className="p-2 rounded-lg bg-success/20">
+                                <Building2 className="w-5 h-5 text-success" />
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">
@@ -600,6 +600,7 @@ export const SellersManagement = () => {
                             size="icon"
                             onClick={loadData}
                             disabled={refreshing}
+                            aria-label="Atualizar dados"
                         >
                             {refreshing ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -618,7 +619,7 @@ export const SellersManagement = () => {
 
                 {/* Sellers Tab */}
                 <TabsContent value="sellers" className="space-y-4">
-                    <Card className="glass-card">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
@@ -671,7 +672,7 @@ export const SellersManagement = () => {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-8 px-2 text-green-500"
+                                                                className="h-8 px-2 text-success"
                                                                 onClick={() => window.open(`https://wa.me/55${seller.whatsapp.replace(/\D/g, '')}`, "_blank")}
                                                             >
                                                                 <Mail className="w-3 h-3" />
@@ -687,7 +688,7 @@ export const SellersManagement = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
-                                                        <Percent className="w-4 h-4 text-purple-500" />
+                                                        <Percent className="w-4 h-4 text-primary" />
                                                         <span className="font-medium">{seller.commission_annual_percent}%</span>
                                                     </div>
                                                 </TableCell>
@@ -698,26 +699,26 @@ export const SellersManagement = () => {
                                                             <span>{seller.total_salons}</span>
                                                         </div>
                                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                            <CheckCircle className="w-3 h-3 text-green-500" />
+                                                            <CheckCircle className="w-3 h-3 text-success" />
                                                             <span>{seller.active_salons} ativos</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={seller.is_active ? "default" : "secondary"}>
+                                                    <Badge variant={seller.is_active ? "success" : "secondary"}>
                                                         {seller.is_active ? "Ativo" : "Inativo"}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <p className="font-medium text-green-500">
+                                                    <p className="font-medium text-success">
                                                         R$ {seller.total_paid.toFixed(2)}
                                                     </p>
                                                 </TableCell>
                                                 <TableCell>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="sm">
-                                                                <MoreVertical className="w-4 h-4" />
+                                                            <Button variant="ghost" size="sm" aria-label={`Ações do vendedor ${seller.seller_name}`}>
+                                                                <MoreVertical className="w-4 h-4" aria-hidden />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
@@ -733,7 +734,7 @@ export const SellersManagement = () => {
                                                                 const sellerData = sellers.find(s => s.id === seller.seller_id);
                                                                 if (sellerData) handleToggleActive(sellerData.id, sellerData.is_active);
                                                             }} className={
-                                                                seller.is_active ? "text-red-500" : "text-green-500"
+                                                                seller.is_active ? "text-destructive" : "text-success"
                                                             }>
                                                                 {seller.is_active ? (
                                                                     <><Ban className="w-4 h-4 mr-2" /> Desativar</>
@@ -747,7 +748,7 @@ export const SellersManagement = () => {
                                                                     setSelectedSeller(sellerData);
                                                                     setShowDeleteDialog(true);
                                                                 }
-                                                            }} className="text-red-500">
+                                                            }} className="text-destructive">
                                                                 <Trash2 className="w-4 h-4 mr-2" />
                                                                 Excluir
                                                             </DropdownMenuItem>
@@ -765,7 +766,7 @@ export const SellersManagement = () => {
 
                 {/* Commissions Tab */}
                 <TabsContent value="commissions" className="space-y-4">
-                    <Card className="glass-card">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <DollarSign className="w-5 h-5" />
@@ -781,7 +782,7 @@ export const SellersManagement = () => {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Vendedor</TableHead>
-                                            <TableHead>Salão</TableHead>
+                                            <TableHead>Estabelecimento</TableHead>
                                             <TableHead>Plano</TableHead>
                                             <TableHead>Valor</TableHead>
                                             <TableHead>Comissão</TableHead>
@@ -813,7 +814,7 @@ export const SellersManagement = () => {
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Percent className="w-4 h-4 text-primary" />
-                                                        <span className="font-medium text-green-500">
+                                                        <span className="font-medium text-success">
                                                             {commission.commission_percent}%
                                                         </span>
                                                         <p className="text-xs text-muted-foreground font-bold">
@@ -869,7 +870,7 @@ export const SellersManagement = () => {
                             Adicionar Novo Vendedor
                         </DialogTitle>
                         <DialogDescription>
-                            Cadastre um novo vendedor que poderá indicar e vender o sistema SysHair.
+                            Cadastre um novo vendedor que poderá indicar e vender o sistema Agenda Fácil 365.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -1069,7 +1070,7 @@ export const SellersManagement = () => {
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+                        <AlertDialogTitle className="text-destructive flex items-center gap-2">
                             <AlertTriangle className="w-5 h-5" />
                             Excluir Vendedor?
                         </AlertDialogTitle>
@@ -1084,7 +1085,7 @@ export const SellersManagement = () => {
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteSeller}
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             disabled={actionLoading}
                         >
                             {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -1099,7 +1100,7 @@ export const SellersManagement = () => {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <DollarSign className="w-5 h-5 text-green-500" />
+                            <DollarSign className="w-5 h-5 text-success" />
                             Pagamento de Comissão
                         </DialogTitle>
                         <DialogDescription>
@@ -1135,7 +1136,7 @@ export const SellersManagement = () => {
                                 {sellerStats.find(s => s.seller_id === selectedCommission?.seller_id)?.seller_name}
                             </p>
                             <p className="text-sm text-muted-foreground mt-2">Valor:</p>
-                            <p className="text-2xl font-bold text-green-500">
+                            <p className="text-2xl font-bold text-success">
                                 R$ {selectedCommission?.commission_amount?.toFixed(2)}
                             </p>
                         </div>
@@ -1147,7 +1148,7 @@ export const SellersManagement = () => {
                         <Button
                             onClick={handlePayCommission}
                             disabled={actionLoading}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-success hover:bg-success/90 text-success-foreground"
                         >
                             {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Confirmar Pagamento

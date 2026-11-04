@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { SalonInstallPrompt } from "@/components/pwa/SalonInstallPrompt";
+import { safeHexColor } from "@/config/brand";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -207,39 +208,56 @@ const PublicSalon = () => {
     }
   }, [slug]);
 
-  // Registrar Service Worker e configurar PWA
+  // PWA do estabelecimento: manifest dinâmico + theme-color + título enquanto a página está montada.
+  // O SW NÃO é registrado aqui: o build (VitePWA/registerSW.js) já registra o worker no scope "/";
+  // registrar outro arquivo no mesmo scope substituiria o worker de precache.
+  // Tudo é restaurado no cleanup para não vazar a identidade do tenant para outras rotas.
   useEffect(() => {
-    if (slug && 'serviceWorker' in navigator) {
-      // Registrar service worker
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('Service Worker registrado:', registration);
-        })
-        .catch(error => {
-          console.error('Erro ao registrar Service Worker:', error);
-        });
-
-      // Adicionar link do manifest dinâmico
-      const manifestLink = document.querySelector('link[rel="manifest"]');
-      if (manifestLink) {
-        manifestLink.setAttribute('href', `/api/manifest/${slug}`);
-      } else {
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = `/api/manifest/${slug}`;
-        document.head.appendChild(link);
-      }
-
-      // Adicionar meta tags para PWA
-      const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-      if (!themeColorMeta) {
-        const meta = document.createElement('meta');
-        meta.name = 'theme-color';
-        meta.content = '#000000';
-        document.head.appendChild(meta);
-      }
+    if (!slug) return;
+    const manifestHref = `/api/manifest/${slug}`;
+    let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    const createdManifest = !manifestLink;
+    const previousManifestHref = manifestLink?.getAttribute('href') ?? '/manifest.webmanifest';
+    if (!manifestLink) {
+      manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      document.head.appendChild(manifestLink);
     }
+    manifestLink.setAttribute('href', manifestHref);
+
+    let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const createdMeta = !themeColorMeta;
+    const previousThemeColor = themeColorMeta?.getAttribute('content') ?? null;
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      document.head.appendChild(themeColorMeta);
+    }
+
+    const previousTitle = document.title;
+
+    return () => {
+      // Restauração incondicional (dono externo); o SalonInstallPrompt só desfaz o que ainda é dele,
+      // então o resultado final é o original independentemente da ordem de desmontagem.
+      if (manifestLink) {
+        if (createdManifest) manifestLink.remove();
+        else manifestLink.setAttribute('href', previousManifestHref);
+      }
+      if (themeColorMeta) {
+        if (createdMeta) themeColorMeta.remove();
+        else if (previousThemeColor !== null) themeColorMeta.setAttribute('content', previousThemeColor);
+      }
+      document.title = previousTitle;
+    };
   }, [slug]);
+
+  // Título e cor do navegador seguem o estabelecimento carregado (cor validada; fallback azul).
+  useEffect(() => {
+    if (!salon) return;
+    document.title = `${salon.name} | Agendamento`;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      ?.setAttribute('content', safeHexColor(salon.primary_color));
+  }, [salon]);
 
   // Auto-selecionar "any" quando entrar no step 2 sem profissional selecionado
   useEffect(() => {
@@ -260,13 +278,13 @@ const PublicSalon = () => {
       if (salonError) throw salonError;
 
       if (!salonData) {
-        setError("Salão não encontrado");
+        setError("Estabelecimento não encontrado");
         setLoading(false);
         return;
       }
 
       if (!salonData.public_booking_enabled) {
-        setError("Agendamento online não está disponível para este salão");
+        setError("Agendamento online não está disponível para este estabelecimento");
         setLoading(false);
         return;
       }
@@ -368,7 +386,7 @@ const PublicSalon = () => {
       }
     } catch (err) {
       console.error("Error fetching salon:", err);
-      setError("Erro ao carregar dados do salão");
+      setError("Erro ao carregar dados do estabelecimento");
     } finally {
       setLoading(false);
     }
@@ -995,13 +1013,14 @@ const PublicSalon = () => {
     return sortedDays.map(d => dayNames[d]).join(", ");
   };
 
-  // Custom styles based on salon primary color
-  const primaryColor = salon?.primary_color || '#D4AF37';
+  // Cor do estabelecimento (só HEX válido; ausente/inválida cai no azul padrão)
+  const primaryColor = safeHexColor(salon?.primary_color);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} aria-hidden="true" />
+        <span className="sr-only">Carregando</span>
       </div>
     );
   }
@@ -1009,10 +1028,10 @@ const PublicSalon = () => {
   if (error || !salon) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <AlertCircle size={48} className="mx-auto text-destructive mb-4" />
+        <div className="text-center max-w-md" role="alert">
+          <AlertCircle size={48} className="mx-auto text-destructive mb-4" aria-hidden="true" />
           <h1 className="text-2xl font-bold text-foreground mb-2">Ops!</h1>
-          <p className="text-muted-foreground mb-6">{error || "Salão não encontrado"}</p>
+          <p className="text-muted-foreground mb-6">{error || "Estabelecimento não encontrado"}</p>
           <Button onClick={() => navigate('/')}>Voltar ao início</Button>
         </div>
       </div>
@@ -1073,6 +1092,7 @@ const PublicSalon = () => {
 
           <div className="flex flex-col gap-3">
             <button
+              type="button"
               onClick={() => window.open(generateGoogleCalendarLink(), '_blank')}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
               style={{ backgroundColor: primaryColor }}
@@ -1116,7 +1136,7 @@ const PublicSalon = () => {
             {salon.logo_url ? (
               <img
                 src={salon.logo_url}
-                alt={salon.name}
+                alt={`Logo de ${salon.name}`}
                 className="h-20 w-20 rounded-2xl object-cover shadow-lg mb-4 border-2"
                 style={{ borderColor: primaryColor }}
               />
@@ -1124,6 +1144,7 @@ const PublicSalon = () => {
               <div
                 className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-4"
                 style={{ backgroundColor: primaryColor }}
+                aria-hidden="true"
               >
                 {salon.name.charAt(0)}
               </div>
@@ -1136,8 +1157,8 @@ const PublicSalon = () => {
 
             {/* Address */}
             {(salon.address || salon.city) && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-                <MapPin size={14} style={{ color: primaryColor }} />
+              <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-3 max-w-full">
+                <MapPin size={14} className="shrink-0" style={{ color: primaryColor }} aria-hidden="true" />
                 <span>
                   {salon.address ? `${salon.address}` : ''}
                   {salon.address && salon.city ? ' - ' : ''}
@@ -1188,6 +1209,7 @@ const PublicSalon = () => {
               {/* Install PWA Button */}
               {isInstallable && !isInstalled && (
                 <button
+                  type="button"
                   onClick={installApp}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
                   style={{ backgroundColor: primaryColor, color: 'white' }}
@@ -1220,11 +1242,11 @@ const PublicSalon = () => {
         </div>
       )}
 
-      <main className="container px-4 py-8 max-w-2xl mx-auto">
+      <main className="container px-4 py-6 sm:py-8 max-w-2xl mx-auto">
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-8">
+        <ol className="flex items-center justify-between mb-8" aria-label="Etapas do agendamento">
           {steps.map((s, index) => (
-            <div key={s.number} className="flex items-center">
+            <li key={s.number} className="flex items-center" aria-current={step === s.number ? "step" : undefined}>
               <div className="flex flex-col items-center">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
@@ -1235,10 +1257,10 @@ const PublicSalon = () => {
                     color: step >= s.number ? 'white' : 'hsl(var(--muted-foreground))'
                   }}
                 >
-                  {step > s.number ? <Check size={18} /> : <s.icon size={18} />}
+                  {step > s.number ? <Check size={18} aria-hidden="true" /> : <s.icon size={18} aria-hidden="true" />}
                 </div>
                 <span
-                  className="text-xs mt-2"
+                  className={`text-[11px] sm:text-xs mt-2 text-center ${step === s.number ? 'font-semibold' : ''}`}
                   style={{ color: step >= s.number ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
                 >
                   {s.label}
@@ -1246,16 +1268,17 @@ const PublicSalon = () => {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className="w-12 md:w-20 h-0.5 mx-2"
+                  className="w-3 sm:w-12 md:w-20 h-0.5 mx-1 sm:mx-2"
                   style={{ backgroundColor: step > s.number ? primaryColor : 'hsl(var(--border))' }}
+                  aria-hidden="true"
                 />
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
 
         {/* Step Content */}
-        <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-lg">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
           {/* Step 1: Select Services & Products */}
           {step === 1 && (
             <div className="animate-fade-in">
@@ -1265,21 +1288,22 @@ const PublicSalon = () => {
               <p className="text-muted-foreground mb-6">Selecione serviços e produtos que deseja</p>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products' | 'packages' | 'gallery')} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-6">
-                  <TabsTrigger value="services" className="flex items-center gap-2">
-                    <Scissors size={16} />
+                {/* Em 360px os 4 rótulos com ícone ao lado estouravam a largura: ícone empilha no mobile */}
+                <TabsList className="grid w-full grid-cols-4 mb-6 h-auto">
+                  <TabsTrigger value="services" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-1 sm:px-3 text-xs sm:text-sm">
+                    <Scissors size={16} aria-hidden="true" />
                     Serviços
                   </TabsTrigger>
-                  <TabsTrigger value="products" className="flex items-center gap-2">
-                    <Store size={16} />
+                  <TabsTrigger value="products" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-1 sm:px-3 text-xs sm:text-sm">
+                    <Store size={16} aria-hidden="true" />
                     Loja
                   </TabsTrigger>
-                  <TabsTrigger value="packages" className="flex items-center gap-2">
-                    <Package size={16} />
+                  <TabsTrigger value="packages" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-1 sm:px-3 text-xs sm:text-sm">
+                    <Package size={16} aria-hidden="true" />
                     Pacotes
                   </TabsTrigger>
-                  <TabsTrigger value="gallery" className="flex items-center gap-2">
-                    <Camera size={16} />
+                  <TabsTrigger value="gallery" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-1 sm:px-3 text-xs sm:text-sm">
+                    <Camera size={16} aria-hidden="true" />
                     Galeria
                   </TabsTrigger>
                 </TabsList>
@@ -1294,19 +1318,21 @@ const PublicSalon = () => {
                     <div className="grid gap-3">
                       {services.map((service) => (
                         <button
+                          type="button"
                           key={service.id}
+                          aria-pressed={isInCart(service.id, 'service')}
                           onClick={() => isInCart(service.id, 'service')
                             ? removeFromCart(service.id, 'service')
                             : addToCart(service, 'service')
                           }
-                          className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                          className="relative flex items-center gap-3 sm:gap-4 p-4 rounded-2xl border-2 transition-all text-left"
                           style={{
                             borderColor: isInCart(service.id, 'service') ? primaryColor : 'hsl(var(--border))',
                             backgroundColor: isInCart(service.id, 'service') ? `${primaryColor}08` : 'transparent'
                           }}
                         >
-                          <span className="text-2xl">{service.icon || '✂️'}</span>
-                          <div className="flex-1">
+                          <span className="text-2xl" aria-hidden="true">{service.icon || '✂️'}</span>
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground">{service.name}</p>
                             {service.description && (
                               <p className="text-sm text-muted-foreground line-clamp-1">{service.description}</p>
@@ -1316,11 +1342,12 @@ const PublicSalon = () => {
                               {service.duration_minutes}min
                             </div>
                           </div>
-                          <p className="text-lg font-bold text-foreground">
+                          <p className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">
                             R$ {service.price.toFixed(2)}
                           </p>
                           <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center border-2"
+                            className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center border-2"
+                            aria-hidden="true"
                             style={{
                               borderColor: primaryColor,
                               backgroundColor: isInCart(service.id, 'service') ? primaryColor : 'transparent'
@@ -1347,20 +1374,20 @@ const PublicSalon = () => {
                       {products.map((product) => (
                         <div
                           key={product.id}
-                          className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all"
+                          className="relative flex items-center gap-3 sm:gap-4 p-4 rounded-2xl border-2 transition-all"
                           style={{
                             borderColor: isInCart(product.id, 'product') ? primaryColor : 'hsl(var(--border))',
                             backgroundColor: isInCart(product.id, 'product') ? `${primaryColor}08` : 'transparent'
                           }}
                         >
                           {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded-lg object-cover" />
+                            <img src={product.image_url} alt={product.name} className="w-14 h-14 shrink-0 rounded-lg object-cover" />
                           ) : (
-                            <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center">
+                            <div className="w-14 h-14 shrink-0 rounded-lg bg-secondary flex items-center justify-center">
                               <Package size={24} className="text-muted-foreground" />
                             </div>
                           )}
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground">{product.name}</p>
                             {product.description && (
                               <p className="text-sm text-muted-foreground line-clamp-1">{product.description}</p>
@@ -1378,25 +1405,30 @@ const PublicSalon = () => {
                             {isInCart(product.id, 'product') ? (
                               <div className="flex items-center gap-2 mt-2">
                                 <button
+                                  type="button"
                                   onClick={() => removeFromCart(product.id, 'product')}
-                                  className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-secondary"
+                                  aria-label={`Diminuir quantidade de ${product.name}`}
+                                  className="w-11 h-11 rounded-full border flex items-center justify-center hover:bg-secondary"
                                   style={{ borderColor: primaryColor }}
                                 >
-                                  <Minus size={14} style={{ color: primaryColor }} />
+                                  <Minus size={14} style={{ color: primaryColor }} aria-hidden="true" />
                                 </button>
-                                <span className="font-medium w-6 text-center">{getCartQuantity(product.id, 'product')}</span>
+                                <span className="font-medium w-6 text-center" aria-live="polite">{getCartQuantity(product.id, 'product')}</span>
                                 <button
+                                  type="button"
                                   onClick={() => addToCart(product, 'product')}
-                                  className="w-7 h-7 rounded-full flex items-center justify-center text-white"
+                                  aria-label={`Aumentar quantidade de ${product.name}`}
+                                  className="w-11 h-11 rounded-full flex items-center justify-center text-white"
                                   style={{ backgroundColor: primaryColor }}
                                 >
-                                  <Plus size={14} />
+                                  <Plus size={14} aria-hidden="true" />
                                 </button>
                               </div>
                             ) : (
                               <button
+                                type="button"
                                 onClick={() => addToCart(product, 'product')}
-                                className="mt-2 px-3 py-1 rounded-full text-sm font-medium text-white"
+                                className="mt-2 px-4 py-2 rounded-full text-sm font-medium text-white"
                                 style={{ backgroundColor: primaryColor }}
                               >
                                 Adicionar
@@ -1419,12 +1451,14 @@ const PublicSalon = () => {
                     <div className="grid gap-3">
                       {packages.map((pkg) => (
                         <button
+                          type="button"
                           key={pkg.id}
+                          aria-pressed={isInCart(pkg.id, 'package')}
                           onClick={() => isInCart(pkg.id, 'package')
                             ? removeFromCart(pkg.id, 'package')
                             : addToCart(pkg, 'package')
                           }
-                          className="relative flex flex-col gap-3 p-4 rounded-xl border-2 transition-all text-left"
+                          className="relative flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all text-left"
                           style={{
                             borderColor: isInCart(pkg.id, 'package') ? primaryColor : 'hsl(var(--border))',
                             backgroundColor: isInCart(pkg.id, 'package') ? `${primaryColor}08` : 'transparent'
@@ -1471,9 +1505,9 @@ const PublicSalon = () => {
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-600 font-medium">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success font-medium">
                                 {pkg.discount_percent}% OFF
                               </span>
                               <span className="text-xs text-muted-foreground">
@@ -1552,7 +1586,7 @@ const PublicSalon = () => {
 
               {/* Cart Summary */}
               {cart.length > 0 && (
-                <div className="mt-6 p-4 rounded-xl border-2" style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}08` }}>
+                <div className="mt-6 p-4 rounded-2xl border-2" style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}08` }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <ShoppingCart size={18} style={{ color: primaryColor }} />
@@ -1584,16 +1618,18 @@ const PublicSalon = () => {
               <div className="grid gap-3">
                 {professionals.map((pro) => (
                   <button
+                    type="button"
                     key={pro.id}
+                    aria-pressed={selectedProfessional === pro.id}
                     onClick={() => setSelectedProfessional(pro.id)}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                    className="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left"
                     style={{
                       borderColor: selectedProfessional === pro.id ? primaryColor : 'hsl(var(--border))',
                       backgroundColor: selectedProfessional === pro.id ? `${primaryColor}08` : 'transparent'
                     }}
                   >
                     <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden"
+                      className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden"
                       style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)` }}
                     >
                       {pro.avatar_url ? (
@@ -1602,7 +1638,7 @@ const PublicSalon = () => {
                         pro.name.charAt(0)
                       )}
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground">{pro.name}</p>
                       {pro.specialty && (
                         <p className="text-sm text-muted-foreground">{pro.specialty}</p>
@@ -1620,8 +1656,10 @@ const PublicSalon = () => {
                 ))}
 
                 <button
+                  type="button"
+                  aria-pressed={selectedProfessional === "any"}
                   onClick={() => setSelectedProfessional("any")}
-                  className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                  className="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left"
                   style={{
                     borderColor: selectedProfessional === "any" ? primaryColor : 'hsl(var(--border))',
                     backgroundColor: selectedProfessional === "any" ? `${primaryColor}08` : 'transparent'
@@ -1674,7 +1712,8 @@ const PublicSalon = () => {
 
                   {loadingSlots ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryColor }} />
+                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryColor }} aria-hidden="true" />
+                      <span className="sr-only">Carregando horários</span>
                     </div>
                   ) : availableSlots.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -1682,10 +1721,12 @@ const PublicSalon = () => {
                       <p>Nenhum horário disponível nesta data</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    <div className="grid grid-cols-3 min-[400px]:grid-cols-4 sm:grid-cols-6 gap-2">
                       {availableSlots.map((slot) => (
                         <button
+                          type="button"
                           key={slot}
+                          aria-pressed={selectedTime === slot}
                           onClick={() => setSelectedTime(slot)}
                           className="py-3 px-2 rounded-lg text-sm font-medium transition-all"
                           style={{
@@ -1712,9 +1753,9 @@ const PublicSalon = () => {
               <p className="text-muted-foreground mb-6">Revise os detalhes e preencha seus dados</p>
 
               {/* Summary */}
-              <div className="bg-secondary/50 rounded-xl p-4 mb-6">
+              <div className="bg-secondary/50 rounded-2xl p-4 mb-6">
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground">Serviços</span>
                     <span className="font-medium text-right">{cartServices.map(s => s.name).join(', ') || 'Nenhum'}</span>
                   </div>
@@ -1745,20 +1786,25 @@ const PublicSalon = () => {
                     id="clientName"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
+                    autoComplete="name"
                   />
                 </div>
-                <div>
-                  <Label>WhatsApp *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="clientPhone">WhatsApp *</Label>
                   <Input
+                    id="clientPhone"
+                    type="tel"
+                    autoComplete="tel"
                     placeholder="(00) 00000-0000"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     onBlur={(e) => checkPendingReviews(e.target.value)}
                   />
                 </div>
-                <div>
-                  <Label>Data de nascimento (Opcional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="clientBirthday">Data de nascimento (Opcional)</Label>
                   <Input
+                    id="clientBirthday"
                     type="tel"
                     placeholder="DD/MM/AAAA"
                     value={clientBirthday}
@@ -1785,8 +1831,8 @@ const PublicSalon = () => {
                       Autorizo tirar fotos de "Antes e Depois"
                     </label>
                     <p className="text-sm text-muted-foreground">
-                      Concordo que o salão tire fotos do meu procedimento para compor o portfólio (Galeria),
-                      conforme os <button onClick={() => setShowTerms(true)} className="text-primary underline hover:text-primary/80">Termos de Uso de Imagem</button>.
+                      Concordo que o estabelecimento tire fotos do meu procedimento para compor o portfólio (Galeria),
+                      conforme os <button type="button" onClick={() => setShowTerms(true)} className="text-primary underline hover:text-primary/80">Termos de Uso de Imagem</button>.
                     </p>
                   </div>
                 </div>
@@ -1806,8 +1852,8 @@ const PublicSalon = () => {
                       <p>
                         2. <strong>Finalidade:</strong> As imagens serão utilizadas exclusivamente para fins de divulgação do trabalho profissional (portfólio), podendo ser veiculadas em:
                         <ul className="list-disc pl-5 mt-1">
-                          <li>Redes sociais do salão e profissionais (Instagram, Facebook, etc.);</li>
-                          <li>Site oficial e aplicativos do salão;</li>
+                          <li>Redes sociais do estabelecimento e profissionais (Instagram, Facebook, etc.);</li>
+                          <li>Site oficial e aplicativos do estabelecimento;</li>
                           <li>Materiais impressos de divulgação interna.</li>
                         </ul>
                       </p>
@@ -1901,8 +1947,9 @@ const PublicSalon = () => {
                             toast.success('Chave PIX copiada!');
                           }}
                           className="ml-2"
+                          aria-label="Copiar chave PIX"
                         >
-                          <Copy size={16} />
+                          <Copy size={16} aria-hidden="true" />
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground text-center">
@@ -1916,7 +1963,7 @@ const PublicSalon = () => {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
+          <div className="flex items-center justify-between gap-3 mt-8 pt-6 border-t border-border">
             {step > 1 ? (
               <Button variant="outline" onClick={() => setStep(step - 1)}>
                 <ArrowLeft size={18} className="mr-2" />
@@ -1928,6 +1975,7 @@ const PublicSalon = () => {
 
             {step < 4 ? (
               <Button
+                size="lg"
                 onClick={() => setStep(step + 1)}
                 disabled={
                   (step === 1 && cart.length === 0) ||
@@ -1944,6 +1992,7 @@ const PublicSalon = () => {
               </Button>
             ) : (
               <Button
+                size="lg"
                 onClick={handleConfirmBooking}
                 disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
                 style={{
@@ -1977,7 +2026,7 @@ const PublicSalon = () => {
       {
         showReviewModal && pendingReviews.length > 0 && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
+            <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in" role="dialog" aria-modal="true" aria-label="Avalie sua visita anterior">
               <div className="text-center mb-6">
                 <div
                   className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
@@ -2004,8 +2053,11 @@ const PublicSalon = () => {
               <div className="flex justify-center gap-2 mb-6">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
+                    type="button"
                     key={star}
                     onClick={() => setCurrentRating(star)}
+                    aria-label={`${star} de 5 estrelas`}
+                    aria-pressed={star === currentRating}
                     className="transition-transform hover:scale-110"
                   >
                     <Star
@@ -2075,7 +2127,8 @@ const PublicSalon = () => {
           salonName={salon.name}
           salonSlug={slug}
           salonLogo={salon.logo_url || undefined}
-          salonThemeColor={salon.theme_color || '#c9a227'}
+          salonThemeColor={safeHexColor(salon.primary_color)}
+
         />
       )}
     </div >

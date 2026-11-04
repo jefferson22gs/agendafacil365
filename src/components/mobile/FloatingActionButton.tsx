@@ -18,10 +18,10 @@ interface FloatingActionButtonProps {
 }
 
 const defaultActions: FABAction[] = [
-    { icon: Calendar, label: "Novo Agendamento", path: "/admin/appointments", color: "bg-blue-500" },
-    { icon: Users, label: "Novo Cliente", path: "/admin/clients", color: "bg-emerald-500" },
-    { icon: Gift, label: "Novo Cupom", path: "/admin/coupons", color: "bg-purple-500" },
-    { icon: Settings, label: "Configurações", path: "/admin/settings", color: "bg-gray-500" },
+    { icon: Calendar, label: "Novo Agendamento", path: "/admin/appointments", color: "bg-primary" },
+    { icon: Users, label: "Novo Cliente", path: "/admin/clients", color: "bg-primary" },
+    { icon: Gift, label: "Novo Cupom", path: "/admin/coupons", color: "bg-primary" },
+    { icon: Settings, label: "Configurações", path: "/admin/settings", color: "bg-brand-navy" },
 ];
 
 export function FloatingActionButton({ actions = defaultActions, className }: FloatingActionButtonProps) {
@@ -76,9 +76,9 @@ export function FloatingActionButton({ actions = defaultActions, className }: Fl
                                         {action.label}
                                     </span>
                                     <div className={cn(
-                                        "w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg",
+                                        "w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground shadow-lg",
                                         action.color || "bg-primary"
-                                    )}>
+                                    )} aria-hidden>
                                         <action.icon size={20} />
                                     </div>
                                 </motion.button>
@@ -92,14 +92,16 @@ export function FloatingActionButton({ actions = defaultActions, className }: Fl
             <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label={isOpen ? "Fechar ações rápidas" : "Abrir ações rápidas"}
+                aria-expanded={isOpen}
                 className={cn(
-                    "w-14 h-14 rounded-full bg-gradient-to-br from-primary to-gold-light",
+                    "w-14 h-14 rounded-full bg-primary hover:bg-brand-hover shadow-brand",
                     "flex items-center justify-center text-primary-foreground shadow-lg",
                     "transition-all duration-300",
                     isOpen && "rotate-45"
                 )}
             >
-                {isOpen ? <X size={24} /> : <Plus size={24} />}
+                {isOpen ? <X size={24} aria-hidden /> : <Plus size={24} aria-hidden />}
             </motion.button>
         </div>
     );

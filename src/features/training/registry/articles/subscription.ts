@@ -13,7 +13,7 @@ export const subscriptionArticles: Article[] = [
     tourId: "subscription",
     steps: [
       {
-        text: "Abra Minha Assinatura e leia o selo no cartão principal. Ele mostra se a assinatura está em teste, ativa, pendente, cancelada, expirada, bloqueada ou sem assinatura.",
+        text: "Abra Minha Assinatura, no grupo Configurações e ajuda do menu, e leia o selo no cartão principal. Ele mostra se a assinatura está em teste, ativa, pendente, cancelada, expirada, bloqueada ou sem assinatura.",
         image: { src: "/training/subscription/status.webp", alt: "Cartão de assinatura com selo de situação", pending: true },
       },
       { text: "Durante o teste grátis, confira os dias restantes e a data final. Perto do fim, a tela oferece o caminho para assinar." },

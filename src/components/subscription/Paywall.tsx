@@ -8,8 +8,10 @@ import {
     Sparkles,
     Crown,
     ArrowRight,
-    RefreshCw
+    RefreshCw,
+    X
 } from "lucide-react";
+import { BRAND, displayPlanName } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -27,8 +29,8 @@ export const Paywall = ({ children }: PaywallProps) => {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                <div className="text-center" role="status" aria-live="polite">
+                    <div aria-hidden="true" className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-primary border-t-transparent animate-spin motion-reduce:animate-none" />
                     <p className="text-muted-foreground">Verificando assinatura...</p>
                 </div>
             </div>
@@ -44,6 +46,10 @@ export const Paywall = ({ children }: PaywallProps) => {
     const isTrialExpired = subscription?.isTrial && !subscription?.isActive;
     const isSubscriptionExpired = subscription?.status === 'expired' || subscription?.status === 'cancelled';
     const isPendingPayment = subscription?.status === 'pending';
+    // Teste vencido/pagamento pendente = atenção (warning); expirada/bloqueada = erro (destructive).
+    const tone = isTrialExpired || isPendingPayment
+        ? { box: "bg-warning/10 border-warning/30", icon: "bg-warning/15 text-warning" }
+        : { box: "bg-destructive/10 border-destructive/30", icon: "bg-destructive/15 text-destructive" };
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -52,16 +58,16 @@ export const Paywall = ({ children }: PaywallProps) => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 className="w-full max-w-lg"
             >
-                <Card className="glass-card overflow-hidden">
+                <Card className="bg-card overflow-hidden shadow-md">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 p-6 text-center border-b border-border/50">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-500/20 flex items-center justify-center">
+                    <div role="alert" className={`${tone.box} p-6 text-center border-b`}>
+                        <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${tone.icon}`}>
                             {isTrialExpired ? (
-                                <Clock className="w-8 h-8 text-orange-500" />
+                                <Clock className="w-8 h-8" aria-hidden="true" />
                             ) : isPendingPayment ? (
-                                <RefreshCw className="w-8 h-8 text-yellow-500" />
+                                <RefreshCw className="w-8 h-8" aria-hidden="true" />
                             ) : (
-                                <Lock className="w-8 h-8 text-red-500" />
+                                <Lock className="w-8 h-8" aria-hidden="true" />
                             )}
                         </div>
                         <h1 className="font-display text-2xl font-bold text-foreground mb-2">
@@ -71,7 +77,7 @@ export const Paywall = ({ children }: PaywallProps) => {
                             {subscription?.status === 'blocked' && "Acesso bloqueado"}
                         </h1>
                         <p className="text-muted-foreground">
-                            {isTrialExpired && "Os 21 dias de teste gratuito chegaram ao fim."}
+                            {isTrialExpired && "Seu período de teste gratuito chegou ao fim."}
                             {isSubscriptionExpired && "Renove sua assinatura para continuar usando."}
                             {isPendingPayment && "Estamos aguardando a confirmação do seu pagamento."}
                             {subscription?.status === 'blocked' && "Entre em contato com o suporte para regularizar."}
@@ -82,15 +88,22 @@ export const Paywall = ({ children }: PaywallProps) => {
                         {/* What you're missing */}
                         <div className="space-y-3">
                             <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                                <AlertTriangle size={16} className="text-orange-500" />
+                                <AlertTriangle size={16} className="text-warning" aria-hidden="true" />
                                 O que você está perdendo:
                             </p>
                             <ul className="space-y-2 text-sm text-muted-foreground">
-                                <li>❌ Acesso ao dashboard de gestão</li>
-                                <li>❌ Agendamentos online</li>
-                                <li>❌ Gestão de clientes e equipe</li>
-                                <li>❌ Relatórios financeiros</li>
-                                <li>❌ Integrações com WhatsApp</li>
+                                {[
+                                    "Acesso ao dashboard de gestão",
+                                    "Agendamentos online",
+                                    "Gestão de clientes e equipe",
+                                    "Relatórios financeiros",
+                                    "Integrações com WhatsApp",
+                                ].map((item) => (
+                                    <li key={item} className="flex items-center gap-2">
+                                        <X size={14} className="text-destructive flex-shrink-0" aria-hidden="true" />
+                                        {item}
+                                    </li>
+                                ))}
                             </ul>
                         </div>
 
@@ -100,8 +113,8 @@ export const Paywall = ({ children }: PaywallProps) => {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="font-semibold text-foreground flex items-center gap-2">
-                                            <Crown size={18} className="text-primary" />
-                                            SysHair Premium
+                                            <Crown size={18} className="text-primary" aria-hidden="true" />
+                                            {displayPlanName(null)}
                                         </p>
                                         <p className="text-sm text-muted-foreground">Mensal - cancele quando quiser</p>
                                     </div>
@@ -112,20 +125,20 @@ export const Paywall = ({ children }: PaywallProps) => {
                                 </div>
                             </div>
 
-                            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 relative">
-                                <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                            <div className="p-4 rounded-xl bg-success/10 border border-success/30 relative">
+                                <div className="absolute -top-2 -right-2 bg-success text-success-foreground text-xs px-2 py-0.5 rounded-full font-medium">
                                     -15%
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="font-semibold text-foreground flex items-center gap-2">
-                                            <Sparkles size={18} className="text-green-500" />
+                                            <Sparkles size={18} className="text-success" aria-hidden="true" />
                                             Plano Anual
                                         </p>
-                                        <p className="text-sm text-green-600">Economia de R$ 78,80/ano</p>
+                                        <p className="text-sm text-success">Economia de R$ 78,80/ano</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-2xl font-bold text-green-500">R$ 400,00</p>
+                                        <p className="text-2xl font-bold text-success">R$ 400,00</p>
                                         <p className="text-xs text-muted-foreground">/ano</p>
                                     </div>
                                 </div>
@@ -134,7 +147,7 @@ export const Paywall = ({ children }: PaywallProps) => {
 
                         {/* CTA Button */}
                         <Button
-                            variant="gold"
+                            variant="brand"
                             size="lg"
                             className="w-full"
                             onClick={() => navigate('/checkout')}
@@ -162,7 +175,7 @@ export const Paywall = ({ children }: PaywallProps) => {
                             <p className="text-sm text-muted-foreground">
                                 Precisa de ajuda?{" "}
                                 <a
-                                    href="https://wa.me/5511986262240?text=Olá! Preciso de ajuda com minha assinatura do SysHair."
+                                    href={`https://wa.me/5511986262240?text=${encodeURIComponent(`Olá! Preciso de ajuda com minha assinatura do ${BRAND.name}.`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-primary hover:underline"
@@ -174,7 +187,7 @@ export const Paywall = ({ children }: PaywallProps) => {
 
                         {/* Logo */}
                         <div className="flex justify-center pt-4 border-t border-border/50">
-                            <Logo size="sm" />
+                            <Logo size="sm" variant="auto" />
                         </div>
                     </CardContent>
                 </Card>
@@ -195,11 +208,13 @@ export const TrialWarningBanner = () => {
         <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 px-4"
+            role="status"
+            aria-live="polite"
+            className="fixed top-0 left-0 right-0 z-50 bg-warning text-warning-foreground py-2 px-4"
         >
-            <div className="container mx-auto flex items-center justify-between">
+            <div className="container mx-auto flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                    <Clock size={18} />
+                    <Clock size={18} aria-hidden="true" />
                     <span className="text-sm font-medium">
                         {subscription.daysRemaining === 0
                             ? "Seu trial expira hoje!"
@@ -212,7 +227,7 @@ export const TrialWarningBanner = () => {
                     variant="secondary"
                     onClick={() => navigate('/checkout')}
                 >
-                    <Sparkles size={14} className="mr-1" />
+                    <Sparkles size={14} className="mr-1" aria-hidden="true" />
                     Assinar agora
                 </Button>
             </div>

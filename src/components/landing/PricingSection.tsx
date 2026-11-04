@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Check, Sparkles, Crown, Calendar, Percent } from "lucide-react";
+import { Check, Calendar, CalendarRange, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
+// Valores e desconto idênticos ao Checkout (R$ 39,90/mês, R$ 400,00/ano). Não alterar sem validação comercial.
 const features = [
   "Profissionais ilimitados",
   "Agendamentos ilimitados",
@@ -34,165 +34,130 @@ const plans = {
   },
 };
 
+const toggleClass = (active: boolean) =>
+  cn(
+    "relative inline-flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+  );
+
 export const PricingSection = () => {
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
   const currentPlan = plans[selectedPlan];
 
   return (
-    <section id="pricing" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-surface-1" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
-
-      <div className="container relative z-10 px-4">
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Um preço,{' '}
-            <span className="text-gradient-gold">tudo incluso</span>
+    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 bg-background py-16 md:py-24">
+      <div className="container px-4">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <h2 id="pricing-title" className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            Um preço, tudo incluso
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="mt-4 text-lg text-muted-foreground">
             Sem surpresas, sem taxas extras. Tudo que você precisa por um preço único.
           </p>
         </div>
 
-        {/* Plan Toggle */}
-        <div className="flex justify-center mb-10">
-          <div className="inline-flex items-center gap-2 p-1.5 bg-card/80 rounded-xl border border-border/50 backdrop-blur-sm">
-            <button
-              onClick={() => setSelectedPlan('monthly')}
-              className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                selectedPlan === 'monthly'
-                  ? "bg-gradient-to-r from-primary to-gold-light text-primary-foreground shadow-lg"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Calendar className="w-4 h-4 inline mr-2" />
+        <div className="mb-8 flex justify-center">
+          <div role="group" aria-label="Período do plano" className="inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1">
+            <button type="button" aria-pressed={selectedPlan === 'monthly'} onClick={() => setSelectedPlan('monthly')} className={toggleClass(selectedPlan === 'monthly')}>
+              <Calendar className="h-4 w-4" aria-hidden />
               Mensal
             </button>
-            <button
-              onClick={() => setSelectedPlan('annual')}
-              className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200 relative",
-                selectedPlan === 'annual'
-                  ? "bg-gradient-to-r from-primary to-gold-light text-primary-foreground shadow-lg"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Crown className="w-4 h-4 inline mr-2" />
+            <button type="button" aria-pressed={selectedPlan === 'annual'} onClick={() => setSelectedPlan('annual')} className={toggleClass(selectedPlan === 'annual')}>
+              <CalendarRange className="h-4 w-4" aria-hidden />
               Anual
-              <Badge className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 border-0">
-                -15%
-              </Badge>
+              <span className="rounded-full bg-success px-1.5 py-0.5 text-[11px] font-semibold text-success-foreground">-15%</span>
             </button>
           </div>
         </div>
 
-        {/* Single Pricing Card */}
-        <div className="max-w-lg mx-auto">
-          <div
-            className="relative glass-card rounded-3xl p-10 border-primary/50 shadow-gold animate-fade-in-up"
-          >
-            {/* Popular Badge */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-primary to-gold-light text-primary-foreground text-sm font-medium">
-                <Crown size={14} />
-                {selectedPlan === 'annual' ? 'Melhor Custo-Benefício' : 'Acesso Completo'}
-              </div>
-            </div>
-
-            {/* Plan Name */}
-            <div className="text-center mb-8">
-              <h3 className="font-display text-3xl font-bold text-foreground mb-2">
+        <div className="mx-auto max-w-lg">
+          <div className="rounded-2xl border-2 border-primary bg-card p-6 shadow-lg sm:p-10">
+            <div className="mb-6 text-center">
+              <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                {selectedPlan === 'annual' ? 'Melhor custo-benefício' : 'Acesso completo'}
+              </span>
+              <h3 className="mt-4 text-2xl font-bold text-foreground">
                 {selectedPlan === 'annual' ? 'Plano Anual' : 'Plano Mensal'}
               </h3>
-              <p className="text-muted-foreground">
-                Todas as funcionalidades liberadas
-              </p>
+              <p className="mt-1 text-muted-foreground">Todas as funcionalidades liberadas</p>
             </div>
 
-            {/* Price */}
-            <div className="text-center mb-6">
+            <div className="mb-8 text-center" aria-live="polite">
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-xl text-muted-foreground">R$</span>
-                <span className="text-7xl font-bold text-foreground">{currentPlan.price}</span>
-                <span className="text-3xl font-bold text-foreground">,{currentPlan.cents}</span>
+                <span className="text-6xl font-bold tracking-tight text-foreground">{currentPlan.price}</span>
+                <span className="text-2xl font-bold text-foreground">,{currentPlan.cents}</span>
               </div>
               <span className="text-muted-foreground">/{currentPlan.period}</span>
 
               {selectedPlan === 'annual' && (
                 <div className="mt-3 flex flex-col items-center gap-2">
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                    <Percent size={12} className="mr-1" />
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-3 py-1 text-sm font-medium text-success">
+                    <Percent size={12} aria-hidden />
                     Economia de R$ {plans.annual.savings}/ano
-                  </Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Equivale a {plans.annual.total}
-                  </p>
+                  </span>
+                  <p className="text-sm text-muted-foreground">Equivale a {plans.annual.total}</p>
                 </div>
               )}
             </div>
 
-            {/* Features */}
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+            <ul className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {features.map((feature) => (
                 <li key={feature} className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Check size={12} className="text-primary" />
-                  </div>
+                  <Check size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden />
                   <span className="text-sm text-foreground">{feature}</span>
                 </li>
               ))}
             </ul>
 
-            {/* CTA Button */}
-            <Link to="/checkout">
-              <Button
-                variant="gold"
-                className="w-full"
-                size="lg"
-              >
-                Começar agora — 21 dias grátis
-              </Button>
-            </Link>
+            <Button asChild variant="brand" size="lg" className="w-full whitespace-normal text-center">
+              <Link to={`/checkout?plano=${selectedPlan === 'annual' ? 'anual' : 'mensal'}`}>
+                {selectedPlan === 'annual' ? 'Assinar plano anual' : 'Assinar plano mensal'}
+              </Link>
+            </Button>
 
-            {/* No credit card */}
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Cancele quando quiser • Sem fidelidade
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              Prefere testar antes?{" "}
+              <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+                Crie sua conta e use 21 dias grátis
+              </Link>
             </p>
+            <p className="mt-2 text-center text-sm text-muted-foreground">Cancele quando quiser • Sem fidelidade</p>
           </div>
         </div>
 
-        {/* Comparison Table */}
-        <div className="max-w-lg mx-auto mt-8 p-4 rounded-xl bg-card/50 border border-border/50">
-          <h4 className="text-center font-semibold mb-4">Comparativo</h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className={cn(
-              "p-4 rounded-lg border-2 transition-all cursor-pointer",
-              selectedPlan === 'monthly' ? "border-primary bg-primary/5" : "border-border"
-            )} onClick={() => setSelectedPlan('monthly')}>
-              <p className="font-semibold">Mensal</p>
-              <p className="text-2xl font-bold text-primary">R$ 39,90</p>
-              <p className="text-muted-foreground text-xs">por mês</p>
-            </div>
-            <div className={cn(
-              "p-4 rounded-lg border-2 transition-all cursor-pointer relative",
-              selectedPlan === 'annual' ? "border-primary bg-primary/5" : "border-border"
-            )} onClick={() => setSelectedPlan('annual')}>
-              <Badge className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] border-0">
-                ECONOMIA
-              </Badge>
-              <p className="font-semibold">Anual</p>
-              <p className="text-2xl font-bold text-primary">R$ 400,00</p>
-              <p className="text-green-500 text-xs font-medium">Economize R$ 78,80</p>
-            </div>
+        <div className="mx-auto mt-6 max-w-lg rounded-2xl border border-border bg-card p-4">
+          <h3 className="mb-4 text-center font-semibold text-foreground">Comparativo</h3>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <button
+              type="button"
+              aria-pressed={selectedPlan === 'monthly'}
+              onClick={() => setSelectedPlan('monthly')}
+              className={cn(
+                "rounded-xl border-2 p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selectedPlan === 'monthly' ? "border-primary bg-primary/5" : "border-border"
+              )}
+            >
+              <p className="font-semibold text-foreground">Mensal</p>
+              <p className="text-xl font-bold text-primary sm:text-2xl">R$ 39,90</p>
+              <p className="text-xs text-muted-foreground">por mês</p>
+            </button>
+            <button
+              type="button"
+              aria-pressed={selectedPlan === 'annual'}
+              onClick={() => setSelectedPlan('annual')}
+              className={cn(
+                "rounded-xl border-2 p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selectedPlan === 'annual' ? "border-primary bg-primary/5" : "border-border"
+              )}
+            >
+              <p className="font-semibold text-foreground">Anual</p>
+              <p className="text-xl font-bold text-primary sm:text-2xl">R$ 400,00</p>
+              <p className="text-xs font-medium text-success">Economize R$ 78,80</p>
+            </button>
           </div>
         </div>
 
-        {/* Money Back */}
-        <p className="text-center text-muted-foreground mt-12">
-          ✨ Garantia de 30 dias ou seu dinheiro de volta
-        </p>
       </div>
     </section>
   );

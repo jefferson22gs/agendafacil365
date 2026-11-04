@@ -4,7 +4,7 @@ export const settingsArticles: Article[] = [
   {
     id: "settings-complete-salon-info",
     version: 1,
-    title: "Como preencher os dados do salão",
+    title: "Como preencher os dados do estabelecimento",
     summary: "Informe nome, contato e endereço para preparar o cadastro do estabelecimento.",
     category: "settings",
     difficulty: "fácil",
@@ -13,10 +13,10 @@ export const settingsArticles: Article[] = [
     tourId: "settings-info",
     steps: [
       {
-        text: "Abra Configurações do Salão. Se for seu primeiro cadastro, o título será Configurar Salão. O nome é obrigatório para salvar.",
+        text: "Abra Configurações, no grupo Configurações e ajuda do menu. A tela se chama Configurações do estabelecimento; se for seu primeiro cadastro, o título será Configurar estabelecimento. O nome é obrigatório para salvar.",
         image: { src: "/training/settings/basic-info.webp", alt: "Informações básicas do salão com nome, endereço do link e descrição", pending: true },
       },
-      { text: "Preencha Nome do Salão e confira Slug do Link Público. Este segundo campo define a parte do endereço após /s/; o sistema ajusta espaços e acentos para formar o link." },
+      { text: "Preencha Nome do estabelecimento e confira Slug do Link Público. Este segundo campo define a parte do endereço após /s/; o sistema ajusta espaços e acentos para formar o link." },
       { text: "Escreva uma descrição curta para apresentar o salão na página pública. Preencha também Razão Social e CNPJ se quiser guardar esses dados." },
       { text: "Informe telefone, WhatsApp e e-mail de contato. Preencher WhatsApp aqui guarda o número do estabelecimento; não conecta o envio automático de mensagens." },
       {
@@ -29,7 +29,7 @@ export const settingsArticles: Article[] = [
       "Alterar o endereço do link após divulgá-lo muda a página usada pelos clientes. Evite trocar sem atualizar os links que você compartilhou.",
       "O botão Salvar grava todos os campos alterados nesta tela, não apenas a seção que você acabou de preencher.",
     ],
-    keywords: ["salão", "barbearia", "nome", "endereço", "telefone", "zap", "whatsapp", "e-mail", "contato", "cnpj", "slug", "cadastro"],
+    keywords: ["salão", "estabelecimento", "barbearia", "nome", "endereço", "telefone", "zap", "whatsapp", "e-mail", "contato", "cnpj", "slug", "cadastro"],
   },
   {
     id: "settings-configure-hours",
@@ -90,7 +90,7 @@ export const settingsArticles: Article[] = [
   {
     id: "settings-personalize-salon",
     version: 1,
-    title: "Como escolher a cor e o logo do salão",
+    title: "Como escolher a cor e o logo do estabelecimento",
     summary: "Use Personalização para ajustar a cor principal e a imagem do estabelecimento.",
     category: "settings",
     difficulty: "fácil",

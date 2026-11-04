@@ -17,19 +17,9 @@ async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration | 
   }
 
   try {
-    // Verificar se já existe um SW registrado
-    const existingReg = await navigator.serviceWorker.getRegistration('/');
-
-    // Registrar o SW customizado para push
-    const registration = await navigator.serviceWorker.register('/sw-push.js', {
-      scope: '/'
-    });
-
-    console.log('✅ Service Worker sw-push.js registrado:', registration.scope);
-
-    // Aguardar o SW estar pronto
-    await navigator.serviceWorker.ready;
-
+    // Produção: reutiliza o worker único /sw.js (não substitui o precache). Dev: sw-push.js.
+    const registration = await registerAppServiceWorker('/sw-push.js');
+    console.log('✅ Service Worker pronto:', registration?.scope);
     return registration;
   } catch (error) {
     console.error('❌ Erro ao registrar Service Worker:', error);

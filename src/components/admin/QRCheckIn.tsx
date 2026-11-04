@@ -59,7 +59,7 @@ export function QRCodeGenerator({
     };
 
     return (
-        <Card className={cn("glass-card", className)}>
+        <Card className={className}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <QrCode className="text-primary" />
@@ -130,7 +130,7 @@ export function QRScanner({ onScan, className }: QRScannerProps) {
     };
 
     return (
-        <Card className={cn("glass-card", className)}>
+        <Card className={className}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Camera className="text-primary" />
@@ -184,7 +184,7 @@ export function QRScanner({ onScan, className }: QRScannerProps) {
                         placeholder="Digite o código manualmente"
                         className="flex-1"
                     />
-                    <Button variant="gold" onClick={handleManualSubmit}>
+                    <Button variant="brand" onClick={handleManualSubmit} aria-label="Confirmar check-in">
                         <Check size={16} />
                     </Button>
                 </div>
@@ -217,17 +217,17 @@ export function CheckInConfirmation({ success, appointmentData, onClose }: Check
         )}>
             <Card className={cn(
                 "w-80 text-center",
-                success ? "border-emerald-500" : "border-destructive"
+                success ? "border-success" : "border-destructive"
             )}>
                 <CardContent className="pt-8 pb-6">
                     <div className={cn(
                         "w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4",
-                        success ? "bg-emerald-500" : "bg-destructive"
+                        success ? "bg-success" : "bg-destructive"
                     )}>
                         {success ? (
-                            <Check size={32} className="text-white" />
+                            <Check size={32} className="text-success-foreground" aria-hidden />
                         ) : (
-                            <X size={32} className="text-white" />
+                            <X size={32} className="text-destructive-foreground" aria-hidden />
                         )}
                     </div>
 

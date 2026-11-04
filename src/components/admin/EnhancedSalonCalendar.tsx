@@ -27,6 +27,7 @@ import {
 import { format, addDays, startOfDay, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { AppointmentStatusBadge } from "@/components/admin/AppointmentStatusBadge";
 
 interface Appointment {
   id: string;
@@ -325,13 +326,13 @@ export function EnhancedSalonCalendar() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
-        return <CheckCircle size={14} className="text-green-500" />;
+        return <CheckCircle size={14} className="text-success" />;
       case "completed":
-        return <CheckCircle size={14} className="text-blue-500" />;
+        return <CheckCircle size={14} className="text-primary" />;
       case "cancelled":
-        return <XCircle size={14} className="text-red-500" />;
+        return <XCircle size={14} className="text-destructive" />;
       default:
-        return <Clock size={14} className="text-gray-500" />;
+        return <Clock size={14} className="text-muted-foreground" />;
     }
   };
 
@@ -351,16 +352,16 @@ export function EnhancedSalonCalendar() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="text-primary" />
-              Agenda do Salão
+              Agenda do estabelecimento
             </CardTitle>
-            <div className="flex items-center gap-2" data-tour="appointments-calendar-dates">
+            <div className="flex w-full md:w-auto items-center gap-2" data-tour="appointments-calendar-dates">
               <Button variant="outline" size="icon" onClick={handlePreviousDay} aria-label="Dia anterior">
                 <ChevronLeft size={20} />
               </Button>
               <Button variant="outline" onClick={handleToday}>
                 Hoje
               </Button>
-              <div className="px-4 py-2 bg-muted rounded-lg font-semibold min-w-[200px] text-center">
+              <div className="flex-1 md:flex-none px-3 py-2 bg-muted rounded-lg font-semibold md:min-w-[200px] text-center text-sm sm:text-base capitalize truncate" aria-live="polite">
                 {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </div>
               <Button variant="outline" size="icon" onClick={handleNextDay} aria-label="Próximo dia">
@@ -372,7 +373,7 @@ export function EnhancedSalonCalendar() {
       </Card>
 
       {/* Estatísticas do dia */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-2xl font-bold">{stats.total}</p>
@@ -381,19 +382,19 @@ export function EnhancedSalonCalendar() {
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-2xl font-bold text-green-500">{stats.confirmed}</p>
+            <p className="text-2xl font-bold text-success">{stats.confirmed}</p>
             <p className="text-sm text-muted-foreground">Confirmados</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-2xl font-bold text-blue-500">{stats.completed}</p>
+            <p className="text-2xl font-bold text-primary">{stats.completed}</p>
             <p className="text-sm text-muted-foreground">Concluídos</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-2xl font-bold text-red-500">{stats.cancelled}</p>
+            <p className="text-2xl font-bold text-destructive">{stats.cancelled}</p>
             <p className="text-sm text-muted-foreground">Cancelados</p>
           </CardContent>
         </Card>
@@ -413,12 +414,13 @@ export function EnhancedSalonCalendar() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="animate-spin text-primary" size={40} />
+              <Loader2 className="animate-spin text-primary" size={40} aria-hidden />
+              <span className="sr-only">Carregando horários…</span>
             </div>
           ) : salonConfig && !salonConfig.working_days.includes(selectedDate.getDay()) ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <XCircle size={48} className="text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">Salão fechado neste dia</p>
+              <p className="text-lg font-medium text-foreground">Estabelecimento fechado neste dia</p>
               <p className="text-sm text-muted-foreground">
                 Selecione outro dia para visualizar os horários
               </p>
@@ -428,7 +430,7 @@ export function EnhancedSalonCalendar() {
               <Clock size={48} className="text-muted-foreground mb-4" />
               <p className="text-lg font-medium text-foreground">Nenhum horário disponível</p>
               <p className="text-sm text-muted-foreground">
-                Configure os horários de funcionamento e serviços do salão
+                Configure os horários de funcionamento e serviços do estabelecimento
               </p>
             </div>
           ) : (
@@ -438,7 +440,7 @@ export function EnhancedSalonCalendar() {
                   key={slot.time}
                   className={cn(
                     "flex items-start gap-4 p-3 rounded-lg border transition-colors",
-                    slot.available ? "bg-green-500/5 border-green-500/20 hover:bg-green-500/10" : "bg-muted/50"
+                    slot.available ? "bg-success/5 border-success/20 hover:bg-success/10" : "bg-muted/50"
                   )}
                 >
                   <div className="w-16 flex-shrink-0">
@@ -452,10 +454,10 @@ export function EnhancedSalonCalendar() {
                         size="sm"
                         onClick={() => openAddModal(slot.time)}
                         data-tour="appointments-calendar-add"
-                        className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                        className="w-full justify-start text-success hover:text-success hover:bg-success/10"
                       >
-                        <Plus size={16} className="mr-2" />
-                        Horário disponível - Clique para agendar
+                        <Plus size={16} className="mr-2" aria-hidden />
+                        <span className="truncate">Horário disponível – agendar</span>
                       </Button>
                     ) : (
                       <div className="space-y-2">
@@ -464,13 +466,17 @@ export function EnhancedSalonCalendar() {
                             key={apt.id}
                             className="flex items-start gap-3 p-3 bg-background rounded-lg border"
                           >
-                            <div className="mt-1">
+                            <div className="mt-1" aria-hidden>
                               {getStatusBadge(apt.status)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm">{apt.client_name}</p>
+                              {/* Status com texto (não só ícone/cor) */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold text-sm">{apt.client_name}</p>
+                                <AppointmentStatusBadge status={apt.status} />
+                              </div>
                               <p className="text-xs text-muted-foreground">{apt.services.name}</p>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                   <User size={12} />
                                   {apt.professionals.name}
