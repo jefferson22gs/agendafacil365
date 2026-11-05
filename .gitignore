@@ -35,3 +35,12 @@ migracao_novo_banco/
 # Dados pessoais / exportações (LGPD): nunca versionar
 *.vcf
 *.csv.export
+
+# Documentos/SQL locais com credenciais (nunca versionar)
+DIAGNOSTICO_ERRO_LEGENDA.md
+FASE5_CONFIGURAR_CHATBOT*.sql
+MEMORIA_SISTEMA.md
+# Cópia antiga duplicada do app (raiz efetiva é a externa)
+/syshair-main/
+# Pacote de rebranding (assets já copiados para rebrand-assets/ e public/brand/)
+/agenda-facil-365/
