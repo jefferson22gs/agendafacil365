@@ -1,4 +1,4 @@
-# SysHair - Sistema de Gestão para Salões de Beleza
+# AgendaFacil365 - Sistema de Gestão para Salões de Beleza
 
 **Sistema completo de gestão para salões de beleza e barbearias**
 
@@ -50,7 +50,7 @@ Desenvolvido por **Código Base**
 
 ```bash
 # Clonar repositório
-git clone https://github.com/jefferson22gs/syshair.git
+git clone [https://github.com/jefferson22gs/agendafacil365.git]
 cd syshair
 
 # Instalar dependências
