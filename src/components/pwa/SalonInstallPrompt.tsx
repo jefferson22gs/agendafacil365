@@ -39,6 +39,7 @@ export const SalonInstallPrompt = ({
   }, [salonSlug]);
 
   useEffect(() => {
+    if (import.meta.env.MODE === 'demo') return;
     // Manifest dinâmico do estabelecimento enquanto o componente está montado.
     // Guarda o estado original e restaura no cleanup para não "vazar" para outras rotas.
     const themeColor = safeHexColor(salonThemeColor);

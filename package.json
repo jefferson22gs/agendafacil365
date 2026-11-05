@@ -7,6 +7,8 @@
     "dev": "vite",
     "training:demo": "vite --config vite.config.training.ts --mode training",
     "training:check": "node scripts/training-check.cjs",
+    "demo:dev": "vite --config vite.config.demo.ts --mode demo",
+    "build:demo": "vite build --config vite.config.demo.ts --mode demo",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

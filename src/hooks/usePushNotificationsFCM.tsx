@@ -57,7 +57,7 @@ export const usePushNotificationsFCM = (providedSalonId?: string, clientId?: str
 
     useEffect(() => {
         // Check if push notifications are supported
-        const isSupported = 'Notification' in window && 'serviceWorker' in navigator;
+        const isSupported = import.meta.env.MODE !== 'demo' && 'Notification' in window && 'serviceWorker' in navigator;
 
         setState(prev => ({
             ...prev,

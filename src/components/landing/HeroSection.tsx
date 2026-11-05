@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { BRAND } from "@/config/brand";
 import { CalendarCheck, ChevronRight, Link2, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
+import { DEMO_SALON_SLUG, IS_DEMO } from "@/config/demo";
 
 const benefits = [
   { icon: Link2, title: "Link de agendamento", text: "Seus clientes escolhem serviço, profissional e horário sem precisar ligar." },
@@ -28,6 +29,19 @@ export const HeroSection = () => {
             outros prestadores de serviço que trabalham com horário marcado.
           </p>
 
+          {IS_DEMO ? (
+            <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+              <Button asChild variant="brand" size="xl" className="group">
+                <Link to="/admin">
+                  Entrar na demonstração
+                  <ChevronRight className="transition-transform group-hover:translate-x-1" aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="xl">
+                <Link to={`/s/${DEMO_SALON_SLUG}`}>Ver página de agendamento</Link>
+              </Button>
+            </div>
+          ) : (
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
             {/* /register cria o trial de 21 dias (useSubscription.startTrial). */}
             <Button asChild variant="brand" size="xl" className="group">
@@ -40,6 +54,7 @@ export const HeroSection = () => {
               <a href="#pricing">Ver planos</a>
             </Button>
           </div>
+          )}
         </div>
 
         <ul className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-4 md:grid-cols-3">

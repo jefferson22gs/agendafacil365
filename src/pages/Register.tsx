@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { safeNext } from "@/lib/safeNext";
 import { Logo } from "@/components/icons/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,12 +38,14 @@ const Register = () => {
 
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate(next);
     }
-  }, [user, navigate]);
+  }, [user, navigate, next]);
 
   useEffect(() => {
     // Carregar lista de vendedores (apenas ativos)
@@ -92,7 +95,7 @@ const Register = () => {
     );
 
     if (!error) {
-      navigate('/dashboard');
+      navigate(next);
     }
 
     setIsLoading(false);

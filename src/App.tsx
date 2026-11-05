@@ -13,6 +13,8 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { TrialWarningBanner } from "@/components/subscription/Paywall";
 import { TrainingProvider } from "@/features/training/TrainingProvider";
+import { IS_DEMO } from "@/config/demo";
+import { DemoBanner } from "@/components/demo/DemoBanner";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -71,11 +73,13 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      {IS_DEMO && <DemoBanner />}
       <Toaster />
       <Sonner />
-      <InstallPrompt />
+      {/* Demo: sem PWA/push (nenhum service worker é registrado). */}
+      {!IS_DEMO && <InstallPrompt />}
       <OfflineIndicator />
-      <NotificationPrompt />
+      {!IS_DEMO && <NotificationPrompt />}
       <BrowserRouter>
         <AuthProvider>
           <SubscriptionProvider>
@@ -83,8 +87,8 @@ const App = () => (
             <TrainingProvider>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={IS_DEMO ? <Navigate to="/admin" replace /> : <Login />} />
+              <Route path="/register" element={IS_DEMO ? <Navigate to="/admin" replace /> : <Register />} />
               <Route path="/install" element={<Install />} />
               <Route path="/booking" element={<BookingFlow />} />
               <Route path="/booking/:salonId" element={<BookingFlow />} />

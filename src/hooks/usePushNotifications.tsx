@@ -37,7 +37,7 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
 
   useEffect(() => {
     // Check if push notifications are supported
-    const isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+    const isSupported = import.meta.env.MODE !== 'demo' && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
 
     setState(prev => ({
       ...prev,

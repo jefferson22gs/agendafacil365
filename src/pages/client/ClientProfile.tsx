@@ -156,7 +156,7 @@ const ClientProfile = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/95 border-b border-border">
         <div className="container px-4">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-wrap items-center justify-between gap-2 min-h-16 py-2">
             <Logo size="sm" />
             <div className="flex items-center gap-2 sm:gap-4">
               <Button variant="brand" size="sm" onClick={() => navigate('/booking')}>

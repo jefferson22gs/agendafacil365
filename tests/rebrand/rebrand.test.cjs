@@ -77,6 +77,40 @@ test('webhook Mercado Pago: localiza assinatura só com .eq e UUID validado', as
   assert.equal(await findSubscription(db(rows), null, undefined), null);
 });
 
+test('InfinitePay: payload do link, preço do servidor, confirmação e redirect seguro', () => {
+  const ip = load('supabase/functions/_shared/infinitepay/core.ts');
+  assert.equal(ip.normalizeHandle(' $Marco-Boggian '), 'marco-boggian');
+  const req = ip.buildLinkRequest({ handle: '$marco-boggian', orderNsu: 'n1', plan: 'annual', redirectUrl: 'https://a/x', webhookUrl: 'https://w', customer: { name: 'Ana', email: 'a@b.c', phone: '(11) 98888-7777' } });
+  assert.equal(req.handle, 'marco-boggian');
+  assert.equal(JSON.stringify(req.items), JSON.stringify([{ quantity: 1, price: 40000, description: 'Agenda Fácil 365 Premium — Anual' }]), 'R$ 400,00 em centavos');
+  assert.equal(req.customer.phone_number, '+5511988887777');
+  assert.equal(ip.buildLinkRequest({ handle: 'h', orderNsu: 'n', plan: 'monthly', redirectUrl: 'r', webhookUrl: 'w' }).items[0].price, 3990, 'R$ 39,90');
+  assert.equal(ip.isPlan('annual'), true); assert.equal(ip.isPlan('vitalicio'), false);
+  // Confirmação: precisa de paid=true E valor >= esperado
+  assert.equal(ip.isConfirmedPayment({ success: true, paid: true, paid_amount: 3990 }, 3990), true);
+  assert.equal(ip.isConfirmedPayment({ success: true, paid: true, paid_amount: 100 }, 3990), false, 'pagou menos');
+  assert.equal(ip.isConfirmedPayment({ success: true, paid: false, paid_amount: 3990 }, 3990), false);
+  assert.equal(ip.isConfirmedPayment({ success: false }, 3990), false);
+  assert.equal(ip.isConfirmedPayment(null, 3990), false);
+  // Redirect só para a origem do app
+  assert.equal(ip.safeRedirect('https://evil.com/x', ['https://agendafacil365.com.br'], 'F'), 'F');
+  assert.equal(ip.safeRedirect('https://agendafacil365.com.br/admin', ['https://agendafacil365.com.br'], 'F'), 'https://agendafacil365.com.br/admin');
+  assert.equal(ip.safeRedirect('javascript:alert(1)', ['https://agendafacil365.com.br'], 'F'), 'F');
+  // Período: pagamento antecipado não perde dias
+  const now = new Date('2026-11-05T12:00:00Z');
+  assert.equal(ip.nextPeriodEnd('monthly', '2026-11-20T12:00:00Z', now).toISOString().slice(0, 10), '2026-12-20');
+  assert.equal(ip.nextPeriodEnd('annual', null, now).toISOString().slice(0, 10), '2027-11-05');
+  // Webhook: exige os 3 identificadores
+  assert.equal(ip.parseWebhook({ order_nsu: 'o' }), null);
+  assert.equal(ip.parseWebhook({ order_nsu: 'o', transaction_nsu: 't', invoice_slug: 's', amount: 3990 }).amount, 3990);
+});
+
+test('safeNext: só aceita caminho interno após login/cadastro', () => {
+  const { safeNext } = load('src/lib/safeNext.ts');
+  assert.equal(safeNext('/admin/subscription?plano=anual'), '/admin/subscription?plano=anual');
+  for (const bad of ['https://evil.com', '//evil.com/x', '/\\evil.com', 'javascript:alert(1)', '', null, undefined]) assert.equal(safeNext(bad), '/dashboard', String(bad));
+});
+
 test('manifest por tenant: valida slug, 404, JSON público e cor segura', async () => {
   const m = load('api/manifest/[slug].ts');
   const env = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' };

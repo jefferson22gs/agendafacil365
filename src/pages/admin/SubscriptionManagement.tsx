@@ -24,6 +24,7 @@ import { useSubscription, SubscriptionStatus } from "@/hooks/useSubscription";
 import { cn } from "@/lib/utils";
 import { BRAND, displayPlanName } from "@/config/brand";
 import { callRpc, isMissingRpc } from "@/lib/rpcFallback";
+import { InfinitePayButton } from "@/components/subscription/InfinitePayButton";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -74,7 +75,7 @@ const SubscriptionManagement = () => {
     const processing = searchParams.get('status') === 'processing';
     const { subscription, isLoading, checkSubscription } = useSubscription();
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
+    const [selectedPlan, setSelectedPlan] = useState<PlanType>(() => (searchParams.get('plano') === 'anual' ? 'annual' : 'monthly'));
 
     const currentPlan = PLANS[selectedPlan];
 
@@ -371,16 +372,25 @@ const SubscriptionManagement = () => {
                                 )}
 
                                 {/* Actions */}
-                                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50">
+                                {/* InfinitePay: Pix/cartão; também serve para renovar/antecipar (soma ao período atual). */}
+                                <div className="pt-4 border-t border-border/50 space-y-1">
+                                    <InfinitePayButton plan={selectedPlan} className="w-full h-auto min-h-12 whitespace-normal" />
+                                    <p className="text-xs text-center text-muted-foreground">
+                                        {subscription?.isActive && !subscription?.isTrial
+                                            ? 'Pagar agora soma o período ao fim da assinatura atual.'
+                                            : 'Liberação automática assim que o pagamento for confirmado.'}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                                     {subscription?.isTrial || !subscription?.isActive ? (
                                         <Button
-                                            variant="brand"
+                                            variant="outline"
                                             className="flex-1"
                                             data-tour="subscription-subscribe"
                                             onClick={handleSubscribe}
                                         >
                                             <CreditCard size={18} className="mr-2" />
-                                            Assinar {selectedPlan === 'annual' ? 'Anual' : 'Mensal'}
+                                            Assinatura recorrente (Mercado Pago)
                                             <ExternalLink size={14} className="ml-2" />
                                         </Button>
                                     ) : (

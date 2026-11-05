@@ -7,7 +7,8 @@
 export const APP_SW_URL = "/sw.js";
 
 export async function registerAppServiceWorker(devFallbackUrl: string): Promise<ServiceWorkerRegistration | null> {
-  if (!("serviceWorker" in navigator)) return null;
+  // Demo pública (vite.config.demo.ts): nenhum service worker. MODE é constante de build; produção não muda.
+  if (import.meta.env.MODE === "demo" || !("serviceWorker" in navigator)) return null;
   const url = import.meta.env.PROD ? APP_SW_URL : devFallbackUrl;
   const registration = await navigator.serviceWorker.register(url, { scope: "/" });
   await navigator.serviceWorker.ready;

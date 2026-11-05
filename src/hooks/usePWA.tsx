@@ -16,6 +16,7 @@ export const usePWA = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
+    if (import.meta.env.MODE === 'demo') return;
     // Check if already installed
     const checkInstalled = () => {
       if (window.matchMedia('(display-mode: standalone)').matches) {

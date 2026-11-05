@@ -21,6 +21,8 @@ import { Logo } from "@/components/icons/Logo";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/config/brand";
+import { InfinitePayButton } from "@/components/subscription/InfinitePayButton";
+import { INFINITEPAY_TAG } from "@/services/infinitePay";
 
 // Mercado Pago Subscription Plan IDs
 const PLANS = {
@@ -115,11 +117,6 @@ export const CheckoutPage = () => {
         return () => window.removeEventListener("message", handleMPMessage);
     }, [navigate]);
 
-    const handleSubscribe = () => {
-        // Open Mercado Pago checkout in new tab/modal
-        window.open(checkoutUrl, '_blank');
-    };
-
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
@@ -130,7 +127,7 @@ export const CheckoutPage = () => {
                     </button>
                     <div className="flex items-center gap-2">
                         <Shield className="w-4 h-4 text-success flex-shrink-0" aria-hidden="true" />
-                        <span className="text-xs sm:text-sm text-muted-foreground">Pagamento seguro via Mercado Pago</span>
+                        <span className="text-xs sm:text-sm text-muted-foreground">Pagamento seguro via InfinitePay ou Mercado Pago</span>
                     </div>
                 </div>
             </header>
@@ -300,7 +297,8 @@ export const CheckoutPage = () => {
                                         <div>
                                             <p className="font-semibold text-success">Teste gratuito</p>
                                             <p className="text-sm text-muted-foreground">
-                                                Confira no Mercado Pago a data da primeira cobrança antes de confirmar.
+                                                Na assinatura pelo Mercado Pago, confira a data da primeira cobrança antes de confirmar.
+                                                Pela InfinitePay, o pagamento libera o período escolhido assim que for confirmado.
                                             </p>
                                         </div>
                                     </div>
@@ -327,7 +325,17 @@ export const CheckoutPage = () => {
                                     </motion.div>
                                 )}
 
-                                {/* Mercado Pago Subscribe Button */}
+                                {/* InfinitePay (Pix ou cartão) — cobrança avulsa por período, confirmada no servidor */}
+                                <InfinitePayButton plan={selectedPlan} />
+                                <p className="mt-2 text-xs text-center text-muted-foreground">
+                                    Pix ou cartão pela InfinitePay. Condições exibidas no checkout. Recebedor: {INFINITEPAY_TAG}.
+                                </p>
+
+                                <div className="flex items-center gap-3 my-4" aria-hidden="true">
+                                    <div className="h-px flex-1 bg-border" /><span className="text-xs text-muted-foreground">ou</span><div className="h-px flex-1 bg-border" />
+                                </div>
+
+                                {/* Mercado Pago — assinatura recorrente (mantido) */}
                                 <a
                                     href={checkoutUrl}
                                     target="_blank"
@@ -336,26 +344,16 @@ export const CheckoutPage = () => {
                                     data-mp-button="true"
                                 >
                                     <Button
-                                        variant="brand"
+                                        variant="outline"
                                         size="lg"
-                                        className="w-full h-auto min-h-14 whitespace-normal text-base sm:text-lg py-4"
+                                        className="w-full h-auto min-h-12 whitespace-normal"
                                     >
-                                        <CreditCard size={20} className="mr-2" />
-                                        Assinar {selectedPlan === 'annual' ? 'Anual' : 'Mensal'} com Mercado Pago
-                                        <ExternalLink size={16} className="ml-2" aria-hidden="true" />
+                                        <CreditCard size={18} className="mr-2" />
+                                        Assinatura recorrente com Mercado Pago
+                                        <ExternalLink size={14} className="ml-2" aria-hidden="true" />
                                         <span className="sr-only">(abre em nova aba)</span>
                                     </Button>
                                 </a>
-
-                                {/* Secondary Button */}
-                                <Button
-                                    variant="outline"
-                                    size="lg"
-                                    className="w-full mt-3"
-                                    onClick={handleSubscribe}
-                                >
-                                    Abrir em nova janela
-                                </Button>
 
                                 {/* Guarantees */}
                                 <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-border/50">

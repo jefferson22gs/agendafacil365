@@ -213,7 +213,7 @@ const PublicSalon = () => {
   // registrar outro arquivo no mesmo scope substituiria o worker de precache.
   // Tudo é restaurado no cleanup para não vazar a identidade do tenant para outras rotas.
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || import.meta.env.MODE === 'demo') return;
     const manifestHref = `/api/manifest/${slug}`;
     let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     const createdManifest = !manifestLink;
@@ -1097,7 +1097,7 @@ const PublicSalon = () => {
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
               style={{ backgroundColor: primaryColor }}
             >
-              <Calendar size={20} />
+              <CalendarIcon size={20} aria-hidden />
               Adicionar ao Google Calendar
             </button>
 

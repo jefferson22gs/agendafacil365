@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Agenda Fácil 365 — endurecimento de RLS (auditoria 05/11/2026)
--- NÃO APLICADO. Aplicar só com aprovação, primeiro em staging, com backup.
+-- APLICADO em produção (ocbwsaydgkiseeardjga) em 05/11/2026 após ensaio em transação revertida.
 -- Não apaga nem altera dados; só policies e funções. Rollback no fim do arquivo.
 --
 -- 1) subscriptions: o cliente podia fazer UPDATE/INSERT livre na própria linha
