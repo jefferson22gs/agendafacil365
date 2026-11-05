@@ -61,7 +61,7 @@ export const subscriptionTour: TourDef = {
     {
       target: "subscription-cancel",
       title: "Cancelar assinatura",
-      body: "Este botão abre uma confirmação, mas confirmar só mostra um alerta: o cancelamento ainda não está integrado. Para cancelar de verdade, confira o Mercado Pago ou fale com o suporte.",
+      body: "Este botão explica que a cobrança recorrente é cancelada no Mercado Pago e abre suas assinaturas lá. O status aqui muda quando o Mercado Pago confirmar.",
       fallbackBody: "O botão de cancelamento aparece para assinatura ativa fora do período de teste.",
     },
     {

@@ -46,8 +46,13 @@ export const SalonInstallPrompt = ({
     const previousHref = manifestLink?.getAttribute('href') ?? null;
     let manifestURL: string | null = null;
 
-    if (manifestLink) {
+    // PublicSalon já aponta para o manifest servido pela Function (/api/manifest/:slug): não sobrescrever.
+    const servedByFunction = previousHref?.startsWith('/api/manifest/') ?? false;
+    if (manifestLink && !servedByFunction) {
+      // Manifest em blob: a URL base é "blob:", então caminhos relativos não resolvem. Tudo absoluto.
+      const abs = (p: string) => new URL(p, window.location.origin).href;
       const manifestData = {
+        id: abs(`/s/${salonSlug}`),
         name: `${salonName} - Agendamento`,
         short_name: salonName,
         description: `Agende seus serviços no ${salonName}`,
@@ -55,14 +60,15 @@ export const SalonInstallPrompt = ({
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait',
-        scope: `/s/${salonSlug}/`,
-        start_url: `/s/${salonSlug}?source=pwa`,
+        // scope sem barra final contém o start_url (/s/slug?source=pwa).
+        scope: abs(`/s/${salonSlug}`),
+        start_url: abs(`/s/${salonSlug}?source=pwa`),
         icons: [
           // Logo do estabelecimento só como "any" (comportamento anterior); senão, ícones padrão.
-          { src: salonLogo || BRAND.assets.icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: salonLogo || BRAND.assets.icon512, sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: abs(salonLogo || BRAND.assets.icon192), sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: abs(salonLogo || BRAND.assets.icon512), sizes: '512x512', type: 'image/png', purpose: 'any' },
           // Maskable nunca usa logo arbitrário (sem garantia de safe zone).
-          { src: BRAND.assets.maskable512, sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: abs(BRAND.assets.maskable512), sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       };
       manifestURL = URL.createObjectURL(new Blob([JSON.stringify(manifestData)], { type: 'application/json' }));

@@ -31,3 +31,7 @@ supabase/.temp/*
 backup_banco_antigo/
 migracao_novo_banco/
 .remember/
+
+# Dados pessoais / exportações (LGPD): nunca versionar
+*.vcf
+*.csv.export

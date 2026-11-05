@@ -163,6 +163,10 @@ const SalonSettings = () => {
         }
 
         setIsNew(false);
+      } else {
+        // Estabelecimento ainda não criado: aproveita o "Nome do negócio" informado no cadastro (metadado do Auth).
+        const fromSignup = typeof user.user_metadata?.business_name === "string" ? user.user_metadata.business_name.trim() : "";
+        if (fromSignup) setSalon(prev => (prev.name ? prev : { ...prev, name: fromSignup.slice(0, 120) }));
       }
     } catch (error) {
       console.error("Error fetching salon:", error);

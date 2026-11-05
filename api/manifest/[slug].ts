@@ -8,7 +8,8 @@
  * Nunca usar service-role aqui nem prefixo VITE_.
  */
 
-const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/i;
+// Mesmo alfabeto do generateSlug (SalonSettings), sem limite curto: slugs longos já existentes continuam válidos.
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,198}[a-z0-9])?$/i;
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const DEFAULT_COLOR = "#2563EB";
 
@@ -67,7 +68,7 @@ export async function handleManifest(request: Request, env: Env, fetchImpl: type
   if (!SLUG.test(slug)) return json(400, { error: "slug inválido" }, "no-store");
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json(500, { error: "manifest indisponível" }, "no-store");
 
-  const url = `${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/salons?select=name,slug,primary_color&slug=eq.${encodeURIComponent(slug)}&is_active=neq.false&limit=1`;
+  const url = `${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/salons?select=name,slug,primary_color&slug=eq.${encodeURIComponent(slug)}&or=(is_active.is.null,is_active.eq.true)&limit=1`;
   let rows: PublicSalon[];
   try {
     const res = await fetchImpl(url, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` } });

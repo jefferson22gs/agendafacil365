@@ -27,7 +27,7 @@ interface AuthContextType {
   loading: boolean;
   sellerId: string | null; // Adicionado para vendedor que indicou o sistema
   setSellerId: (sellerId: string | null) => void; // Adicionado para salvar o vendedor
-  signUp: (email: string, password: string, fullName: string, phone?: string, sellerId?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, phone?: string, sellerId?: string, businessName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, phone?: string, sellerId?: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone?: string, sellerId?: string, businessName?: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -126,6 +126,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: {
             full_name: fullName,
             phone: phone,
+            // Só metadado do usuário; o estabelecimento é criado em Configurações (pré-preenchido com este nome).
+            ...(businessName?.trim() ? { business_name: businessName.trim() } : {}),
           }
         }
       });

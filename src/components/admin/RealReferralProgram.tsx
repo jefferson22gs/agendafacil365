@@ -107,20 +107,31 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
         }
     };
 
+    // ponytail: /ref/:code não existe em App.tsx (o link abria 404). Usa a página pública real do estabelecimento;
+    // o código vai no texto para ser informado no atendimento. Criar /ref/:code quando houver captura automática.
+    const [salonSlug, setSalonSlug] = useState<string | null>(null);
+    useEffect(() => {
+        if (!salonId) return;
+        supabase.from('salons').select('slug').eq('id', salonId).maybeSingle()
+            .then(({ data }) => setSalonSlug(data?.slug ?? null));
+    }, [salonId]);
+    const bookingLink = salonSlug ? `${window.location.origin}/s/${salonSlug}` : null;
+
     const copyLink = async () => {
-        if (clientCode?.code) {
-            const link = `${window.location.origin}/ref/${clientCode.code}`;
-            await navigator.clipboard.writeText(link);
-            toast.success('Link copiado!');
+        if (!clientCode?.code) return;
+        if (!bookingLink) {
+            toast.error('Configure o endereço do link público em Configurações para compartilhar o link.');
+            return;
         }
+        await navigator.clipboard.writeText(`${bookingLink}\nCódigo de indicação: ${clientCode.code}`);
+        toast.success('Link de agendamento e código copiados!');
     };
 
     const shareWhatsApp = () => {
         if (clientCode?.code) {
             const selectedClient = clients.find(c => c.id === selectedClientId);
-            const message = `🎉 ${selectedClient?.name || 'Seu amigo'} está te indicando para o nosso salão!\n\nUse o código ${clientCode.code} e ganhe 10% de desconto na primeira visita!\n\n`;
-            const link = `${window.location.origin}/ref/${clientCode.code}`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(message + link)}`, '_blank');
+            const message = `🎉 ${selectedClient?.name || 'Seu amigo'} está te indicando!\n\nInforme o código ${clientCode.code} no atendimento e ganhe 10% de desconto na primeira visita!\n\n`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(message + (bookingLink ? `Agende aqui: ${bookingLink}` : ''))}`, '_blank');
         }
     };
 

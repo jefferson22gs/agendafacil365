@@ -4,7 +4,7 @@ import {
     Image,
     Heart,
     MessageCircle,
-    Share2,
+
     Calendar,
     Sparkles,
     ChevronLeft,
@@ -128,13 +128,19 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
                             <Image className="w-5 h-5 text-primary" />
                             Lookbook Social
                         </CardTitle>
-                        <Button variant="brand" size="sm" data-tour="advanced-lookbook-new">
+                        <Button variant="brand" size="sm" data-tour="advanced-lookbook-new" disabled title="Em breve: publicação ainda não disponível">
                             <Sparkles size={16} className="mr-1" />
                             Novo Post
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {/* ponytail: vitrine só com exemplos (mockPosts). lookbookService/lookbook_items existem mas não estão ligados;
+                        ligar quando houver upload + moderação. Até lá, deixar explícito que é demonstração. */}
+                    <div role="note" className="mb-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">
+                        <strong className="text-warning">Demonstração.</strong> As fotos, nomes, preços e curtidas abaixo são exemplos e não
+                        pertencem ao seu estabelecimento. Para registrar trabalhos reais, use <strong>Galeria</strong>.
+                    </div>
                     {/* Posts Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-tour="advanced-lookbook-grid">
                         {posts.map((post, index) => (
@@ -300,25 +306,23 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
                                         />
                                         <span>{selectedPost.likes}</span>
                                     </button>
-                                    <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                                        <MessageCircle size={24} />
+                                    <span className="flex items-center gap-2 text-muted-foreground" aria-label={`${selectedPost.comments} comentários (exemplo)`}>
+                                        <MessageCircle size={24} aria-hidden />
                                         <span>{selectedPost.comments}</span>
-                                    </button>
-                                    <button type="button" aria-label="Compartilhar" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors ml-auto">
-                                        <Share2 size={24} />
-                                    </button>
+                                    </span>
                                 </div>
 
                                 {/* CTA Buttons */}
                                 <div className="mt-auto space-y-3">
-                                    <Button variant="brand" className="w-full" size="lg" data-tour="advanced-lookbook-cta">
+                                    <Button variant="brand" className="w-full" size="lg" data-tour="advanced-lookbook-cta" disabled>
                                         <Calendar size={18} className="mr-2" />
                                         Quero esse look! Agendar agora
                                     </Button>
-                                    <Button variant="outline" className="w-full">
+                                    <Button variant="outline" className="w-full" disabled>
                                         <ExternalLink size={18} className="mr-2" />
                                         Ver perfil de {selectedPost.professionalName}
                                     </Button>
+                                    <p className="text-xs text-center text-muted-foreground">Exemplo ilustrativo: botões indisponíveis nesta demonstração.</p>
                                 </div>
                             </div>
                         </div>

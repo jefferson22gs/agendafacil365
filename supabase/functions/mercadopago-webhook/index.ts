@@ -46,6 +46,29 @@ interface MPPayment {
     payment_method_id: string;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type SubRow = { id: string; salon_id: string; [k: string]: unknown };
+type SubQuery = {
+    select(c: string): SubQuery; eq(c: string, v: string): SubQuery; order(c: string, o: { ascending: boolean }): SubQuery;
+    limit(n: number): SubQuery; maybeSingle(): PromiseLike<{ data: SubRow | null }>;
+};
+type SubDb = { from(table: 'subscriptions'): SubQuery };
+
+/** Assinatura mais recente do estabelecimento; consultas só com .eq() (sem montar filtro com texto externo). */
+export async function findSubscription(db: SubDb, preapprovalId: string | null, externalReference: string | null | undefined) {
+    if (preapprovalId) {
+        const { data } = await db.from('subscriptions').select('*').eq('mp_preapproval_id', preapprovalId)
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (data) return data;
+    }
+    const ref = (externalReference ?? '').trim();
+    if (!UUID.test(ref)) return null;
+    const { data } = await db.from('subscriptions').select('*').eq('salon_id', ref)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    return data ?? null;
+}
+
 serve(async (req) => {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
@@ -96,13 +119,10 @@ serve(async (req) => {
 
                 const status = statusMap[preapproval.status] || 'pending';
 
-                // Find subscription by external reference (salon_id)
-                const { data: subscription, error: findError } = await supabase
-                    .from('subscriptions')
-                    .select('*')
-                    .or(`mp_preapproval_id.eq.${preapproval.id},mp_external_reference.eq.${preapproval.external_reference}`)
-                    .limit(1)
-                    .maybeSingle();
+                // Localiza a assinatura sem interpolar texto externo em filtro PostgREST:
+                // 1) id do preapproval já vinculado; 2) external_reference = salon_id (UUID validado).
+                // Não usa mp_external_reference (coluna gravável pelo cliente antes do endurecimento de RLS).
+                const subscription = await findSubscription(supabase as unknown as SubDb, preapproval.id, preapproval.external_reference);
 
                 if (!subscription) {
                     console.log('No subscription found for preapproval:', preapproval.id);
@@ -166,11 +186,7 @@ serve(async (req) => {
                     break;
                 }
 
-                const { data: subscription } = await supabase
-                    .from('subscriptions')
-                    .select('id, salon_id')
-                    .eq('mp_external_reference', payment.external_reference)
-                    .maybeSingle();
+                const subscription = await findSubscription(supabase as unknown as SubDb, null, payment.external_reference);
 
                 if (!subscription) {
                     console.log('No subscription found for payment:', payment.external_reference);

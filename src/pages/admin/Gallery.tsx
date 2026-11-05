@@ -287,10 +287,10 @@ const GalleryPage = () => {
     }
   };
 
-  const copyShareLink = (token: string) => {
-    const link = `${window.location.origin}/gallery/${token}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copiado!");
+  // ponytail: não existe rota pública /gallery/:token em App.tsx — o link copiado abria a página 404.
+  // Até a página pública existir, não copiar URL quebrada. O token continua gravado para uso futuro.
+  const copyShareLink = (_token: string) => {
+    toast.info("Página pública de transformações ainda não disponível. O link será liberado quando a página existir.");
   };
 
   const handleDelete = async (id: string) => {

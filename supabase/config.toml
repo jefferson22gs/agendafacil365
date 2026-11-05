@@ -1,4 +1,4 @@
-# SysHair Supabase Configuration
+# Agenda Fácil 365 — Supabase (config LOCAL da CLI; não altera o projeto remoto sem `supabase config push`)
 project_id = "ocbwsaydgkiseeardjga"
 
 [api]
@@ -26,7 +26,8 @@ enabled = true
 [auth]
 enabled = true
 site_url = "http://localhost:8080"
-additional_redirect_urls = ["http://localhost:8080/*", "https://syshair.vercel.app/*"]
+# Domínio novo incluído sem remover o antigo (transição). Aplicar no painel Auth do projeto remoto na fase B.
+additional_redirect_urls = ["http://localhost:8080/*", "https://syshair.vercel.app/*", "https://agendafacil365.com.br/*", "https://www.agendafacil365.com.br/*"]
 jwt_expiry = 3600
 enable_signup = true
 

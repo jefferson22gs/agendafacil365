@@ -51,8 +51,8 @@ interface ChurnRiskClient {
 interface CrossSellInsight {
     service: string;
     product: string;
-    probability: number;
-    avgTicketIncrease: number;
+    /** Preço real do produto cadastrado; null quando a sugestão é genérica (sem produto). */
+    avgTicketIncrease: number | null;
 }
 
 export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
@@ -300,13 +300,13 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
         if (services && services.length > 0) {
             services.forEach((service, index) => {
                 // Criar recomendações baseadas no tipo de serviço
+                // Sem modelo de compra conjunta: não exibir probabilidade/ganho inventados (antes: Math.random()).
                 let productName = 'Produto recomendado';
-                let probability = 60 + Math.floor(Math.random() * 25);
-                let avgIncrease = 35 + Math.floor(Math.random() * 50);
+                let avgIncrease: number | null = null;
 
                 if (products && products[index % products.length]) {
                     productName = products[index % products.length].name;
-                    avgIncrease = products[index % products.length].price || avgIncrease;
+                    avgIncrease = products[index % products.length].price ?? null;
                 } else {
                     // Sugestões genéricas baseadas no nome do serviço
                     const serviceName = service.name.toLowerCase();
@@ -326,7 +326,6 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                 insights.push({
                     service: service.name,
                     product: productName,
-                    probability,
                     avgTicketIncrease: avgIncrease
                 });
             });
@@ -627,12 +626,12 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <Badge variant="secondary">
-                                                    {insight.probability}% chance
-                                                </Badge>
-                                                <span className="text-sm text-success font-medium">
-                                                    +R$ {insight.avgTicketIncrease}
-                                                </span>
+                                                <Badge variant="secondary">Sugestão</Badge>
+                                                {insight.avgTicketIncrease != null && (
+                                                    <span className="text-sm text-muted-foreground" title="Preço do produto cadastrado">
+                                                        R$ {insight.avgTicketIncrease.toFixed(2).replace('.', ',')}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </motion.div>
@@ -640,18 +639,14 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                             </div>
                         )}
 
-                        <div className="p-4 rounded-xl bg-success/10 border border-success/30">
+                        <div className="p-4 rounded-xl bg-secondary border border-border">
                             <div className="flex items-start gap-3">
-                                <DollarSign className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+                                <DollarSign className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" aria-hidden />
                                 <div>
-                                    <p className="text-sm font-medium text-foreground">💰 Potencial de Receita</p>
+                                    <p className="text-sm font-medium text-foreground">Como usar estas sugestões</p>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Aplicando estas recomendações de cross-sell, você pode aumentar o ticket médio em até
-                                        <span className="text-success font-bold">
-                                            {' '}R$ {crossSellData.length > 0
-                                                ? Math.round(crossSellData.reduce((sum, i) => sum + i.avgTicketIncrease, 0) / crossSellData.length)
-                                                : 0}
-                                        </span> por atendimento.
+                                        As combinações são sugestões a partir dos seus serviços e produtos cadastrados, não uma previsão de vendas.
+                                        O valor exibido é o preço do produto, quando houver um cadastrado.
                                     </p>
                                 </div>
                             </div>

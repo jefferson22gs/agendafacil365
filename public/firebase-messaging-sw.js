@@ -1,9 +1,18 @@
 // Firebase Messaging Service Worker
 // Este arquivo DEVE estar na pasta public e se chamar firebase-messaging-sw.js
 
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+// Importado pelo /sw.js (Workbox) em produção. Se o gstatic falhar (rede/bloqueador), NÃO pode lançar:
+// um erro aqui derrubaria a instalação do worker inteiro (precache/offline). Sem Firebase, só o push fica indisponível.
+let firebaseReady = false;
+try {
+    importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+    importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+    firebaseReady = typeof firebase !== 'undefined';
+} catch (e) {
+    console.warn('Firebase Messaging indisponível neste worker:', e);
+}
 
+if (firebaseReady) {
 // Firebase config
 firebase.initializeApp({
     apiKey: "AIzaSyBigBQRToUU6VCdouRynVx9kPJ65-uROEw",
@@ -19,6 +28,8 @@ const messaging = firebase.messaging();
 // Listener para mensagens em background
 messaging.onBackgroundMessage((payload) => {
     console.log('📱 Mensagem recebida em background:', payload);
+    // Payload com 'notification' já é exibido pelo próprio SDK; exibir de novo duplicava a notificação.
+    if (payload.notification) return;
 
     const notificationTitle = payload.notification?.title || payload.data?.title || 'Agenda Fácil 365';
     const notificationOptions = {
@@ -44,8 +55,9 @@ messaging.onBackgroundMessage((payload) => {
 
     return self.registration.showNotification(notificationTitle, notificationOptions);
 });
+} // fim do bloco firebaseReady
 
-// Listener para clique na notificação
+// Listener para clique na notificação (independe do Firebase)
 self.addEventListener('notificationclick', (event) => {
     console.log('🖱️ Notificação FCM clicada:', event);
     console.log('   Action:', event.action);
@@ -99,41 +111,6 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// Listener para push event (fallback caso onBackgroundMessage não funcione)
-self.addEventListener('push', (event) => {
-    console.log('📨 Push event recebido:', event);
-
-    if (event.data) {
-        try {
-            const data = event.data.json();
-            console.log('   Push data:', data);
-
-            // Se tiver notification no payload, deixar o Firebase SDK lidar
-            if (data.notification) {
-                console.log('   Payload tem notification, deixando SDK lidar');
-                return;
-            }
-
-            // Se só tiver data, mostrar notificação manualmente
-            if (data.data) {
-                const notificationTitle = data.data.title || 'Agenda Fácil 365';
-                const notificationOptions = {
-                    body: data.data.body || 'Você tem uma nova notificação!',
-                    icon: '/pwa-192x192.png',
-                    badge: '/pwa-192x192.png',
-                    data: data.data,
-                    tag: 'syshair-push-' + Date.now(),
-                    requireInteraction: true
-                };
-
-                event.waitUntil(
-                    self.registration.showNotification(notificationTitle, notificationOptions)
-                );
-            }
-        } catch (e) {
-            console.error('Erro ao processar push:', e);
-        }
-    }
-});
+// (removido) listener "push" manual: duplicava o onBackgroundMessage do SDK para payloads só-data.
 
 console.log('✅ Firebase Messaging Service Worker carregado');

@@ -25,7 +25,7 @@ export const advancedArticles: Article[] = [
       { text: "Risco de Churn aponta clientes sem retorno com base em dias desde a última visita. Examina até 100 clientes e mostra até cinco; Executar Ação não envia mensagem nem cria cupom." },
       { text: "Cross-Sell sugere produtos junto aos serviços. Use só como inspiração e confira seus cadastros e preços antes de oferecer qualquer combinação." },
     ],
-    notes: ["Executar Ação está sem função ligada.", "As chances de Cross-Sell usam Math.random, ou seja, números sorteados. O acréscimo sugerido usa preço do produto quando existe; sem produto, pode ser sorteado. As combinações não são aprendidas do histórico de compras.", "Lista de risco vazia não comprova ausência de clientes que deixaram de voltar."],
+    notes: ["Executar Ação está sem função ligada.", "Cross-Sell mostra sugestões, sem percentual de chance. O valor exibido é o preço do produto cadastrado; sem produto, nenhum valor aparece. As combinações não são aprendidas do histórico de compras.", "Lista de risco vazia não comprova ausência de clientes que deixaram de voltar."],
     keywords: ["BI", "IA", "previsão", "faturamento", "risco", "cliente sumiu", "venda cruzada", "produto"],
   },
   {
@@ -63,9 +63,9 @@ export const advancedArticles: Article[] = [
       { text: "Antes de abrir Indicações, saiba que a tela seleciona o primeiro cliente e cria um código se ele ainda não tiver. Trocar o cliente também pode criar seu código." },
       { text: "Confira o cliente no seletor e consulte o código. O botão ao lado copia somente esse código.", image: { src: "/training/advanced/referral-code.webp", alt: "Cliente selecionado e código de indicação", pending: true } },
       { text: "Consulte as indicações do cliente, os totais e o ranking. Eles mostram registros existentes, não comprovam descontos aplicados." },
-      { text: "Não divulgue Copiar Link nesta versão: ele monta /ref/ seguido do código, mas falta a página de destino. WhatsApp abre um texto para revisão e envio manual, com esse mesmo link e promessa de desconto." },
+      { text: "Copiar Link copia o link público de agendamento do estabelecimento e o código de indicação, que o cliente informa no atendimento. WhatsApp abre um texto para revisão e envio manual, com o mesmo link e a promessa de desconto." },
     ],
-    notes: ["A criação de código grava no banco ao abrir a aba ou selecionar um cliente sem código.", "A rota /ref/:code não está registrada. As páginas de agendamento lidas não integram o uso desses códigos; a aplicação automática dos descontos anunciados não está confirmada.", "15% e 10% são textos fixos da tela, não uma garantia de benefício configurado e aplicado."],
+    notes: ["A criação de código grava no banco ao abrir a aba ou selecionar um cliente sem código.", "Não há página própria de indicação: o código não é aplicado automaticamente no agendamento on-line; confira e aplique o desconto no atendimento.", "15% e 10% são textos fixos da tela, não uma garantia de benefício configurado e aplicado."],
     keywords: ["indicação", "indique", "amigo", "código", "link", "WhatsApp", "desconto"],
   },
   {

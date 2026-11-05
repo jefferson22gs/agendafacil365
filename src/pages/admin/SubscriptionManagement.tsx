@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     Crown,
     CreditCard,
@@ -23,6 +23,7 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { useSubscription, SubscriptionStatus } from "@/hooks/useSubscription";
 import { cn } from "@/lib/utils";
 import { BRAND, displayPlanName } from "@/config/brand";
+import { callRpc, isMissingRpc } from "@/lib/rpcFallback";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -64,8 +65,13 @@ const PLANS = {
 
 type PlanType = 'monthly' | 'annual';
 
+const MP_SUBSCRIPTIONS_URL = "https://www.mercadopago.com.br/subscriptions";
+
 const SubscriptionManagement = () => {
     const navigate = useNavigate();
+    // Vindo do Checkout após o Mercado Pago: só informa. O status real chega pelo webhook (nada é ativado no navegador).
+    const [searchParams] = useSearchParams();
+    const processing = searchParams.get('status') === 'processing';
     const { subscription, isLoading, checkSubscription } = useSubscription();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
@@ -86,10 +92,14 @@ const SubscriptionManagement = () => {
         // Salvar external_reference no banco antes de redirecionar
         if (subscription?.id && subscription?.salonId) {
             const { supabase } = await import('@/integrations/supabase/client');
-            await supabase
-                .from('subscriptions')
-                .update({ mp_external_reference: subscription.salonId })
-                .eq('id', subscription.id);
+            // RPC grava sempre o próprio salon_id (pending/…_rls.sql); fallback para antes da migração.
+            const rpc = await callRpc<string>(supabase, 'set_own_payment_reference', { p_subscription_id: subscription.id });
+            if (isMissingRpc(rpc.error)) {
+                await supabase
+                    .from('subscriptions')
+                    .update({ mp_external_reference: subscription.salonId })
+                    .eq('id', subscription.id);
+            }
         }
 
         // Abrir checkout do Mercado Pago
@@ -102,9 +112,10 @@ const SubscriptionManagement = () => {
         setIsRefreshing(false);
     };
 
-    const handleCancelSubscription = async () => {
-        // In production, this would call Mercado Pago API to cancel
-        alert('Funcionalidade de cancelamento será implementada com a integração completa do Mercado Pago.');
+    // ponytail: não há cancelamento server-side (API preapproval + webhook). A assinatura recorrente é
+    // cancelada pelo assinante na conta Mercado Pago; o webhook atualiza o status aqui. Antes era um alert() que não cancelava nada.
+    const handleCancelSubscription = () => {
+        window.open(MP_SUBSCRIPTIONS_URL, '_blank', 'noopener,noreferrer');
     };
 
     if (isLoading) {
@@ -145,6 +156,13 @@ const SubscriptionManagement = () => {
                         Atualizar status
                     </Button>
                 </div>
+
+                {processing && !subscription?.isActive && (
+                    <div role="status" className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">
+                        <strong>Pagamento em processamento.</strong> Assim que o Mercado Pago confirmar, sua assinatura é ativada
+                        automaticamente. Use "Atualizar status" em alguns minutos.
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Subscription Card */}
@@ -368,7 +386,7 @@ const SubscriptionManagement = () => {
                                     ) : (
                                         <a
                                             data-tour="subscription-manage"
-                                            href="https://www.mercadopago.com.br/subscriptions"
+                                            href={MP_SUBSCRIPTIONS_URL}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex-1"
@@ -390,10 +408,11 @@ const SubscriptionManagement = () => {
                                             </AlertDialogTrigger>
                                             <AlertDialogContent data-tour="subscription-cancel-dialog">
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>Tem certeza que deseja cancelar?</AlertDialogTitle>
+                                                    <AlertDialogTitle>Cancelar assinatura</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        Ao cancelar sua assinatura, você perderá acesso a todas as funcionalidades
-                                                        do {displayPlanName(subscription?.planName)} no final do período atual. Esta ação não pode ser desfeita.
+                                                        A cobrança recorrente do {displayPlanName(subscription?.planName)} é gerenciada pelo Mercado Pago.
+                                                        Para cancelar, abra suas assinaturas no Mercado Pago e cancele por lá. O status aqui é atualizado
+                                                        automaticamente depois que o Mercado Pago confirmar o cancelamento.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
@@ -403,7 +422,8 @@ const SubscriptionManagement = () => {
                                                         onClick={handleCancelSubscription}
                                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                                     >
-                                                        Sim, cancelar
+                                                        Abrir assinaturas no Mercado Pago
+                                                        <ExternalLink size={14} className="ml-2" aria-hidden />
                                                     </AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>

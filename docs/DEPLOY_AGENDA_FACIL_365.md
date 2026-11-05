@@ -11,6 +11,12 @@ Esta etapa **não inclui deploy**. Não foi feito push, deploy, mudança no Verc
 | C. Domínio público novo | decisão comercial + DNS | Ainda **não definido**. Muda origem, sessão, push e PWA instalado (ver seção 6). |
 | D. Backend externo (Supabase Functions, Firebase, Mercado Pago, Evolution) | A | O deploy do Vercel **não** atualiza Functions. Elas exigem deploy próprio. |
 
+## 1.1 Antes de qualquer push ou deploy (bloqueios da auditoria de 05/11/2026)
+
+1. **Dados pessoais no histórico git:** `vcards_20260131_134801.vcf` (2.131 contatos) saiu do índice, mas continua nos commits locais `2fb2181` e `354ea50`. Antes de enviar a qualquer remoto, recrie o histórico sem o arquivo (ex.: `git filter-repo --path vcards_20260131_134801.vcf --path syshair-main/vcards_20260131_134801.vcf --invert-paths`) ou crie um repositório novo a partir da árvore atual. Decisão e execução ficam com o responsável.
+2. **Segurança de assinatura (crítico):** revise `supabase/pending/20261105000100_security_subscriptions_notifications_rls.sql` e aplique primeiro em staging, com backup. Depois, aplique em produção **antes** de divulgar o domínio novo. O app funciona antes e depois da migração (fallback só quando a RPC não existe).
+3. **Function `mercadopago-webhook`** foi alterada (busca por `.eq()`): deploy próprio com `supabase functions deploy mercadopago-webhook`, validado com o sandbox do MP.
+
 ## 2. Configuração do Vercel (confirmar no painel)
 
 - **Root Directory**: precisa ser a raiz externa `syshair-main/` (tem `scripts/`, `tests/`, `docs/`, `vite.config.training.ts` e treinamento). A cópia interna `syshair-main/syshair-main/` está desatualizada. Confirme qual delas o projeto usa hoje **antes** do deploy.
@@ -37,6 +43,7 @@ Só mudaram textos visíveis. Infraestrutura, nomes de instância e cabeçalhos 
 - `_shared/insights/service.ts`, `_shared/insights/core.ts` (texto), usados por `insights-reports` e pelo chatbot
 - `insights-reports/index.ts` (texto do código de verificação)
 - `super-admin-actions/index.ts` (títulos padrão de aviso/comunicado)
+- `mercadopago-webhook/index.ts` (auditoria: localização da assinatura sem filtro interpolado)
 
 Comando de referência para depois da aprovação, sem executar agora: `supabase functions deploy <nome> --project-ref <ref>`, uma function por vez, começando em staging se houver.
 

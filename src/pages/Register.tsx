@@ -87,7 +87,8 @@ const Register = () => {
       formData.password,
       formData.name,
       formData.phone,
-      formData.sellerId // Passar vendedor que indicou
+      formData.sellerId, // Passar vendedor que indicou
+      formData.salonName
     );
 
     if (!error) {
@@ -236,15 +237,16 @@ const Register = () => {
                     <Store className="w-4 h-4" aria-hidden="true" />
                     Quem te indicou? (Opcional)
                   </Label>
+                  {/* Radix Select proíbe item com value="" (lança erro): "none" representa "sem vendedor". */}
                   <Select
-                    value={formData.sellerId}
-                    onValueChange={(value) => setFormData({ ...formData, sellerId: value })}
+                    value={formData.sellerId || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, sellerId: value === "none" ? "" : value })}
                   >
                     <SelectTrigger id="seller" className="h-12" aria-describedby="seller-hint">
                       <SelectValue placeholder="Ninguém, me encontrei sozinho" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ninguém, me encontrei sozinho</SelectItem>
+                      <SelectItem value="none">Ninguém, me encontrei sozinho</SelectItem>
                       {sellers.map((seller) => (
                         <SelectItem key={seller.id} value={seller.id}>
                           {seller.name}

@@ -1,4 +1,5 @@
 import { displayPlanName, LEGACY_PLAN_NAME } from '@/config/brand';
+import { callRpc, isMissingRpc } from '@/lib/rpcFallback';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -153,10 +154,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
                         // Only update if the database still shows the sub is active when it shouldn't be
                         if (!currentSubIsActive && currentSub.status !== 'expired') {
-                            await supabase
-                                .from('subscriptions')
-                                .update({ status: 'expired' })
-                                .eq('id', sub.id);
+                            // RPC restrita (supabase/pending/…_rls.sql); fallback para antes de a migração ser aplicada.
+                            const rpc = await callRpc<boolean>(supabase, 'expire_own_subscription', { p_subscription_id: sub.id });
+                            if (isMissingRpc(rpc.error)) {
+                                await supabase
+                                    .from('subscriptions')
+                                    .update({ status: 'expired' })
+                                    .eq('id', sub.id);
+                            }
 
                             // Update our local status to match the DB change
                             finalStatus = 'expired';
@@ -209,7 +214,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             const trialEndDate = new Date();
             trialEndDate.setDate(trialEndDate.getDate() + 21);
 
-            const { data, error } = await supabase
+            // RPC restrita (supabase/pending/…_rls.sql) cria o trial no servidor; se ainda não existir
+            // (função ausente = PGRST202), usa o insert direto de antes. Erro de regra da RPC NÃO cai no fallback.
+            const rpc = await callRpc<{ id: string }>(supabase, 'start_salon_trial', { p_salon_id: salonId });
+            const { data, error } = !isMissingRpc(rpc.error) ? rpc : await supabase
                 .from('subscriptions')
                 .insert({
                     salon_id: salonId,

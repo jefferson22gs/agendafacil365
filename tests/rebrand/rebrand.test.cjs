@@ -57,6 +57,26 @@ test('chatbot: código de verificação aceita prefixo legado e novo', () => {
   for (const bad of ['12345', 'outro 123456', '123456 extra', 'syshair123456x']) assert.equal(c.parseVerificationCode(bad), undefined, bad);
 });
 
+test('rpcFallback: só usa caminho antigo quando a RPC não existe', () => {
+  const { isMissingRpc } = load('src/lib/rpcFallback.ts');
+  assert.equal(isMissingRpc({ code: 'PGRST202' }), true);
+  assert.equal(isMissingRpc({ code: '42883' }), true);
+  for (const recusa of [{ code: '42501' }, { code: '23505' }, { code: 'P0001' }, null, undefined]) assert.equal(isMissingRpc(recusa), false, JSON.stringify(recusa));
+});
+
+test('webhook Mercado Pago: localiza assinatura só com .eq e UUID validado', async () => {
+  const { findSubscription } = load('supabase/functions/mercadopago-webhook/index.ts', { 'https://deno.land/std@0.168.0/http/server.ts': { serve() {} }, 'https://esm.sh/@supabase/supabase-js@2': {} });
+  const calls = [];
+  const db = rows => ({ from: () => { const q = { filters: [], select() { return q; }, eq(c, v) { q.filters.push([c, v]); return q; }, order() { return q; }, limit() { return q; }, or(x) { throw new Error('or() proibido: ' + x); }, async maybeSingle() { calls.push(q.filters); return { data: rows.find(r => q.filters.every(([c, v]) => r[c] === v)) ?? null }; } }; return q; } });
+  const salon = '00000000-0000-4000-8000-000000000010';
+  const rows = [{ id: 's1', salon_id: salon, mp_preapproval_id: 'pre-1', mp_external_reference: 'qualquer' }];
+  assert.equal((await findSubscription(db(rows), 'pre-1', null)).id, 's1', 'por preapproval vinculado');
+  assert.equal((await findSubscription(db(rows), 'pre-x', salon)).id, 's1', 'fallback por salon_id');
+  assert.equal(await findSubscription(db(rows), null, 'qualquer'), null, 'mp_external_reference gravado pelo cliente não é usado');
+  assert.equal(await findSubscription(db(rows), null, `${salon},status.eq.active`), null, 'tentativa de injeção de filtro rejeitada');
+  assert.equal(await findSubscription(db(rows), null, undefined), null);
+});
+
 test('manifest por tenant: valida slug, 404, JSON público e cor segura', async () => {
   const m = load('api/manifest/[slug].ts');
   const env = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' };
@@ -80,6 +100,9 @@ test('manifest por tenant: valida slug, 404, JSON público e cor segura', async 
   assert.ok(body.icons.some(i => i.purpose === 'maskable' && i.src === '/pwa-maskable-512x512.png'));
   const last = calls.at(-1);
   assert.match(last.url, /select=name,slug,primary_color&slug=eq\.studio-a/, 'só colunas públicas, escopo por slug');
+  assert.match(last.url, /or=\(is_active\.is\.null,is_active\.eq\.true\)/, 'is_active nulo é ativo (igual à RLS pública)');
+  const longSlug = 'a'.repeat(120);
+  assert.equal((await m.handleManifest(req(longSlug), env, fetchOk([{ name: 'L', slug: longSlug, primary_color: null }]))).status, 200, 'slug longo existente continua válido');
   assert.equal(last.init.headers.apikey, 'anon');
 
   const b = await (await m.handleManifest(req('b'), env, fetchOk([{ name: 'B', slug: 'b', primary_color: '#D4AF37' }]))).json();

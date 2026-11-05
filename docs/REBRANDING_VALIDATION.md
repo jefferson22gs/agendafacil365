@@ -11,8 +11,8 @@ Status usados: **VALIDADO** (observado), **BLOQUEADO** (depende de algo externo)
 |---|---|---|---|
 | `npm ci` | OK | — | npm 10.9.2, Node 22.17.1 |
 | `npm run build` | OK | OK | O aviso de chunk acima de 500 kB já existia. PWA generateSW com 105 entradas. |
-| `npm run lint` | 415 erros / 158 avisos | 414 erros / 158 avisos | Já falhava. Nenhuma regra foi desativada. |
-| `tsc --noEmit -p tsconfig.app.json` | 251 erros | 249 erros | Já falhava (tipos Supabase desatualizados: `waitlist`, `sellers` etc.). Nenhum erro novo. |
+| `npm run lint` | 415 erros / 158 avisos | ver seção 7 (auditoria) | Já falhava. Nenhuma regra foi desativada. |
+| `tsc --noEmit -p tsconfig.app.json` | 251 erros | ver seção 7 (auditoria) | Já falhava (tipos Supabase desatualizados: `waitlist`, `sellers` etc.). **Correção:** a versão anterior deste documento dizia "nenhum erro novo" comparando só o total; a comparação por erro mostrou 1 regressão (import ausente em `usePushNotifications.tsx`), corrigida na auditoria. |
 | `tsc --strict` em `api/manifest/[slug].ts` | — | 0 erros | Function nova. |
 | `npm run training:check` | OK | OK | 40 tours / 50 artigos. Todos os alvos `data-tour` existem. |
 | `node --test tests/whatsapp/*.test.cjs` | 46/46 | 46/46 | |
@@ -113,3 +113,81 @@ Componentes órfãos, preservados e listados em `REBRANDING.md`: `Booking.tsx`, 
 - Preview de compartilhamento OG no WhatsApp/Facebook. Exige URL pública.
 - Papéis profissional, cliente e superadmin no navegador.
 - Leitor de tela e zoom 200% manual.
+
+## 7. Auditoria (05/11/2026)
+
+Fiz uma auditoria independente do código e dos fluxos críticos, com um revisor que não teve acesso ao meu raciocínio, além de varreduras e de uma nova rodada de QA no navegador.
+**Testes com Supabase fictício ou mock NÃO provam as integrações reais.** Eles provam renderização, navegação e lógica de UI.
+
+### Comandos (baseline `2fb2181` → agora)
+
+A comparação é feita **erro a erro**, não pelo total.
+
+| Comando | Resultado |
+|---|---|
+| `npm run build` | OK. O `dist/sw.js` contém `importScripts("firebase-messaging-sw.js")`. |
+| `tsc --noEmit -p tsconfig.app.json` | 248 erros, **0 novos** em relação ao baseline (diff por arquivo e código de erro). |
+| `npm run lint` | **0 erros novos** por arquivo e regra; 2 a menos que o baseline. |
+| `npm run training:check` | PASS (40 tours, 50 artigos). |
+| `npm test` | **53/53** (46 de WhatsApp + 7 de rebrand e auditoria). |
+| QA no navegador (demo mock, preview e dev com Supabase `.invalid`) | 670/670 e telas deslogadas OK. Metadados do tenant restaurados (`restored=true`). |
+
+### Correções feitas nesta auditoria
+
+| # | Problema | Tipo | Correção | Evidência |
+|---|---|---|---|---|
+| R1 | `usePushNotifications.tsx` usava `registerAppServiceWorker` sem import, gerando ReferenceError em /admin/marketing | **Regressão do rebranding** | Import adicionado | tsc por erro: 0 novos |
+| P6 | `importScripts` do gstatic sem proteção: uma falha de rede derrubaria o SW inteiro, sem precache nem modo offline | Risco da arquitetura nova | `try/catch` e bloco condicional; `notificationclick` não depende do Firebase | Simulação com o import falhando: sem exceção |
+| P7 | Notificação FCM exibida duas vezes | Preexistente | `onBackgroundMessage` ignora payload com `notification`; listener `push` duplicado removido | Revisão |
+| P3 | O manifest blob do `SalonInstallPrompt` sobrescrevia `/api/manifest/:slug` e usava caminhos relativos, inválidos em `blob:` | Preexistente | Não sobrescreve quando a Function está ativa; o fallback usa URLs absolutas e `scope` que contém o `start_url` | QA `restored=true` |
+| — | A lista de espera pública `/waitlist/:id` **simulava** a fila: posição sorteada, gravação fingida, aviso que nunca era enviado | Preexistente | A página agora leva à agenda real `/s/:slug` e ao WhatsApp do estabelecimento, sem promessa falsa | `audit_waitlist_demo.png` |
+| — | O cross-sell do BI mostrava "% de chance" e ganho **sorteados** (`Math.random`) | Preexistente | Removidos; mostra só a sugestão e o preço real do produto cadastrado | QA: sem "% chance" |
+| — | O Lookbook mostrava posts fictícios como se fossem do estabelecimento | Preexistente | Aviso "Demonstração" explícito; botões sem função desabilitados | `audit_lookbook.png` |
+| — | O botão de copiar link da Galeria copiava `/gallery/:token`, rota inexistente (404 para o cliente) | Preexistente | O botão avisa que a página pública não existe e não copia URL quebrada | Revisão |
+| — | Indicações copiavam `/ref/:code`, rota inexistente (404) | Preexistente | Copia o link público real `/s/:slug` junto com o código | Revisão |
+| — | "Cancelar assinatura" executava um `alert()` e não cancelava nada | Preexistente | Explica o processo e abre as assinaturas no Mercado Pago, onde o cancelamento é feito; o status vem do webhook | Revisão |
+| — | O `?status=processing` vindo do Checkout era ignorado | Lacuna | Aviso informativo, sem ativar nada | Revisão |
+| P1 | O "Nome do negócio" informado no cadastro era descartado | Preexistente | Enviado como metadado do Auth e usado para pré-preencher Configurações | Revisão |
+| P2 | `SelectItem value=""` no cadastro (o Radix lança erro ao renderizar) | Latente | Valor sentinela `"none"` | Revisão |
+| — | Os toasts (Sonner) usavam `next-themes` sem provider, com tema divergente | Preexistente | Seguem a classe `.dark` real | Revisão |
+| P5 | O webhook do MP montava `.or()` com `external_reference` externo e usava uma coluna gravável pelo cliente | Preexistente | Busca só com `.eq()`: por `mp_preapproval_id` ou por `salon_id` (UUID validado) | Teste: injeção rejeitada |
+| — | Na Function do manifest, slug com mais de 80 caracteres ou `is_active = null` davam 400/404 | Do rebranding | Limite de 200; `is_active` nulo conta como ativo, igual à RLS pública | Teste |
+| — | O arquivo de contatos `vcards_20260131_134801.vcf` (2.131 contatos) estava **versionado** | Preexistente (LGPD) | Removido do índice git (mantido no disco) e `*.vcf` incluído no `.gitignore` | `git status` |
+| — | `supabase/config.toml` não tinha o domínio novo nos redirects de Auth | Preparação | `agendafacil365.com.br` e `www.` adicionados (só local; o remoto fica para a fase B) | Arquivo |
+
+### Preparado mas NÃO aplicado (precisa de autorização)
+
+O arquivo `supabase/pending/20261105000100_security_subscriptions_notifications_rls.sql` fica fora de `migrations/` para não ser aplicado por engano.
+- **Crítico (P4):** hoje qualquer usuário logado pode rodar, pelo console, `UPDATE subscriptions SET status='active'` na própria linha e usar o sistema sem pagar. A migração remove o INSERT/UPDATE do cliente e cria 3 RPCs `SECURITY DEFINER` restritas: `start_salon_trial`, `expire_own_subscription` e `set_own_payment_reference`.
+- **Alto (P8):** a policy `"Anyone can read sent notifications"` expõe as notificações de todos os estabelecimentos à chave anon. A migração remove essa policy.
+- O app já chama as RPCs e só volta ao caminho antigo se a função **não existir** (`isMissingRpc`). Se a RPC recusar, o app não usa o caminho antigo (há teste para isso). O rollback está no próprio arquivo.
+
+### Falhas pendentes (não corrigíveis com segurança sem decisão ou acesso)
+
+| Severidade | Item |
+|---|---|
+| Crítica | Aplicar a migração P4/P8 acima (staging antes de produção, com backup). Até lá, o paywall pode ser contornado. |
+| Alta | O histórico git local ainda contém o `.vcf` nos commits `2fb2181` e `354ea50` (repositório local, sem remote). Antes de qualquer push, reescrever o histórico ou recriar o repositório sem o arquivo. Há outra cópia em `syshair-main/` (a cópia interna). |
+| Média | O webhook do MP não valida a assinatura `x-signature`. Mitigação: os dados são buscados de novo na API do MP com o token. |
+| Média | O cancelamento de assinatura não é feito no servidor; depende de o usuário cancelar no Mercado Pago. |
+| Média | `/ref/:code`, `/gallery/:token` e a lista de espera on-line não existem como páginas. As telas agora dizem isso em vez de gerar links quebrados. |
+| Baixa | O Lookbook continua com conteúdo de exemplo, agora rotulado. O `OccupancyHeatmap` (gera dados com `Math.random`) não é usado em nenhuma tela. |
+| Baixa | Firebase compat 10.7.1 no worker e SDK 12.7.0 na janela. |
+| Baixa | A lista de e-mails de super admin está no bundle (`SuperAdmin.tsx`); a autorização real está na RLS e na Function. |
+| Jurídico/comercial | Termos, Política de Privacidade, vídeo oficial, garantia de 30 dias, divergência do período de teste (21 × 7 dias). Ver seção 5. |
+
+### Supabase original preservado
+
+Nenhum comando remoto foi executado nesta etapa nem na anterior: nenhum `db push`, `migration up`, `functions deploy` ou `config push`, e nenhum SQL no painel. Nenhuma migração nova foi colocada em `supabase/migrations/`. Sem acesso ao banco não dá para provar a integridade dos dados remotos. O que posso afirmar é que **este trabalho não tocou** no banco, nos usuários, nos tenants nem nos agendamentos.
+
+### Preparação para agendafacil365.com.br
+
+| Item | Estado |
+|---|---|
+| Links gerados pelo app (`/s/:slug`, `/appointment/:token`, redirect do cadastro) | Usam `window.location.origin` e seguem o domínio automaticamente. Não há domínio antigo fixo em `src/`. |
+| Functions do Supabase | Não montam URL com domínio fixo. CORS `*`. |
+| Site URL e Redirect URLs do Supabase Auth (remoto) | **Pendente para a fase B** (a config local já inclui o domínio). |
+| Domínios autorizados do Firebase e `HTTP-Referer` do OpenRouter | **Pendente para a fase B**. |
+| E-mails de autenticação | Os templates ficam no painel do Supabase: **não dá para verificar daqui**. |
+| `og:url` e `og:image` absolutos | Prontos via `VITE_PUBLIC_APP_URL` (só em Production). |
+| Canonical por rota e sitemap com tenants | Não implementados (é uma SPA). Proposta: pré-renderizar a landing. |
