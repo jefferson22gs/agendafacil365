@@ -58,6 +58,10 @@ verify_jwt = false
 [functions.send-push-notification]
 verify_jwt = false
 
+# Exige super admin dentro da função (JWT + is_super_admin()).
+[functions.ai-admin]
+verify_jwt = false
+
 # Webhook valida segredo privado por instância; não recebe JWT Supabase do provedor.
 [functions.evolution-webhook]
 verify_jwt = false
