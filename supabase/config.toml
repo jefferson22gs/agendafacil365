@@ -45,6 +45,19 @@ verify_jwt = false
 [functions.whatsapp-instances]
 verify_jwt = false
 
+# Autenticação validada dentro das funções: usuário do salão ou chave secreta do worker.
+[functions.whatsapp-reply]
+verify_jwt = false
+
+[functions.send-push-fcm]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false
+
 # Webhook valida segredo privado por instância; não recebe JWT Supabase do provedor.
 [functions.evolution-webhook]
 verify_jwt = false
