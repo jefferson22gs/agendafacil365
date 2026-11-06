@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Send, Trash2, RotateCcw } from "lucide-react";
+import { Loader2, Plus, Send, Trash2, RotateCcw, RefreshCw } from "lucide-react";
 import { aiAdmin, type AIConfig } from "./api";
+// Fonte única do treinamento padrão: núcleo puro do gateway (sem Deno), o mesmo usado pela Edge Function.
+import { DEFAULT_CONFIG } from "../../../../supabase/functions/_shared/ai/core";
 
 interface Props { draft: AIConfig; setDraft: (fn: (c: AIConfig) => AIConfig) => void }
 type Msg = { role: "user" | "assistant"; content: string };
@@ -21,6 +23,12 @@ export const TrainingTab = ({ draft, setDraft }: Props) => {
   const [chatError, setChatError] = useState<string | null>(null);
   const set = <K extends keyof AIConfig>(k: K, v: AIConfig[K]) => setDraft(c => ({ ...c, [k]: v }));
   const setExample = (i: number, k: "q" | "a", v: string) => setDraft(c => ({ ...c, examples: c.examples.map((e, j) => j === i ? { ...e, [k]: v } : e) }));
+
+  // Só altera o rascunho: nada é gravado até o super admin salvar (AISettingsManagement). Base de conhecimento é preservada.
+  const restoreDefault = () => {
+    if (!window.confirm("Substituir instruções gerais, tom de voz, regras e exemplos pelo treinamento padrão? A base de conhecimento não muda e nada é gravado até você salvar a configuração.")) return;
+    setDraft(c => ({ ...c, base_prompt: DEFAULT_CONFIG.base_prompt, tone: DEFAULT_CONFIG.tone, rules: DEFAULT_CONFIG.rules, examples: DEFAULT_CONFIG.examples.map(e => ({ ...e })) }));
+  };
 
   const send = async () => {
     const text = input.trim();
@@ -40,10 +48,17 @@ export const TrainingTab = ({ draft, setDraft }: Props) => {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Instruções da plataforma</CardTitle>
-            <CardDescription>
-              Entram antes das instruções de cada salão, em todas as conversas do chatbot. O salão continua com o próprio nome, serviços e base de conhecimento; aqui ficam as regras que valem para todos.
-            </CardDescription>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1.5">
+                <CardTitle className="text-lg">Instruções da plataforma</CardTitle>
+                <CardDescription>
+                  Entram antes das instruções de cada salão, em todas as conversas do chatbot. O salão continua com o próprio nome, serviços e base de conhecimento; aqui ficam as regras que valem para todos.
+                </CardDescription>
+              </div>
+              <Button type="button" variant="outline" className="h-11 shrink-0" data-tour="ai-training-restore" onClick={restoreDefault}>
+                <RefreshCw className="w-4 h-4 mr-2" aria-hidden />Restaurar treinamento padrão
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">

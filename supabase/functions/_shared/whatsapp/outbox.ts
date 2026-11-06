@@ -35,6 +35,25 @@ export async function processOutboxItem(db: SupabaseClient): Promise<boolean> {
     const inner = remote.instance && typeof remote.instance === "object" ? objectValue(remote.instance) : remote;
     if ((inner.state ?? remote.state) !== "open") { await finish("pending", "disconnected"); return true; }
     let media: string | undefined;
+    if (item.content_type === "interactive") {
+      // Lista/botões: instáveis em alguns aparelhos. Se a Evolution recusar ANTES do envio, manda o texto numerado.
+      const p = item.payload && typeof item.payload === "object" ? item.payload as Record<string, unknown> : null;
+      const op = p?.op === "buttons" ? "buttons" : p?.op === "list" ? "list" : null;
+      const number = item.recipient_phone.replace(/^\+/, "");
+      const { data: started, error: beginError } = await db.rpc("whatsapp_begin_send", { p_id: item.id, p_claim: item.claim_token });
+      if (beginError || !started) throw new WhatsAppError("persistence_failed", 503);
+      sendStarted = true;
+      let response: unknown = null;
+      if (op && p?.body && typeof p.body === "object") {
+        try { response = await api.request(op, instance.instance_name, { ...(p.body as Record<string, unknown>), number }); }
+        catch (e) { if (!(e instanceof WhatsAppError) || e.code !== "provider_rejected") throw e; } // 4xx: nada foi enviado
+      }
+      if (!response) response = await api.request("text", instance.instance_name, { number, text: item.text_content });
+      const r = objectValue(response), k = r.key && typeof r.key === "object" ? objectValue(r.key) : null;
+      if (typeof k?.id !== "string" || !k.id) { await finish("uncertain", "provider_missing_message_id"); return true; }
+      await finish("accepted", undefined, k.id);
+      return true;
+    }
     if (item.content_type !== "text" && item.content_type !== "status_text") {
       if (typeof item.media_path !== "string" || !item.media_path.startsWith(`${item.salon_id}/`) || item.media_path.includes("..")) { await finish("failed", "invalid_media"); return true; }
       const { data: signed, error: mediaError } = await db.storage.from("whatsapp-media").createSignedUrl(item.media_path, 300);

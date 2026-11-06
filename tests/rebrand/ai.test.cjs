@@ -68,7 +68,7 @@ test('prompt: plataforma antes do salão; texto/legenda só tom e regras', () =>
   assert.ok(!p.includes('ignorado'));
   const t = ai.composeSystemPrompt(c, 'Copywriter.', 'texto');
   assert.ok(t.includes('acolhedor') && !t.includes('Seja breve.') && !t.includes('Cancelamento'));
-  assert.equal(ai.composeSystemPrompt(cfg(), 'Só salão.', 'chatbot'), 'Só salão.');
+  assert.equal(ai.composeSystemPrompt(cfg({ base_prompt: '', tone: '', rules: '', knowledge: '', examples: [] }), 'Só salão.', 'chatbot'), 'Só salão.');
 });
 
 const TOOLS = [{ type: 'function', function: { name: 'available_slots', description: 'Horários', parameters: { type: 'object', properties: { date: { type: 'string' } }, required: ['date'], additionalProperties: false } } }, { type: 'function', function: { name: 'services', description: 'Serviços', parameters: { type: 'object', properties: {}, additionalProperties: false } } }];

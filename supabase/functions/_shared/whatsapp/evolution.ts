@@ -16,6 +16,10 @@ const operations = {
   text: ["POST", "/message/sendText/"],
   media: ["POST", "/message/sendMedia/"],
   status: ["POST", "/message/sendStatus/"],
+  // Atendente: lista/botões (SendListDto/SendButtonsDto) e download de mídia recebida (getBase64FromMediaMessageDto), Evolution 2.3.7.
+  list: ["POST", "/message/sendList/"],
+  buttons: ["POST", "/message/sendButtons/"],
+  mediaBase64: ["POST", "/chat/getBase64FromMediaMessage/"],
 } as const;
 export type EvolutionOperation = keyof typeof operations;
 export type HttpTransport = typeof fetch;
@@ -31,7 +35,7 @@ export class EvolutionClient {
   async request(op: EvolutionOperation, instance: string, body?: Record<string, unknown>): Promise<unknown> {
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(instance)) throw new WhatsAppError("invalid_request");
     const [method, prefix] = operations[op];
-    const sending = op === "text" || op === "media" || op === "status";
+    const sending = op === "text" || op === "media" || op === "status" || op === "list" || op === "buttons";
     let response: Response;
     try {
       response = await this.transport(this.base + prefix + (op === "create" ? "" : encodeURIComponent(instance)), {

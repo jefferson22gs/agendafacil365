@@ -61,7 +61,7 @@ serve(async (req) => {
       const { error: insertError } = await db.from("whatsapp_webhook_events").upsert({
         salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
         provider_message_id: message.id, sender_phone: message.phone,
-        payload: { text: message.text, name: message.name, quotedMessageId: message.quotedMessageId },
+        payload: { text: message.text, name: message.name, quotedMessageId: message.quotedMessageId, selection: message.selection ?? null, media: message.media ?? null },
       }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
       if (insertError) throw new WhatsAppError("persistence_failed", 503);
       accepted++;
