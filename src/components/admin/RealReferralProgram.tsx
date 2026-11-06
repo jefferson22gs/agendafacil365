@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/config/brand";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -115,7 +116,7 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
         supabase.from('salons').select('slug').eq('id', salonId).maybeSingle()
             .then(({ data }) => setSalonSlug(data?.slug ?? null));
     }, [salonId]);
-    const bookingLink = salonSlug ? `${window.location.origin}/s/${salonSlug}` : null;
+    const bookingLink = salonSlug ? `${publicOrigin()}/s/${salonSlug}` : null;
 
     const copyLink = async () => {
         if (!clientCode?.code) return;

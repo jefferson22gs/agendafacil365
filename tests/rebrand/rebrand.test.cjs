@@ -4,7 +4,7 @@ const root = path.resolve(__dirname, '../..');
 
 // Carrega um módulo TS isolado (sem bundler). `stubs` resolve imports externos.
 function load(rel, stubs = {}, globals = {}) {
-  const src = fs.readFileSync(path.join(root, rel), 'utf8');
+  const src = fs.readFileSync(path.join(root, rel), 'utf8').replaceAll('import.meta.env', '({})');
   const out = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = {};
   vm.runInNewContext(out, { exports, require: n => stubs[n] ?? {}, URL, Response, Request, TextEncoder, crypto: require('node:crypto').webcrypto, process: { env: {} }, ...globals });

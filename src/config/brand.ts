@@ -55,7 +55,11 @@ export const safeHexColor = (value: string | null | undefined, fallback: string 
   typeof value === "string" && HEX.test(value.trim()) ? value.trim() : fallback;
 
 /**
- * Origem pública para links compartilháveis. No navegador usa a origem atual;
- * fora dele não há origem confiável e o chamador deve fornecer uma configurada no servidor.
+ * Origem pública para links compartilháveis (agendamento, avaliação, indicação).
+ * Em produção é o domínio oficial (VITE_PUBLIC_APP_URL); em preview/local/demo, a origem atual.
  */
-export const publicOrigin = (): string => (typeof window !== "undefined" ? window.location.origin : "");
+export const publicOrigin = (): string => {
+  const configured = import.meta.env.VITE_PUBLIC_APP_URL;
+  if (configured) return new URL(configured).origin;
+  return typeof window !== "undefined" ? window.location.origin : "";
+};

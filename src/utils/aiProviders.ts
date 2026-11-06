@@ -55,7 +55,7 @@ export const useAIProviders = (): {
             baseURL: 'https://openrouter.ai/api/v1',
             apiKey,
             defaultHeaders: {
-              'HTTP-Referer': 'https://syshair.vercel.app',
+              'HTTP-Referer': 'https://agendafacil365.com.br',
               'X-Title': 'Agenda Fácil 365'
             }
           });

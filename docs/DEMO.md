@@ -52,7 +52,7 @@ Seed: **Studio Bella Demo**, cor `#2563EB`, seis serviços, quatro profissionais
 
 As escritas são em memória e aparecem na próxima consulta. Uma cópia em `sessionStorage` por aba sobrevive a F5; se storage estiver bloqueado/cheio, segue em memória. Não existe persistência em servidor nem compartilhamento entre visitantes. **Não insira dados reais.**
 
-**Reiniciar demonstração**, na faixa superior presente em todas as páginas, remove a chave `af365-demo-db-v1` e recarrega o seed. Fechar a aba também encerra o estado; abrir em outro dia recria as datas. Preferências visuais do app não são apagadas. O botão **Contratar** abre apenas a landing real em `https://agendafacil365.vercel.app/#pricing`.
+**Reiniciar demonstração**, na faixa superior presente em todas as páginas, remove a chave `af365-demo-db-v1` e recarrega o seed. Fechar a aba também encerra o estado; abrir em outro dia recria as datas. Preferências visuais do app não são apagadas. O botão **Contratar** abre apenas a landing real em `https://agendafacil365.com.br/#pricing`.
 
 ## Isolamento e limites
 

@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/config/brand";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -68,7 +69,7 @@ export const ReferralProgram = ({
 }: ReferralProgramProps) => {
     const [copied, setCopied] = useState(false);
     // ponytail: rota /ref/:code não existe em App.tsx (componente órfão; ver docs/REBRANDING.md). Origem atual em vez de domínio fixo antigo.
-    const referralLink = `${window.location.origin}/ref/${referralCode}`;
+    const referralLink = `${publicOrigin()}/ref/${referralCode}`;
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);

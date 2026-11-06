@@ -15,7 +15,7 @@ function demo(storage = new Map()) {
     if (modules.has(file)) return modules.get(file);
     const exports = {};
     modules.set(file, exports);
-    const source = fs.readFileSync(file, 'utf8').replaceAll('import.meta.env.MODE', '"demo"');
+    const source = fs.readFileSync(file, 'utf8').replaceAll('import.meta.env.MODE', '"demo"').replaceAll('import.meta.env', '({})');
     const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
     vm.runInNewContext(js, {
       exports, crypto: webcrypto, Date, Response, console,

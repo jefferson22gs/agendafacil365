@@ -14,7 +14,7 @@ import { Save, Upload, Building2, Link2, Copy, ExternalLink, Globe, Bell, Camera
 import { NotificationSettings } from "@/components/pwa/NotificationPrompt";
 import { useMarkLinkShared } from "@/features/training/useFirstSteps";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DEFAULT_TENANT_COLOR } from "@/config/brand";
+import { DEFAULT_TENANT_COLOR, publicOrigin } from "@/config/brand";
 import { PageHeader } from "@/components/ui/page-header";
 
 interface SalonData {
@@ -363,7 +363,7 @@ const SalonSettings = () => {
 
   const getPublicLink = () => {
     if (!salon.slug) return "";
-    return `${window.location.origin}/s/${salon.slug}`;
+    return `${publicOrigin()}/s/${salon.slug}`;
   };
 
   const copyLink = async () => {
