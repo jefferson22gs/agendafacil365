@@ -1,8 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeSalon, serviceClient, salonInstance, requiredEnv } from "../_shared/whatsapp/auth.ts";
 import { evolutionClient } from "../_shared/whatsapp/evolution.ts";
+import { evolutionContacts } from "../_shared/whatsapp/inbound.ts";
 import { corsHeaders, errorResponse, jsonResponse, readRequest, objectValue, WhatsAppError } from "../_shared/whatsapp/errors.ts";
 
+// SEND_MESSAGE registra na caixa de entrada o que sai pela API; MESSAGES_UPSERT com fromMe, o que sai pelo celular.
+const WEBHOOK_EVENTS = ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "SEND_MESSAGE", "CONNECTION_UPDATE", "QRCODE_UPDATED"];
 function stateOf(value: unknown) {
   const data = objectValue(value);
   const instance = data.instance && typeof data.instance === "object" ? objectValue(data.instance) : data;
@@ -22,7 +25,7 @@ serve(async (req) => {
     const body = await readRequest(req);
     const db = serviceClient();
     const action = body.action;
-    if (!["create", "connect", "status", "fetch", "disconnect", "delete", "contacts"].includes(String(action))) throw new WhatsAppError("invalid_request");
+    if (!["create", "connect", "status", "fetch", "disconnect", "delete", "contacts", "sync_webhook"].includes(String(action))) throw new WhatsAppError("invalid_request");
     // Compatibilidade com chamadas antigas: resolve nome no servidor e depois autoriza o salão real.
     let salonId = body.salonId;
     if (!salonId && typeof body.instanceName === "string") {
@@ -48,7 +51,7 @@ serve(async (req) => {
       if (error || !row) throw new WhatsAppError("persistence_failed", 503);
       const { data: secret, error: secretError } = await db.rpc("whatsapp_ensure_instance_secret", { p_instance_id: row.id });
       if (secretError || typeof secret !== "string") throw new WhatsAppError("configuration_missing", 503);
-      await api.request("create", name, { instanceName: name, integration: "WHATSAPP-BAILEYS", qrcode: false, webhook: { enabled: true, url: webhookUrl, byEvents: false, base64: false, headers: { "x-syshair-webhook-secret": secret }, events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"] } });
+      await api.request("create", name, { instanceName: name, integration: "WHATSAPP-BAILEYS", qrcode: false, webhook: { enabled: true, url: webhookUrl, byEvents: false, base64: false, headers: { "x-syshair-webhook-secret": secret }, events: WEBHOOK_EVENTS } });
       return jsonResponse({ success: true, instance: { id: row.id, salon_id: tenant, instance_name: name, instanceName: name, status: "disconnected" } });
     }
     const instance = await salonInstance(db, tenant);
@@ -59,7 +62,7 @@ serve(async (req) => {
       const { data: secret, error } = await db.rpc("whatsapp_ensure_instance_secret", { p_instance_id: instance.id });
       if (error || typeof secret !== "string") throw new WhatsAppError("configuration_missing", 503);
       const url = `${requiredEnv("SUPABASE_URL")}/functions/v1/evolution-webhook`;
-      await api.request("webhook", instance.instance_name, { webhook: { enabled: true, url, byEvents: false, base64: false, headers: { "x-syshair-webhook-secret": secret }, events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"] } });
+      await api.request("webhook", instance.instance_name, { webhook: { enabled: true, url, byEvents: false, base64: false, headers: { "x-syshair-webhook-secret": secret }, events: WEBHOOK_EVENTS } });
       await persist(instance.id, { webhook_url: url });
       const { error: markError } = await db.rpc("whatsapp_webhook_synced", { p_instance_id: instance.id, p_mark: true });
       if (markError) throw new WhatsAppError("persistence_failed", 503);
@@ -88,16 +91,15 @@ serve(async (req) => {
     }
     if (action === "contacts") {
       if (instance.status !== "connected") throw new WhatsAppError("disconnected", 409);
-      const contacts = await api.request("contacts", instance.instance_name, {});
-      if (!Array.isArray(contacts)) throw new WhatsAppError("provider_unavailable", 502);
-      const safe = contacts.slice(0, 10_000).flatMap((entry) => {
-        if (!entry || typeof entry !== "object") return [];
-        const c = objectValue(entry);
-        const jid = c.remoteJid ?? c.id;
-        if (typeof jid !== "string" || !/^\d{7,15}@s\.whatsapp\.net$/.test(jid)) return [];
-        return [{ jid, phone: `+${jid.split("@")[0]}`, name: String(c.name ?? c.pushName ?? "Cliente").slice(0, 120) }];
-      });
-      return jsonResponse({ success: true, contacts: safe, truncated: contacts.length > 10_000 });
+      // Agenda (findContacts) + conversas (findChats): quem só conversou também aparece. Grupos/listas/@lid ficam fora.
+      const [book, chats] = await Promise.all([
+        api.request("contacts", instance.instance_name, {}),
+        body.includeChats === false ? Promise.resolve([]) : api.request("chats", instance.instance_name, {}).catch(() => []),
+      ]);
+      if (!Array.isArray(book)) throw new WhatsAppError("provider_unavailable", 502);
+      const all = [...(Array.isArray(chats) ? chats : []), ...book];
+      const { contacts, excluded } = evolutionContacts(all);
+      return jsonResponse({ success: true, contacts, excluded, truncated: all.length > 10_000 });
     }
     const state = stateOf(await api.request("state", instance.instance_name));
     let phoneNumber = instance.phone_number;

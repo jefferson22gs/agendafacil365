@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { DEMO_STORAGE_KEY, DEMO_UNAVAILABLE } from "@/config/demo";
 import { createFixtures, USER_ID, type DemoDb, type DemoRow } from "./fixtures";
+import { seedWhatsAppDemo, whatsappDemoFunction, whatsappDemoRpc } from "./whatsapp";
 
 /**
  * SupabaseClient falso dos modos demo/training (alias em vite.isolation.ts; produção nunca importa este arquivo).
@@ -18,6 +19,7 @@ function load(): DemoDb {
   return createFixtures();
 }
 const db = load();
+seedWhatsAppDemo(db); // Central WhatsApp: conversas, contatos e disparo simulados
 function persist() {
   try { sessionStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify({ day: today, db })); } catch { /* cota/bloqueio: segue só em memória */ }
 }
@@ -203,6 +205,8 @@ function analytics(salonId: unknown, period: string) {
   };
 }
 async function rpc(name: string, args: Record<string, unknown> = {}) {
+  const wa = whatsappDemoRpc(db, name, args);
+  if (wa) { persist(); return { ...wa, count: null, status: 200, statusText: "OK" }; }
   let data: unknown = null;
   if (name === "get_salon_analytics") data = analytics(args.p_salon_id, String(args.p_period ?? "month"));
   else if (name.includes("time_slots")) data = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"];
@@ -249,5 +253,12 @@ const mock = {
   }) },
   channel: () => Object.create(channel), removeChannel: async () => "ok", removeAllChannels: async () => [],
 };
+// Central WhatsApp: Edge Functions simuladas localmente (sem rede); demais seguem o invoke acima.
+const baseInvoke = mock.functions.invoke as (name: string, options?: { body?: Record<string, unknown> }) => Promise<unknown>;
+mock.functions.invoke = (async (name: string, options?: { body?: Record<string, unknown> }) => {
+  const wa = whatsappDemoFunction(db, name, options?.body ?? {});
+  if (wa) { persist(); return wa; }
+  return baseInvoke(name, options);
+}) as typeof mock.functions.invoke;
 // Adaptação na fronteira demo/treinamento: produção usa o SupabaseClient real, este arquivo nunca é importado por ele.
 export const supabase = mock as unknown as SupabaseClient<Database>;

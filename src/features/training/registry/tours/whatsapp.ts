@@ -1,108 +1,171 @@
 import type { TourDef } from "../../types";
 
+const CONNECTION = "/admin/whatsapp?aba=conexao";
+const INBOX = "/admin/whatsapp?aba=conversas";
+
 export const whatsappConnectTour: TourDef = {
   id: "whatsapp-connect",
-  version: 1,
+  version: 2,
   title: "Conectar o WhatsApp",
   description: "Prepare o número do salão, conecte pelo celular e confira a conexão.",
   category: "whatsapp",
-  route: "/admin/whatsapp",
+  route: CONNECTION,
   steps: [
+    {
+      target: "whatsapp-central-tabs",
+      title: "Central WhatsApp",
+      body: "Tudo do WhatsApp fica nesta central: Conversas, Disparador, Status, Chatbot, Contatos e Conexão. Este guia usa a aba Conexão.",
+    },
     {
       target: "whatsapp-header",
       title: "O WhatsApp do salão",
-      body: "Esta tela liga o WhatsApp do salão ao sistema. A conexão é necessária para atender pelo chatbot, enviar pelo Disparador e publicar pelo Agendador de Status.",
+      body: "A aba Conexão liga o WhatsApp do salão ao sistema. Sem ela, Conversas, Disparador, Status e Chatbot não funcionam.",
     },
     {
       title: "Qual número usar?",
-      body: "Use o número de atendimento do salão, com acesso ao WhatsApp no celular. Evite conectar um número pessoal: os clientes receberão as mensagens pelo número conectado.",
-      tip: "Lembretes e confirmações por WhatsApp também dependem da configuração de envio. Só conectar aqui não garante que essas automações estejam prontas.",
+      body: "Use o número de atendimento do salão, com o celular em mãos. Evite número pessoal: os clientes recebem as mensagens pelo número conectado.",
     },
     {
       target: "whatsapp-create-button",
       mode: "waitForClick",
       title: "Preparar a conexão",
-      body: "Se ainda não há conexão cadastrada, clique em Conectar WhatsApp. Isso só abre o cadastro da conexão do estabelecimento.",
-      fallbackBody: "Se a conexão já está cadastrada, não precisa criar outra. Confira o status e use Conectar somente se estiver desconectada.",
+      body: "Se ainda não há conexão, clique em Conectar WhatsApp. Isso só abre o cadastro; nada é enviado.",
+      fallbackBody: "A conexão já está cadastrada. Não crie outra: confira o status abaixo.",
     },
     {
       target: "whatsapp-create-save",
       title: "Criar quando estiver pronto",
-      body: "O sistema cria uma conexão exclusiva; nenhuma mensagem é enviada neste cadastro. Quando decidir preparar a conexão, clique em Criar conexão; para só conhecer a tela, use Voltar.",
-      fallbackBody: "A criação fica no formulário aberto pelo botão Conectar WhatsApp. Se já existe uma conexão cadastrada, pule esta etapa.",
+      body: "O sistema cria uma conexão exclusiva do salão, sem enviar mensagens. Clique em Criar conexão quando decidir; para só conhecer a tela, use Voltar.",
+      fallbackBody: "A criação fica no formulário aberto por Conectar WhatsApp. Se a conexão já existe, pule esta etapa.",
     },
     {
       target: "whatsapp-connect-button",
-      title: "Gerar o código de conexão",
-      body: "Depois de criar, o botão Conectar gera o QR Code. Use-o apenas quando estiver com o celular do salão em mãos; o tour não conecta por você.",
-      fallbackBody: "O botão Conectar aparece quando há uma conexão cadastrada que não está conectada. Se já estiver Conectado, não é preciso gerar outro código.",
+      title: "Gerar o QR Code",
+      body: "Com a conexão criada e ainda desconectada, o botão Reconectar gera o QR Code. Use com o celular do salão em mãos; o tour não conecta por você.",
+      fallbackBody: "O botão Reconectar aparece quando a conexão existe mas não está conectada. Se já estiver conectado, não precisa de outro código.",
     },
     {
-      // Explica sem destacar um QR Code real (dado de conexão sensível).
+      // Explica sem destacar o QR Code real (dado de conexão sensível).
       title: "Escanear pelo celular",
-      body: "Abra o WhatsApp no celular do salão e entre em Dispositivos Conectados, também chamado de Aparelhos conectados. Escolha conectar um aparelho e aponte a câmera para o QR Code desta tela.",
-      tip: "Não envie prints desse código a outras pessoas.",
-      fallbackBody: "O QR Code aparece após usar Conectar. No celular do salão, abra WhatsApp, Aparelhos conectados e Conectar um aparelho para escanear o código.",
+      body: "No celular do salão, abra o WhatsApp, entre em Aparelhos conectados, toque em Conectar aparelho e aponte a câmera para o QR Code da tela.",
+      tip: "Não envie prints desse código a ninguém.",
     },
     {
       target: "whatsapp-new-qrcode",
-      title: "Se o código não funcionar",
-      body: "Se o QR Code vencer ou não carregar, você pode usar Gerar novo QR Code e escanear novamente. Não é necessário excluir a conexão só para renovar o código.",
-      fallbackBody: "Enquanto o sistema mostra a área do QR Code, há a opção Gerar novo QR Code. Se já estiver conectado, essa etapa não é necessária.",
+      title: "Se o código vencer",
+      body: "Se o QR Code vencer ou não ler, use Gerar novo QR Code e escaneie de novo. Não exclua a conexão só para renovar o código.",
+      fallbackBody: "Gerar novo QR Code aparece junto do código. Se já estiver conectado, esta etapa não é necessária.",
     },
     {
       target: "whatsapp-status",
       title: "Confirmar que conectou",
-      body: "Aguarde o status mudar para Conectado. Aguardando conexão significa que ainda falta concluir o pareamento no celular; Desconectado significa que a ligação não está ativa.",
-      fallbackBody: "Depois de cadastrar a conexão, aparece o status. Só considere concluído quando ele mostrar Conectado.",
+      body: "Aguarde o título mudar para WhatsApp conectado. Aguardando conexão indica pareamento pendente; WhatsApp desconectado indica que a ligação não está ativa. O botão de atualizar consulta o status de novo.",
+      fallbackBody: "O status aparece depois de cadastrar a conexão. Só considere concluído quando mostrar WhatsApp conectado.",
     },
     {
       title: "Próximo passo",
-      body: "Com o WhatsApp conectado, configure o Chatbot IA ou prepare um Status. Antes de enviar qualquer campanha, confira os destinatários e peça autorização para receber mensagens.",
+      body: "Com o WhatsApp conectado, acompanhe a aba Conversas, configure o Chatbot ou prepare um Status. Antes de campanhas, confira se os clientes autorizaram receber mensagens.",
     },
   ],
 };
 
 export const whatsappStatusTour: TourDef = {
   id: "whatsapp-status",
-  version: 1,
+  version: 2,
   title: "Cuidar da conexão WhatsApp",
-  description: "Entenda o status, a reconexão e as opções de desligar ou excluir.",
+  description: "Entenda o status, a reconexão e as opções de desconectar ou excluir.",
   category: "whatsapp",
-  route: "/admin/whatsapp",
+  route: CONNECTION,
   steps: [
     {
       target: "whatsapp-header",
       title: "Acompanhar a conexão",
-      body: "Esta tela ajuda a conferir se o WhatsApp do salão está ligado ao sistema. Se a conexão cair, o chatbot, o Disparador e os Status podem deixar de funcionar.",
+      body: "Confira aqui se o WhatsApp do salão está ligado ao sistema. Se a conexão cair, Conversas, Disparador, Status e Chatbot param de enviar.",
     },
     {
       target: "whatsapp-status",
       title: "Ler o status",
-      body: "Conectado indica ligação ativa; Aguardando conexão indica pareamento pendente. Se aparecer Desconectado, verifique a internet e os aparelhos conectados no WhatsApp do celular.",
-      fallbackBody: "Se ainda não existe conexão cadastrada, aparece a opção de criar uma. Faça primeiro o guia Conectar o WhatsApp.",
+      body: "WhatsApp conectado indica ligação ativa; Aguardando conexão, pareamento pendente; WhatsApp desconectado, ligação inativa. Nesse caso, verifique a internet e os aparelhos conectados no celular.",
+      fallbackBody: "Ainda não existe conexão cadastrada. Faça primeiro o guia Conectar o WhatsApp.",
     },
     {
       target: "whatsapp-connect-button",
       title: "Se a conexão cair",
-      body: "Quando quiser reconectar, use Conectar e escaneie o QR Code pelo celular do salão. Se o status parecer antigo, confira os aparelhos conectados no celular e peça ajuda ao suporte.",
-      fallbackBody: "Se estiver conectado, não há botão Conectar. Caso a conexão caia, ele volta a aparecer para gerar outro QR Code.",
+      body: "Use Reconectar e escaneie o novo QR Code pelo celular do salão.",
+      fallbackBody: "Reconectar só aparece quando o WhatsApp não está conectado.",
     },
     {
       target: "whatsapp-disconnect",
-      title: "Desligar sem excluir o cadastro",
-      body: "Desconectar desliga o WhatsApp do sistema e interrompe o uso dessa conexão. Use apenas se realmente quiser parar; depois será necessário reconectar.",
-      fallbackBody: "O botão Desconectar só aparece quando o WhatsApp está conectado. Ele desliga a conexão sem remover o cadastro.",
+      title: "Desconectar sem excluir",
+      body: "Desconectar desliga o WhatsApp do sistema após confirmação, mantendo o cadastro. Mensagens automáticas param até reconectar.",
+      fallbackBody: "Desconectar só aparece quando o WhatsApp está conectado. Ele desliga a conexão sem remover o cadastro.",
     },
     {
       target: "whatsapp-delete",
       title: "Excluir é diferente de desconectar",
-      body: "Excluir Instância remove o cadastro da conexão após uma confirmação. Não faça isso apenas para renovar um QR Code: para voltar a usar, será preciso criar e conectar novamente.",
-      fallbackBody: "Excluir Instância aparece quando há uma conexão cadastrada. É uma remoção, não uma simples consulta de status.",
+      body: "Excluir conexão remove o cadastro após confirmação. Para voltar a usar, será preciso criar e conectar de novo. Não use isso só para renovar o QR Code.",
+      fallbackBody: "Excluir conexão aparece quando há uma conexão cadastrada.",
     },
     {
-      title: "Manter o atendimento funcionando",
-      body: "Confira a conexão antes de contar com mensagens automáticas. Se a reconexão não resolver, procure o suporte sem compartilhar códigos de conexão nem informações sigilosas.",
+      target: "whatsapp-tips",
+      title: "Manter funcionando",
+      body: "Confira o status antes de contar com automações. Se reconectar não resolver, procure o suporte sem compartilhar o QR Code.",
+    },
+  ],
+};
+
+export const whatsappInboxTour: TourDef = {
+  id: "whatsapp-inbox",
+  version: 1,
+  title: "Atender pela aba Conversas",
+  description: "Acompanhe mensagens, assuma o atendimento da IA e responda clientes.",
+  category: "whatsapp",
+  route: INBOX,
+  steps: [
+    {
+      target: "inbox-header",
+      title: "Conversas do WhatsApp",
+      body: "Aqui aparecem as conversas recebidas no WhatsApp conectado, inclusive as atendidas pelo Chatbot. A lista atualiza sozinha. IA disponível não significa Chatbot ligado: confira a aba Chatbot.",
+    },
+    {
+      target: "inbox-search",
+      title: "Buscar contato",
+      body: "Procure pelo nome ou número do cliente.",
+    },
+    {
+      target: "inbox-filter",
+      title: "Filtrar atendimentos",
+      body: "Veja todos, só os que a IA está respondendo ou só os assumidos por uma pessoa da equipe.",
+    },
+    {
+      target: "inbox-list",
+      title: "Lista de conversas",
+      body: "Toque numa conversa para abrir as mensagens. As mais recentes ficam no topo.",
+      fallbackBody: "A lista fica vazia até chegar a primeira mensagem no WhatsApp conectado.",
+    },
+    {
+      target: "inbox-thread",
+      title: "Mensagens",
+      body: "Mostra o histórico da conversa. Use Carregar anteriores para ver mensagens mais antigas. No celular, Voltar retorna à lista.",
+      fallbackBody: "Abra uma conversa da lista para ver as mensagens.",
+    },
+    {
+      target: "inbox-takeover",
+      title: "Assumir ou devolver para a IA",
+      body: "Assumir atendimento pausa a IA só nesse contato. Devolver para IA pede confirmação e volta a deixar o Chatbot responder. Se o cliente pedir uma pessoa, a IA pausa sozinha.",
+      fallbackBody: "Abra uma conversa para ver os botões Assumir atendimento e Devolver para IA.",
+    },
+    {
+      target: "inbox-reply",
+      title: "Responder",
+      body: "Escreva e clique em Enviar resposta. Responder também assume a conversa e pausa a IA nesse contato. Se aparecer Resultado incerto, confira no celular antes de repetir.",
+      fallbackBody: "Abra uma conversa para responder ao cliente.",
+    },
+    {
+      target: "inbox-sync",
+      title: "Sincronizar histórico",
+      body: "Confere no WhatsApp conectado as mensagens recentes desta conversa e traz as que faltarem. Não envia nada ao cliente.",
+      fallbackBody: "Abra uma conversa para ver o botão Sincronizar histórico.",
     },
   ],
 };
