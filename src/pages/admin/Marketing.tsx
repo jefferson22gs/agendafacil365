@@ -1,7 +1,7 @@
 import { normalizePhone } from "@/features/whatsapp/contacts/phone";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { sendPush } from "@/hooks/usePushNotificationsFCM";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ interface Client {
 
 const Marketing = () => {
     const { user } = useAuth();
-    const { isSupported: pushSupported, permission: pushPermission, showNotification, requestPermission } = usePushNotifications();
     const [salon, setSalon] = useState<{ id: string; name: string; whatsapp: string | null } | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
@@ -158,11 +157,13 @@ const Marketing = () => {
             setClients(clientsData || []);
 
             // Get push subscriptions count
+            // Aparelhos que ativaram os avisos do salão (sem contar os do próprio dono). O token nunca é lido.
             const { count, error: pushError } = await (supabase as any)
                 .from('push_subscriptions')
-                .select('*', { count: 'exact', head: true })
+                .select('id', { count: 'exact', head: true })
                 .eq('salon_id', salonData.id)
-                .eq('is_active', true);
+                .eq('is_active', true)
+                .or(`user_id.is.null,user_id.neq.${user?.id}`);
 
             if (!pushError) {
                 setPushSubscriptionsCount(count || 0);
@@ -199,16 +200,21 @@ const Marketing = () => {
             toast.error("Digite uma mensagem");
             return;
         }
-        if (selectedClients.length === 0) {
-            toast.error("Selecione pelo menos um cliente");
-            return;
-        }
         if (!sendVia.whatsapp && !sendVia.push) {
             toast.error("Selecione pelo menos um canal de envio");
             return;
         }
+        // A seleção de clientes vale para o WhatsApp; o push vai para quem ativou as notificações do salão.
+        if (sendVia.whatsapp && selectedClients.length === 0) {
+            toast.error("Selecione pelo menos um cliente");
+            return;
+        }
 
-        if (!window.confirm(`Confirmar envio para ${selectedClients.length} clientes selecionados? Envie marketing somente a quem autorizou.`)) return;
+        const targets = [
+            sendVia.whatsapp ? `WhatsApp para ${selectedClients.length} clientes selecionados` : null,
+            sendVia.push ? `push para ${pushSubscriptionsCount} aparelhos inscritos` : null,
+        ].filter(Boolean).join(' e ');
+        if (!window.confirm(`Confirmar envio: ${targets}? Envie marketing somente a quem autorizou.`)) return;
         setSending(true);
 
         try {
@@ -228,51 +234,19 @@ const Marketing = () => {
                 toast.success('Campanha registrada na fila.', { description: 'Acompanhe os envios no Disparador. Isso não confirma entrega.' });
             }
 
-            if (sendVia.push) {
-                // Send push notifications via Firebase Cloud Messaging
-                try {
-                    // Get anon key or session token for authentication
-                    const session = (await supabase.auth.getSession()).data.session;
-                    const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-                    if (!authToken) {
-                        throw new Error('Não autenticado. Faça login novamente.');
-                    }
-
-                    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-fcm`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authToken}`,
-                            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                        },
-                        body: JSON.stringify({
-                            salon_id: salon?.id,
-                            client_ids: selectedClients,
-                            title: title || salon?.name || 'Nova mensagem',
-                            body: message.replace('{nome}', 'Cliente'),
-                        }),
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(data.error || `HTTP ${response.status}`);
-                    }
-
-                    if (data?.sent > 0) {
-                        toast.success(`${data.sent} notificações push enviadas!`, {
-                            description: `Para dispositivos que permitiram notificações.`
-                        });
-                    } else {
-                        toast.info("Nenhum dispositivo encontrado para push", {
-                            description: "Os clientes precisam instalar o app e permitir notificações."
-                        });
-                    }
-                } catch (pushError: any) {
-                    console.error('Push error:', pushError);
-                    toast.error("Erro ao enviar push: " + (pushError.message || pushError));
-                }
+            if (sendVia.push && salon?.id) {
+                // Push vai para os aparelhos inscritos no app do salão (a inscrição é anônima: não há vínculo com a lista de clientes).
+                // O servidor confere o dono pelo login e nunca envia para outro salão.
+                const r = await sendPush({
+                    salon_id: salon.id,
+                    audience: 'subscribers',
+                    type: 'marketing',
+                    title: title || salon.name || 'Novidade',
+                    body: message.replace(/\{nome\}/g, 'cliente').trim(),
+                });
+                if (r.ok && r.sent > 0) toast.success(`${r.sent} notificações push enviadas!`, { description: 'Para aparelhos que ativaram as notificações do salão.' });
+                else if (r.ok) toast.info('Nenhum aparelho recebeu o push.', { description: 'Os clientes precisam ativar as notificações no link do salão.' });
+                else toast.error(r.message);
             }
 
         } catch (error: any) {
@@ -499,16 +473,16 @@ const Marketing = () => {
                                                 <Checkbox
                                                     checked={sendVia.push}
                                                     onCheckedChange={(checked) => setSendVia({ ...sendVia, push: !!checked })}
-                                                    disabled={!pushSupported || pushSubscriptionsCount === 0}
+                                                    disabled={pushSubscriptionsCount === 0}
                                                 />
                                                 <Bell size={16} className="text-primary" aria-hidden />
-                                                <span>Push {pushSubscriptionsCount > 0 ? `(${pushSubscriptionsCount} dispositivos)` : '(0 dispositivos)'}</span>
+                                                <span>Push para todos os aparelhos inscritos ({pushSubscriptionsCount})</span>
                                             </label>
                                         </div>
                                         {pushSubscriptionsCount === 0 && (
                                             <p className="flex items-start gap-2 text-xs text-foreground border border-warning/30 bg-warning/10 p-2 rounded-lg">
                                                 <Info size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden />
-                                                Nenhum cliente permitiu notificações push ainda.Os clientes precisam acessar a página de agendamento ({salon?.name && <span className="text-primary">/s/{salon.name.toLowerCase().replace(/\s+/g, '')}</span>}) e clicar em "Ativar notificações".
+                                                Nenhum aparelho ativou as notificações do salão ainda. Compartilhe o link do app (Configurações &gt; Meu aplicativo); o cliente toca em "Ativar notificações" na página do salão.
                                             </p>
                                         )}
                                     </div>
@@ -522,7 +496,7 @@ const Marketing = () => {
                         variant="brand"
                         onClick={handleSendNotification}
                         data-tour="marketing-send"
-                        disabled={sending || selectedClients.length === 0 || !message.trim()}
+                        disabled={sending || !message.trim() || (sendVia.whatsapp ? selectedClients.length === 0 : !sendVia.push)}
                         className="w-full py-6 text-lg"
                         size="lg"
                     >

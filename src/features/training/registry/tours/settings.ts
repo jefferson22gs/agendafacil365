@@ -201,14 +201,78 @@ export const settingsNotificationsTour: TourDef = {
       body: "Esta seção controla as notificações neste navegador. Ela mostra se estão ativadas, desativadas, bloqueadas ou não são suportadas.",
     },
     {
-      target: "settings-notifications",
-      title: "Permissão e teste",
-      body: "Se quiser receber alertas, use Ativar e autorize no navegador. Se as notificações estiverem bloqueadas, libere nas configurações do navegador; o botão Enviar notificação de teste desta seção mostra apenas um aviso na tela.",
+      target: "settings-notifications-toggle",
+      title: "Ativar neste aparelho",
+      body: "Clique em Ativar e autorize no navegador. Este aparelho passa a receber um aviso a cada novo agendamento do seu salão. Se estiverem bloqueadas, libere nas permissões do site.",
       tip: "Ativar ou Desativar já altera a inscrição de notificações, sem usar o botão Salvar do salão.",
+      fallbackBody: "O botão Ativar aparece quando o navegador aceita notificações. No iPhone, adicione o painel à Tela de Início pelo Safari e ative pelo app instalado.",
+    },
+    {
+      target: "settings-notifications-test",
+      title: "Teste de verdade",
+      body: "Depois de ativar, Enviar notificação de teste manda um push real só para os seus aparelhos. Se aparecer o aviso de que as notificações ainda não foram ativadas pela plataforma, sua inscrição fica salva e passa a funcionar quando o envio for liberado.",
+      fallbackBody: "O botão de teste aparece depois que os avisos estão ativados neste aparelho.",
     },
     {
       title: "Próximo passo",
-      body: "Confira os avisos recebidos no Dashboard. Ativar notificações aqui não conecta o WhatsApp do salão.",
+      body: "Configure o card Meu aplicativo para que seus clientes instalem o app do salão. Ativar notificações aqui não conecta o WhatsApp do salão.",
+    },
+  ],
+};
+
+export const settingsMyAppTour: TourDef = {
+  id: "settings-myapp",
+  version: 1,
+  title: "Meu aplicativo",
+  description: "Personalize o app do salão que seus clientes instalam pelo link e acompanhe quem ativou as notificações.",
+  category: "settings",
+  route: "/admin/settings",
+  steps: [
+    {
+      target: "settings-myapp",
+      title: "O app do seu salão",
+      body: "Quem abre o seu link pode instalar um app com o nome, as cores e o ícone do salão, e ativar notificações dele. Aqui você define como esse app aparece.",
+    },
+    {
+      target: "settings-myapp-enabled",
+      title: "Ligar ou desligar",
+      body: "Com App próprio ativo, a página pública mostra os botões Instalar app e Ativar notificações. Desligado, a página continua agendando normalmente, sem esses botões.",
+    },
+    {
+      target: "settings-myapp-fields",
+      title: "Nome e descrição",
+      body: "Nome do app aparece na instalação; o nome curto fica embaixo do ícone na tela do celular. Em branco, usamos o nome do salão.",
+    },
+    {
+      target: "settings-myapp-colors",
+      title: "Cores",
+      body: "Cor do app pinta a barra do celular e o fundo do ícone; Cor da abertura aparece enquanto o app carrega. Em branco, usamos a Cor Principal. Os textos ficam em preto ou branco automaticamente para manter a leitura.",
+    },
+    {
+      target: "settings-myapp-icon",
+      title: "Ícone",
+      body: "Envie uma imagem PNG, JPG ou WebP quadrada, de preferência 512×512. Sem ícone, usamos o logo do salão ou a inicial do nome. Enviar o arquivo não salva: clique em Salvar depois.",
+      fallbackBody: "Salve o estabelecimento primeiro para liberar o envio do ícone.",
+    },
+    {
+      target: "settings-myapp-preview",
+      title: "Prévia",
+      body: "Veja como o ícone fica na tela inicial e como fica a abertura do app. A prévia muda na hora; o app instalado atualiza depois que você salvar.",
+    },
+    {
+      target: "settings-myapp-share",
+      title: "Divulgue o link do app",
+      body: "Copiar link do app ou Compartilhar (no celular abre o menu de compartilhamento). O cliente abre o link, toca em Instalar app e em Ativar notificações. No iPhone, a página mostra o passo a passo do Safari.",
+    },
+    {
+      target: "settings-myapp-devices",
+      title: "Quem recebe",
+      body: "Este número mostra quantos aparelhos de clientes ativaram as notificações do salão. Use Marketing para enviar uma notificação a eles.",
+    },
+    {
+      target: "settings-save",
+      title: "Salvar",
+      body: "Clique em Salvar para aplicar nome, cores e ícone ao app. Quem já instalou recebe a atualização quando o navegador renovar o app.",
     },
   ],
 };
