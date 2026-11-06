@@ -27,7 +27,6 @@ const dbFailure = (where: string, code?: string) => {
 
 // Únicas ausências legítimas: tabela/função ainda não criada (migração não aplicada). Qualquer outro erro fecha.
 const MISSING_RELATION = new Set(["42P01", "PGRST205"]);
-const MISSING_FUNCTION = new Set(["42883", "PGRST202"]);
 
 /** null = config central inexistente (tabela ausente ou linha não criada): modo legado. Erro de banco lança AIError. */
 export async function loadPlatformConfig(db: SupabaseClient): Promise<PlatformConfig | null> {
@@ -129,16 +128,14 @@ export async function aiChat(db: SupabaseClient, ai: ResolvedAI, call: ChatCall,
   const { data: rows, error: reserveError } = await db.rpc("ai_reserve", {
     p_salon_id: call.salonId, p_feature: call.feature, p_provider: ai.provider, p_model: ai.model, p_tokens: est.tokens, p_cost: est.cost,
   });
-  // Única exceção: modo legado com a migração ainda não aplicada (sem RPC, sem limites a impor). Central nunca chama sem reserva.
-  const unledgered = !!reserveError && ai.mode === "legacy" && MISSING_FUNCTION.has(String(reserveError.code));
-  if (reserveError && !unledgered) throw dbFailure("reserve", reserveError.code);
+  // Inclusive no legado: sem reserva persistida, nenhuma chamada paga.
+  if (reserveError) throw dbFailure("reserve", reserveError.code);
   const row = Array.isArray(rows) ? rows[0] : rows;
   if (row?.reason) throw new AIError("quota_exceeded", 429, String(row.reason));
   const reservationId = row?.reservation_id;
-  if (reservationId == null && !unledgered) throw dbFailure("reserve_empty");
+  if (reservationId == null) throw dbFailure("reserve_empty");
   const started = Date.now();
   const settle = async (p: Record<string, unknown>) => {
-    if (unledgered) return;
     const { data, error } = await db.rpc("ai_settle", { p_id: reservationId, p_latency_ms: Date.now() - started, ...p });
     // Sem liquidação a reserva fica "reserved" e segue contando no orçamento pelo valor estimado.
     if (error || data !== true) throw dbFailure("settle", error?.code);

@@ -184,8 +184,8 @@ test('reserva antes de cada chamada; bloqueio não chama o provedor', async () =
   await assert.rejects(gw.aiChat(db3, central(), call, async () => { fetched++; }), e => e.code === 'persistence_failed', 'central sem RPC também fecha');
   assert.equal(fetched, 0);
   const db4 = fakeDb({ reserve: { data: null, error: { code: 'PGRST202' } } });
-  const out = await gw.aiChat(db4, central({ mode: 'legacy' }), call, okFetch({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }));
-  assert.equal(out.text, 'ok', 'legado sem migração: única exceção');
+  await assert.rejects(gw.aiChat(db4, central({ mode: 'legacy' }), call, async () => { fetched++; }), e => e.code === 'persistence_failed');
+  assert.equal(fetched, 0, 'legado também exige reserva persistida');
 });
 
 test('liquidação: sucesso com uso real; 4xx devolve; timeout mantém; falha de liquidação não é ignorada', async () => {

@@ -47,7 +47,7 @@ Só o super admin define chave, modelo, treinamento e limites (Super Admin > aba
 
 ## Ordem de resolução
 1. Config central salva: Gemini com a chave de `ai_private.platform_keys` ou, se ausente, o segredo `GEMINI_API_KEY`. Limites valem.
-2. Sem config central (até o primeiro "Ativar"): chatbot usa a chave antiga do salão; texto e legenda usam `ai_provider_keys` ou `GEMINI_API_KEY`. Sem limites, mas o uso é registrado. Única exceção sem reserva: legado com a migração ainda não aplicada.
+2. Sem config central (até o primeiro "Ativar"): chatbot usa a chave antiga do salão; texto e legenda usam `ai_provider_keys` ou `GEMINI_API_KEY`. Sem limites, mas o uso é registrado. A migração **não pode estar sem ser aplicada**: toda chamada paga exige a RPC `ai_reserve`; sem ela a chamada fecha com `persistence_failed`.
 
 ## Demo
 `mockSupabase.ts` responde `generate-text-content`, `generate-image-caption` e `get_my_ai_usage` com dados fictícios, sem rede.

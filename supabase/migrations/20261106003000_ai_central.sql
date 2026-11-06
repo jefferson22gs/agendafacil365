@@ -212,7 +212,9 @@ DECLARE
   v_out integer := greatest(coalesce(p_tokens_out, 0), 0);
   v_cost numeric := greatest(coalesce(p_cost, 0), 0);
 BEGIN
-  IF p_status NOT IN ('ok', 'error') THEN RAISE EXCEPTION 'invalid_status'; END IF;
+  IF p_status IS NULL OR p_status NOT IN ('ok', 'error') OR p_exact IS NULL OR p_charged IS NULL THEN RAISE EXCEPTION 'invalid_status'; END IF;
+  -- Liquidações que aumentam o gasto real também serializam com novas reservas.
+  PERFORM pg_advisory_xact_lock(hashtextextended('ai-usage-reserve', 0));
   UPDATE ai_usage u SET
     status = p_status,
     error_code = left(p_error_code, 40),
