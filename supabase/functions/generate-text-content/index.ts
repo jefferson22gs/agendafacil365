@@ -3,7 +3,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeSalon, serviceClient } from "../_shared/whatsapp/auth.ts";
 import { corsHeaders, errorResponse, jsonResponse, readRequest, WhatsAppError } from "../_shared/whatsapp/errors.ts";
-import { aiChat, AIError, aiErrorResponse, guardQuota, legacyPlatformKey, resolveAI } from "../_shared/ai/gateway.ts";
+import { aiChat, AIError, aiErrorResponse, legacyPlatformKey, resolveAI } from "../_shared/ai/gateway.ts";
 import { AI_ERROR_TEXT, composeSystemPrompt } from "../_shared/ai/core.ts";
 
 const SYSTEM = `Você é um especialista em marketing digital para salões de beleza.
@@ -22,14 +22,12 @@ serve(async (req) => {
     const instruction = typeof body.instruction === "string" ? body.instruction.slice(0, 1000) : "";
     if (!text.trim() && !instruction.trim()) throw new WhatsAppError("invalid_request");
 
-    // Provedor escolhido pelo cliente (body.provider) é ignorado: só a plataforma decide.
-    const ai = await resolveAI(db, () => legacyPlatformKey(db, ["groq", "openai", "gemini"]));
+    // Provedor escolhido pelo cliente (body.provider) é ignorado: só a plataforma decide. Cota reservada dentro de aiChat.
+    const ai = await resolveAI(db, () => legacyPlatformKey(db, ["gemini", "groq", "openai"]));
     if (!ai) return jsonResponse({ success: false, code: "not_configured", error: AI_ERROR_TEXT.not_configured }, 503);
-    const quota = await guardQuota(db, ai, salonId, "texto");
-    if (!quota.ok) return jsonResponse({ success: false, code: quota.reason === "disabled" ? "ai_disabled" : "quota_exceeded", error: AI_ERROR_TEXT[quota.reason === "disabled" ? "ai_disabled" : "quota_exceeded"] }, 429);
 
     const user = instruction ? `${instruction}\n\nTexto original para base (opcional): "${text}"` : `Melhore este texto para ficar mais atraente: "${text}"`;
-    const out = await aiChat(db, ai, { salonId, feature: "texto", messages: [{ role: "system", content: composeSystemPrompt(ai.cfg, SYSTEM, "texto") }, { role: "user", content: user }], maxTokens: Math.min(ai.maxTokens, 800) });
+    const out = await aiChat(db, ai, { salonId, feature: "texto", messages: [{ role: "system", content: composeSystemPrompt(ai.cfg, SYSTEM, "texto") }, { role: "user", content: user }], maxTokens: Math.max(ai.maxTokens, 800) });
     if (!out.text.trim()) throw new AIError("unavailable");
     return jsonResponse({ success: true, text: out.text.trim() });
   } catch (error) {

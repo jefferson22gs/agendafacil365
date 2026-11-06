@@ -22,6 +22,11 @@ serve(async req => {
           p_event_id:event.id,p_claim:event.claim_token,p_response:reply.text,p_provider:reply.provider,p_model:reply.model,
         });
         if(finishError) throw new WhatsAppError("persistence_failed",503);
+        // Contagem com/sem IA para o painel (sem custo). Falha aqui não desfaz a resposta já gravada: só avisa.
+        if(reply.text){
+          const {error:logError}=await db.rpc("ai_log_reply",{p_salon_id:event.salon_id,p_event_id:event.id,p_with_ai:reply.provider!=="deterministic",p_kind:reply.model});
+          if(logError) console.warn("ai_reply_log_failed",logError.code);
+        }
         processed++;
       } catch(error) {
         const code=error instanceof WhatsAppError?error.code:"internal_error";
