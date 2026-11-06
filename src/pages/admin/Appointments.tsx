@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { EnhancedSalonCalendar } from "@/components/admin/EnhancedSalonCalendar";
 import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { sendPush } from "@/hooks/usePushNotificationsFCM";
 import { AppointmentStatusBadge } from "@/components/admin/AppointmentStatusBadge";
 
 type Appointment = Tables<"appointments"> & {
@@ -168,40 +169,16 @@ const Appointments = () => {
       if (error) throw error;
       toast.success("Status atualizado!");
 
-      // Se o serviço foi concluído, enviar notificação para avaliar
+      // Serviço concluído: pede avaliação ao cliente deste agendamento. O servidor confere o salão e só envia
+      // aos aparelhos vinculados a esse cliente (sem vínculo, ninguém recebe). Falha não bloqueia a mudança de status.
       if (status === 'completed' && salonId) {
-        const appointment = appointments.find(a => a.id === id);
-        if (appointment) {
-          // Enviar push notification para avaliação (via Firebase Cloud Messaging)
-          try {
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-fcm`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                },
-                body: JSON.stringify({
-                  salon_id: salonId,
-                  title: '⭐ Como foi seu atendimento?',
-                  body: `${appointment.client_name}, avalie o serviço "${appointment.services?.name}" e ganhe pontos de fidelidade!`,
-                  data: {
-                    type: 'rating_request',
-                    appointment_id: id,
-                    url: `/avaliar/${id}`
-                  }
-                }),
-              }
-            );
-
-            if (response.ok) {
-              console.log('✅ Notificação de avaliação enviada!');
-            }
-          } catch (pushError) {
-            console.log('Erro ao enviar notificação de avaliação:', pushError);
-          }
-        }
+        void sendPush({
+          salon_id: salonId,
+          type: 'rating_request',
+          appointment_id: id,
+          title: 'Como foi seu atendimento?',
+          body: 'Avalie o serviço e ganhe pontos de fidelidade!',
+        });
       }
 
       fetchData();

@@ -177,6 +177,8 @@ export function createFixtures(now = new Date()): DemoDb {
     service_packages: servicePackages,
     service_package_items: packageItems,
     reviews,
+    // App do salão (Meu aplicativo): 12 aparelhos fictícios de clientes inscritos. Sem token: o painel nunca lê o token.
+    push_subscriptions: Array.from({ length: 12 }, (_, i) => ({ id: uid(400 + i), salon_id: SALON_ID, user_id: null, client_id: null, is_active: true, device_info: { platform: i % 3 ? "android" : "ios" }, created_at: addDays(today, -i * 3).toISOString(), updated_at: now.toISOString() })),
     subscriptions: [{
       id: uid(90), salon_id: SALON_ID, user_id: USER_ID, status: "active", is_trial: false, plan_name: LEGACY_PLAN_NAME, plan_type: "monthly", plan_id: null,
       amount: 39.9, currency: "BRL", current_period_start: addDays(today, -10).toISOString(), current_period_end: addDays(today, 20).toISOString(),

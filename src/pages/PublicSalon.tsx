@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { SalonInstallPrompt } from "@/components/pwa/SalonInstallPrompt";
+import { SalonAppCard } from "@/components/pwa/SalonAppCard";
+import { useSalonHead } from "@/components/pwa/useSalonHead";
 import { safeHexColor } from "@/config/brand";
 import { toast } from "sonner";
 import {
@@ -36,9 +37,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { usePWA } from "@/hooks/usePWA";
-import { usePushNotificationsFCM } from "@/hooks/usePushNotificationsFCM";
-import { NotificationPrompt } from "@/components/pwa/NotificationPrompt";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 
@@ -74,6 +72,14 @@ interface Salon {
   working_days: number[];
   primary_color: string | null;
   logo_url: string | null;
+  pwa_name?: string | null;
+  pwa_short_name?: string | null;
+  pwa_description?: string | null;
+  pwa_theme_color?: string | null;
+  pwa_background_color?: string | null;
+  pwa_icon_url?: string | null;
+  pwa_enabled?: boolean | null;
+  updated_at?: string | null;
   public_booking_enabled: boolean;
   slug: string;
   pix_key: string | null;
@@ -151,18 +157,12 @@ interface ServicePackage {
 const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { isInstallable, isInstalled, installApp } = usePWA();
-
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
-  // Push notifications - subscription será salva no banco quando cliente permitir
-  // Usando Firebase Cloud Messaging para mensagens completas
-  const { subscribe: subscribePush, isSupported: pushSupported, permission: pushPermission } = usePushNotificationsFCM(salon?.id);
 
   const [step, setStep] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -208,56 +208,9 @@ const PublicSalon = () => {
     }
   }, [slug]);
 
-  // PWA do estabelecimento: manifest dinâmico + theme-color + título enquanto a página está montada.
-  // O SW NÃO é registrado aqui: o build (VitePWA/registerSW.js) já registra o worker no scope "/";
-  // registrar outro arquivo no mesmo scope substituiria o worker de precache.
-  // Tudo é restaurado no cleanup para não vazar a identidade do tenant para outras rotas.
-  useEffect(() => {
-    if (!slug || import.meta.env.MODE === 'demo') return;
-    const manifestHref = `/api/manifest/${slug}`;
-    let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    const createdManifest = !manifestLink;
-    const previousManifestHref = manifestLink?.getAttribute('href') ?? '/manifest.webmanifest';
-    if (!manifestLink) {
-      manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      document.head.appendChild(manifestLink);
-    }
-    manifestLink.setAttribute('href', manifestHref);
-
-    let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const createdMeta = !themeColorMeta;
-    const previousThemeColor = themeColorMeta?.getAttribute('content') ?? null;
-    if (!themeColorMeta) {
-      themeColorMeta = document.createElement('meta');
-      themeColorMeta.name = 'theme-color';
-      document.head.appendChild(themeColorMeta);
-    }
-
-    const previousTitle = document.title;
-
-    return () => {
-      // Restauração incondicional (dono externo); o SalonInstallPrompt só desfaz o que ainda é dele,
-      // então o resultado final é o original independentemente da ordem de desmontagem.
-      if (manifestLink) {
-        if (createdManifest) manifestLink.remove();
-        else manifestLink.setAttribute('href', previousManifestHref);
-      }
-      if (themeColorMeta) {
-        if (createdMeta) themeColorMeta.remove();
-        else if (previousThemeColor !== null) themeColorMeta.setAttribute('content', previousThemeColor);
-      }
-      document.title = previousTitle;
-    };
-  }, [slug]);
-
-  // Título e cor do navegador seguem o estabelecimento carregado (cor validada; fallback azul).
-  useEffect(() => {
-    if (!salon) return;
-    document.title = `${salon.name} | Agendamento`;
-    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-      ?.setAttribute('content', safeHexColor(salon.primary_color));
-  }, [salon]);
+  // App do salão: manifest/ícone/metas iOS/título enquanto a página está aberta (restaurados ao sair).
+  // O SW não é registrado aqui: o build (VitePWA) já registra o worker único no scope "/".
+  useSalonHead(salon);
 
   // Auto-selecionar "any" quando entrar no step 2 sem profissional selecionado
   useEffect(() => {
@@ -289,6 +242,8 @@ const PublicSalon = () => {
         return;
       }
 
+      // Colunas pwa_* existem em produção, mas ainda não nos tipos gerados (types.ts desatualizado).
+      const pwaRow = salonData as typeof salonData & Partial<Record<'pwa_name' | 'pwa_short_name' | 'pwa_description' | 'pwa_theme_color' | 'pwa_background_color' | 'pwa_icon_url', string | null> & { pwa_enabled: boolean | null }>;
       setSalon({
         id: salonData.id,
         name: salonData.name,
@@ -303,6 +258,14 @@ const PublicSalon = () => {
         working_days: salonData.working_days || [1, 2, 3, 4, 5, 6],
         primary_color: salonData.primary_color,
         logo_url: salonData.logo_url,
+        pwa_name: pwaRow.pwa_name ?? null,
+        pwa_short_name: pwaRow.pwa_short_name ?? null,
+        pwa_description: pwaRow.pwa_description ?? null,
+        pwa_theme_color: pwaRow.pwa_theme_color ?? null,
+        pwa_background_color: pwaRow.pwa_background_color ?? null,
+        pwa_icon_url: pwaRow.pwa_icon_url ?? null,
+        pwa_enabled: pwaRow.pwa_enabled ?? true,
+        updated_at: salonData.updated_at ?? null,
         public_booking_enabled: salonData.public_booking_enabled ?? true,
         slug: salonData.slug || '',
         pix_key: salonData.pix_key || null,
@@ -861,23 +824,8 @@ const PublicSalon = () => {
         // Não bloqueia o agendamento se WhatsApp falhar
       }
 
-      // Enviar notificação push para o dono do salão
-      try {
-        await supabase.functions.invoke('send-push-notification', {
-          body: {
-            salonId: salon.id,
-            title: '🎉 Novo Agendamento!',
-            body: `${clientName.trim()} agendou ${mainService.name} para ${format(selectedDate, 'dd/MM')} às ${selectedTime}`,
-            data: {
-              appointmentId: appointmentData.id,
-              type: 'new_appointment'
-            }
-          }
-        });
-      } catch (pushError) {
-        console.error("Push notification error:", pushError);
-        // Não bloqueia o agendamento se push falhar
-      }
+      // Aviso ao dono: trigger no banco enfileira o push (push_outbox) e o worker do servidor envia.
+      // O navegador do cliente não dispara push.
 
       // Auto-create or update client in clients table with loyalty points
       // Rule: R$ 1 spent = 1 loyalty point
@@ -1206,26 +1154,6 @@ const PublicSalon = () => {
                 </a>
               )}
 
-              {/* Install PWA Button */}
-              {isInstallable && !isInstalled && (
-                <button
-                  type="button"
-                  onClick={installApp}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
-                  style={{ backgroundColor: primaryColor, color: 'white' }}
-                >
-                  <Download size={18} />
-                  <span>Instalar App</span>
-                </button>
-              )}
-
-              {/* Already Installed Badge */}
-              {isInstalled && (
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium bg-secondary/50 text-muted-foreground">
-                  <Check size={14} />
-                  <span>App instalado</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1243,6 +1171,17 @@ const PublicSalon = () => {
       )}
 
       <main className="container px-4 py-6 sm:py-8 max-w-2xl mx-auto">
+        {/* App do salão: instalar + notificações (só no início do fluxo, para não atrapalhar o agendamento) */}
+        {step === 1 && (
+          <SalonAppCard
+            salonName={salon.pwa_short_name || salon.name}
+            salonSlug={salon.slug}
+            logoUrl={salon.pwa_icon_url || salon.logo_url}
+            color={salon.pwa_theme_color || salon.primary_color}
+            enabled={salon.pwa_enabled !== false}
+          />
+        )}
+
         {/* Progress Steps */}
         <ol className="flex items-center justify-between mb-8" aria-label="Etapas do agendamento">
           {steps.map((s, index) => (
@@ -2118,19 +2057,6 @@ const PublicSalon = () => {
         )
       }
 
-      {/* Prompt para ativar notificações - só renderiza quando salon está carregado */}
-      {salon?.id && <NotificationPrompt salonId={salon.id} />}
-
-      {/* PWA Install Prompt for Salon */}
-      {salon && slug && (
-        <SalonInstallPrompt
-          salonName={salon.name}
-          salonSlug={slug}
-          salonLogo={salon.logo_url || undefined}
-          salonThemeColor={safeHexColor(salon.primary_color)}
-
-        />
-      )}
     </div >
   );
 };

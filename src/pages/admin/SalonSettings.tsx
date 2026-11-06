@@ -12,9 +12,10 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, Upload, Building2, Link2, Copy, ExternalLink, Globe, Bell, Camera } from "lucide-react";
 import { NotificationSettings } from "@/components/pwa/NotificationPrompt";
+import { MyAppCard, type PwaFields } from "@/components/pwa/MyAppCard";
 import { useMarkLinkShared } from "@/features/training/useFirstSteps";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DEFAULT_TENANT_COLOR, publicOrigin } from "@/config/brand";
+import { DEFAULT_TENANT_COLOR, publicOrigin, safeHexColor } from "@/config/brand";
 import { PageHeader } from "@/components/ui/page-header";
 
 interface SalonData {
@@ -46,6 +47,12 @@ interface SalonData {
   };
   working_hours?: Record<string, { isOpen: boolean; start: string; end: string }>;
 }
+
+const defaultPwa: PwaFields = {
+  pwa_name: "", pwa_short_name: "", pwa_description: "", pwa_theme_color: "", pwa_background_color: "", pwa_icon_url: "", pwa_enabled: true,
+};
+// Cor vazia = herda a Cor Principal/padrão. Valor inválido não é salvo.
+const colorOrNull = (c: string) => (c && safeHexColor(c, "") ? c : null);
 
 const defaultSalon: SalonData = {
   name: "",
@@ -93,6 +100,7 @@ const SalonSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isNew, setIsNew] = useState(true);
+  const [pwa, setPwa] = useState<PwaFields>(defaultPwa);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [activeLogoTab, setActiveLogoTab] = useState("link");
 
@@ -149,6 +157,19 @@ const SalonSettings = () => {
           working_hours: data.working_hours || null
         });
 
+        // Colunas pwa_* existem em produção, mas ainda não nos tipos gerados (types.ts desatualizado).
+        const p = data as typeof data & Partial<Record<'pwa_name' | 'pwa_short_name' | 'pwa_description' | 'pwa_theme_color' | 'pwa_background_color' | 'pwa_icon_url', string | null> & { pwa_enabled: boolean | null }>;
+        setPwa({
+          pwa_name: p.pwa_name || "",
+          pwa_short_name: p.pwa_short_name || "",
+          pwa_description: p.pwa_description || "",
+          // Defaults antigos do banco (#c9a227/#0d1117) nunca foram escolhidos pelo dono: tratados como "herdar".
+          pwa_theme_color: p.pwa_theme_color && p.pwa_theme_color.toLowerCase() !== "#c9a227" ? p.pwa_theme_color : "",
+          pwa_background_color: p.pwa_background_color && p.pwa_background_color.toLowerCase() !== "#0d1117" ? p.pwa_background_color : "",
+          pwa_icon_url: p.pwa_icon_url || "",
+          pwa_enabled: p.pwa_enabled ?? true,
+        });
+
         // Initialize working_hours from legacy if needed
         if (!data.working_hours) {
           const legacyHours: any = {};
@@ -183,6 +204,10 @@ const SalonSettings = () => {
       toast.error("Nome do estabelecimento é obrigatório");
       return;
     }
+    if ([pwa.pwa_theme_color, pwa.pwa_background_color].some(c => c && !safeHexColor(c, ""))) {
+      toast.error("Meu aplicativo: use cores no formato #RRGGBB.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -208,6 +233,13 @@ const SalonSettings = () => {
         pix_key: salon.pix_key || null,
         lunch_break_config: salon.lunch_break_config,
         working_hours: salon.working_hours,
+        pwa_name: pwa.pwa_name.trim() || null,
+        pwa_short_name: pwa.pwa_short_name.trim() || null,
+        pwa_description: pwa.pwa_description.trim() || null,
+        pwa_theme_color: colorOrNull(pwa.pwa_theme_color),
+        pwa_background_color: colorOrNull(pwa.pwa_background_color),
+        pwa_icon_url: pwa.pwa_icon_url || null,
+        pwa_enabled: pwa.pwa_enabled,
         owner_id: user.id,
       };
 
@@ -470,7 +502,7 @@ const SalonSettings = () => {
           </Card>
         )}
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {/* Informações Básicas */}
           <Card data-tour="settings-info">
             <CardHeader>
@@ -889,7 +921,19 @@ const SalonSettings = () => {
             </CardContent>
           </Card>
 
-          {/* Notificações Push */}
+          {/* Meu aplicativo (app instalável do salão) */}
+          <MyAppCard
+            salonId={salon.id}
+            ownerId={user?.id}
+            salonName={salon.name}
+            slug={isNew ? "" : salon.slug}
+            logoUrl={salon.logo_url}
+            primaryColor={salon.primary_color}
+            value={pwa}
+            onChange={(patch) => setPwa(prev => ({ ...prev, ...patch }))}
+          />
+
+          {/* Notificações Push do dono */}
           <Card className="md:col-span-2" data-tour="settings-notifications">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -897,11 +941,11 @@ const SalonSettings = () => {
                 Notificações Push
               </CardTitle>
               <CardDescription>
-                Receba alertas de novos agendamentos e lembretes
+                Ative neste celular ou computador para receber um aviso a cada novo agendamento.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <NotificationSettings />
+              <NotificationSettings salonId={salon.id} />
             </CardContent>
           </Card>
         </div>

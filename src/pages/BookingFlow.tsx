@@ -8,7 +8,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { useSalon, Product } from "@/hooks/useSalon";
 import { SalonStore } from "@/components/booking/SalonStore";
-import { SalonInstallPrompt } from "@/components/pwa/SalonInstallPrompt";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -1177,15 +1176,7 @@ const BookingFlow = () => {
         <p className="mt-8 text-center text-xs text-muted-foreground">{BRAND.poweredBy}</p>
       </main>
 
-      {/* PWA Install Prompt for Salon */}
-      {salon && salonId && (
-        <SalonInstallPrompt
-          salonName={salon.name}
-          salonSlug={salonId}
-          salonLogo={salon.logo_url || undefined}
-          salonThemeColor={safeHexColor(salon.primary_color)}
-        />
-      )}
+      {/* ponytail: /booking/:salonId usa id (sem slug) e fica fora do scope do app do salão; instalar/notificar é feito em /s/:slug. */}
     </div>
   );
 };

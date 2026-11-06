@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usePWA } from '@/hooks/usePWA';
+import { usePWA, useTenantApp } from '@/hooks/usePWA';
 import { Button } from '@/components/ui/button';
 import { X, Download, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +7,8 @@ import { BRAND } from '@/config/brand';
 
 export const InstallPrompt = () => {
   const { isInstallable, isInstalled, isOnline, installApp } = usePWA();
+  // Em /s/:slug o evento de instalação é do app do salão (SalonAppCard); não oferecer o app da plataforma.
+  const tenantApp = useTenantApp();
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -64,7 +66,7 @@ export const InstallPrompt = () => {
 
       {/* Install Prompt */}
       <AnimatePresence>
-        {showPrompt && (
+        {showPrompt && !tenantApp && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}

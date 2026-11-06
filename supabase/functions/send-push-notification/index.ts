@@ -1,133 +1,46 @@
-// =====================================================
-// SEND PUSH NOTIFICATION
-// Envia notificações push para usuários
-// =====================================================
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-interface PushRequest {
-    salonId?: string;
-    ownerId?: string;
-    userId?: string;
-    title: string;
-    body: string;
-    icon?: string;
-    badge?: string;
-    data?: any;
-}
+// Edge Function: send-push-notification — worker da fila public.push_outbox (novo agendamento → dispositivos do dono).
+// Só cron/servidor (chave secreta do projeto via Vault). Antes era chamada pelo navegador anônimo e apenas simulava o envio.
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { authorizeWorker, serviceClient } from "../_shared/whatsapp/auth.ts";
+import { corsHeaders, jsonResponse } from "../_shared/whatsapp/errors.ts";
+import { selectTargets, type Subscription } from "../_shared/push/core.ts";
+import { deliver, pushConfigured, PushError } from "../_shared/push/fcm.ts";
+import { pushError } from "../_shared/push/handler.ts";
 
 serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  try {
+    authorizeWorker(req);
+    // Sem chave Firebase a fila fica pendente (expira em 24 h); não marca enviado sem envio real.
+    if (!pushConfigured()) throw new PushError("push_not_configured", 503);
+    const db = serviceClient();
+    const { data: jobs, error } = await db.rpc("push_claim_outbox", { p_limit: 25 });
+    if (error) throw new PushError("persistence_failed", 503);
+    let sent = 0, failed = 0;
+    for (const job of jobs ?? []) {
+      try {
+        const { data: salon } = await db.from("salons").select("owner_id,slug,logo_url,pwa_icon_url").eq("id", job.salon_id).maybeSingle();
+        const { data: subs } = salon?.slug
+          ? await db.from("push_subscriptions").select("id,user_id,client_id,fcm_token").eq("salon_id", job.salon_id)
+              .eq("user_id", salon.owner_id).eq("is_active", true).not("fcm_token", "is", null).limit(50)
+          : { data: [] };
+        const targets = salon ? selectTargets((subs ?? []) as Subscription[], { audience: "owner", ownerId: salon.owner_id }) : [];
+        const r = targets.length
+          ? await deliver(db, targets, { title: job.title, body: job.body, url: job.url, type: job.kind, icon: salon!.pwa_icon_url || salon!.logo_url, salonSlug: salon!.slug })
+          : { sent: 0, failed: 0 };
+        // Sem dispositivo do dono: concluído (nada a enviar). Falha total: volta para pendente.
+        const ok = r.sent > 0 || r.failed === 0;
+        await db.from("push_outbox").update(ok
+          ? { status: "sent", sent_at: new Date().toISOString(), last_error: null }
+          : { status: job.attempts >= 5 ? "failed" : "pending", last_error: "delivery_failed" }).eq("id", job.id);
+        ok ? sent++ : failed++;
+      } catch {
+        failed++;
+        await db.from("push_outbox").update({ status: job.attempts >= 5 ? "failed" : "pending", last_error: "worker_error" }).eq("id", job.id);
+      }
     }
-
-    try {
-        const supabase = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-        );
-
-        const request: PushRequest = await req.json();
-        const { salonId, ownerId, userId, title, body, icon, badge, data } = request;
-
-        console.log("📱 Enviando push notification:", { title, salonId, ownerId, userId });
-
-        let subscriptions: any[] = [];
-
-        // Buscar subscriptions baseado nos parâmetros
-        if (userId) {
-            const { data: subs } = await supabase
-                .rpc('get_user_push_subscriptions', { p_user_id: userId });
-            subscriptions = subs || [];
-        } else if (ownerId) {
-            const { data: subs } = await supabase
-                .from('push_subscriptions')
-                .select('id, endpoint, p256dh, auth')
-                .eq('user_id', ownerId)
-                .eq('is_active', true);
-            subscriptions = subs || [];
-        } else if (salonId) {
-            const { data: subs } = await supabase
-                .rpc('get_salon_push_subscriptions', { p_salon_id: salonId });
-            subscriptions = subs || [];
-        }
-
-        if (subscriptions.length === 0) {
-            console.log("⚠️ Nenhuma subscription encontrada");
-            return new Response(
-                JSON.stringify({
-                    success: false,
-                    message: "Nenhuma subscription encontrada",
-                    sent: 0
-                }),
-                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-        }
-
-        console.log(`📤 Enviando para ${subscriptions.length} subscriptions`);
-
-        const payload = {
-            title,
-            body,
-            icon: icon || '/pwa-192x192.png',
-            badge: badge || '/pwa-192x192.png',
-            data: data || {},
-            timestamp: Date.now()
-        };
-
-        let sent = 0;
-        let failed = 0;
-
-        // Enviar para cada subscription
-        for (const sub of subscriptions) {
-            try {
-                // Aqui você usaria web-push ou Firebase Admin SDK
-                // Por enquanto, vamos simular o envio
-
-                // TODO: Implementar envio real com web-push
-                // const webpush = require('web-push');
-                // await webpush.sendNotification(subscription, JSON.stringify(payload));
-
-                console.log(`✅ Push enviado para subscription ${sub.id}`);
-                sent++;
-
-            } catch (error: any) {
-                console.error(`❌ Erro ao enviar para subscription ${sub.id}:`, error.message);
-                failed++;
-
-                // Desativar subscription se erro permanente
-                if (error.statusCode === 410 || error.statusCode === 404) {
-                    await supabase
-                        .from('push_subscriptions')
-                        .update({ is_active: false })
-                        .eq('id', sub.id);
-                }
-            }
-        }
-
-        console.log(`📊 Resultado: ${sent} enviadas, ${failed} falharam`);
-
-        return new Response(
-            JSON.stringify({
-                success: true,
-                sent,
-                failed,
-                total: subscriptions.length
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-
-    } catch (error: any) {
-        console.error("❌ Erro:", error);
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-    }
+    return jsonResponse({ success: true, processed: jobs?.length ?? 0, sent, failed });
+  } catch (error) {
+    return pushError(error);
+  }
 });

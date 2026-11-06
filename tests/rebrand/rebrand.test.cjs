@@ -112,7 +112,7 @@ test('safeNext: só aceita caminho interno após login/cadastro', () => {
 });
 
 test('manifest por tenant: valida slug, 404, JSON público e cor segura', async () => {
-  const m = load('api/manifest/[slug].ts');
+  const m = load('api/manifest/[slug].ts', { '../_pwa.js': load('api/_pwa.ts') });
   const env = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' };
   const calls = [];
   const fetchOk = rows => async (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify(rows), { status: 200 }); };
@@ -133,7 +133,7 @@ test('manifest por tenant: valida slug, 404, JSON público e cor segura', async 
   assert.equal(body.id, '/s/studio-a', 'id distinto do app da plataforma');
   assert.ok(body.icons.some(i => i.purpose === 'maskable' && i.src === '/pwa-maskable-512x512.png'));
   const last = calls.at(-1);
-  assert.match(last.url, /select=name,slug,primary_color&slug=eq\.studio-a/, 'só colunas públicas, escopo por slug');
+  assert.match(last.url, /select=name,slug,primary_color,logo_url,pwa_[a-z_,]+&slug=eq\.studio-a/, 'só colunas públicas de identidade, escopo por slug');
   assert.match(last.url, /or=\(is_active\.is\.null,is_active\.eq\.true\)/, 'is_active nulo é ativo (igual à RLS pública)');
   const longSlug = 'a'.repeat(120);
   assert.equal((await m.handleManifest(req(longSlug), env, fetchOk([{ name: 'L', slug: longSlug, primary_color: null }]))).status, 200, 'slug longo existente continua válido');

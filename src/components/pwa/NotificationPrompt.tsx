@@ -1,90 +1,52 @@
-import { useState, useEffect } from 'react';
-import { usePushNotificationsFCM } from '@/hooks/usePushNotificationsFCM';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Bell, BellOff, X, Check, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertCircle, Bell, BellOff, Send, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { useTenantApp } from '@/hooks/usePWA';
+import { PUSH_NOT_CONFIGURED_MESSAGE, sendPush, usePushNotificationsFCM } from '@/hooks/usePushNotificationsFCM';
 
-interface NotificationPromptProps {
-  salonId?: string;
-  clientId?: string;
-  onDismiss?: () => void;
-}
+const DISMISS_KEY = 'notification-prompt-dismissed';
 
-export const NotificationPrompt = ({ salonId, clientId, onDismiss }: NotificationPromptProps) => {
-  const {
-    isSupported,
-    permission,
-    isSubscribed,
-    subscribe,
-    unsubscribe
-  } = usePushNotificationsFCM(salonId, clientId);
-
-  const [showPrompt, setShowPrompt] = useState(false);
+/**
+ * Lembrete global (App.tsx) para o DONO ativar avisos de novo agendamento neste aparelho.
+ * Só aparece com dono logado e salão identificado; nunca nas páginas públicas de salão (/s/*),
+ * onde o SalonAppCard cuida de instalar/notificar o app do salão.
+ */
+export const NotificationPrompt = () => {
+  const tenantApp = useTenantApp();
+  const { isSupported, permission, isSubscribed, slug, subscribe } = usePushNotificationsFCM();
+  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const onPublicSalon = !!tenantApp || (typeof window !== 'undefined' && window.location.pathname.startsWith('/s/'));
 
   useEffect(() => {
-    console.log('📱 NotificationPrompt montado');
-    console.log('   salonId recebido:', salonId || 'undefined');
-    console.log('   isSupported:', isSupported);
-    console.log('   permission:', permission);
+    if (onPublicSalon || !slug || !isSupported || permission !== 'default' || isSubscribed) return;
+    let dismissed = false;
+    try { dismissed = !!localStorage.getItem(DISMISS_KEY); } catch { /* modo privado */ }
+    if (dismissed) return;
+    const timer = setTimeout(() => setShow(true), 5000);
+    return () => clearTimeout(timer);
+  }, [onPublicSalon, slug, isSupported, permission, isSubscribed]);
 
-    // Show prompt after a delay if notifications are supported and not decided
-    if (isSupported && permission === 'default') {
-      const dismissed = localStorage.getItem('notification-prompt-dismissed');
-      console.log('   dismissed?:', dismissed ? 'sim' : 'não');
-      if (!dismissed) {
-        console.log('   ⏰ Timer de 5s iniciado para mostrar prompt');
-        const timer = setTimeout(() => {
-          console.log('   ✅ Mostrando prompt de notificações');
-          setShowPrompt(true);
-        }, 5000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isSupported, permission, salonId]);
+  const dismiss = () => {
+    setShow(false);
+    try { localStorage.setItem(DISMISS_KEY, Date.now().toString()); } catch { /* modo privado */ }
+  };
 
-  const handleEnable = async () => {
+  const enable = async () => {
     setLoading(true);
-    try {
-      const subscription = await subscribe();
-      if (subscription) {
-        toast.success('Notificações ativadas com sucesso!');
-        setShowPrompt(false);
-      } else {
-        toast.error('Não foi possível ativar as notificações');
-      }
-    } catch (error) {
-      toast.error('Erro ao ativar notificações');
-    } finally {
-      setLoading(false);
-    }
+    const r = await subscribe();
+    setLoading(false);
+    if (r === 'ok') { toast.success('Avisos de novos agendamentos ativados neste aparelho.'); setShow(false); }
+    else if (r === 'denied') { toast.error('Permissão negada pelo navegador.'); setShow(false); }
+    else toast.error('Não foi possível ativar as notificações.');
   };
-
-  const handleDisable = async () => {
-    setLoading(true);
-    try {
-      await unsubscribe();
-      toast.success('Notificações desativadas');
-    } catch (error) {
-      toast.error('Erro ao desativar notificações');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
-    onDismiss?.();
-  };
-
-  if (!isSupported) return null;
 
   return (
     <AnimatePresence>
-      {showPrompt && permission === 'default' && (
+      {show && !onPublicSalon && permission === 'default' && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -95,46 +57,25 @@ export const NotificationPrompt = ({ salonId, clientId, onDismiss }: Notificatio
             <CardContent className="p-4">
               <button
                 type="button"
-                onClick={handleDismiss}
+                onClick={dismiss}
                 aria-label="Fechar aviso de notificações"
                 className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X size={18} className="text-muted-foreground" aria-hidden="true" />
               </button>
-
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Bell size={24} className="text-primary" aria-hidden="true" />
                 </div>
-
                 <div className="flex-1 min-w-0 pr-8">
-                  <h3 id="notification-prompt-title" className="font-display text-lg font-bold text-foreground mb-1">
-                    Ativar notificações?
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Receba lembretes de agendamentos e atualizações importantes
-                  </p>
-
+                  <h3 id="notification-prompt-title" className="font-display text-lg font-bold text-foreground mb-1">Avisos de novos agendamentos</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Receba um alerta neste aparelho quando um cliente agendar.</p>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="brand"
-                      size="sm"
-                      onClick={handleEnable}
-                      disabled={loading}
-                      className="flex-1 h-11"
-                    >
+                    <Button variant="brand" size="sm" onClick={enable} disabled={loading} className="flex-1 h-11">
                       <Bell size={16} className="mr-2" aria-hidden="true" />
                       Ativar
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-11"
-                      onClick={handleDismiss}
-                      disabled={loading}
-                    >
-                      Agora não
-                    </Button>
+                    <Button variant="ghost" size="sm" className="h-11" onClick={dismiss} disabled={loading}>Agora não</Button>
                   </div>
                 </div>
               </div>
@@ -146,126 +87,94 @@ export const NotificationPrompt = ({ salonId, clientId, onDismiss }: Notificatio
   );
 };
 
-// Settings component for notification management
-export const NotificationSettings = () => {
-  const {
-    isSupported,
-    permission,
-    isSubscribed,
-    subscribe,
-    unsubscribe,
-  } = usePushNotificationsFCM();
-
+/** Card de Configurações: o dono ativa os avisos no próprio aparelho e envia um teste real para os seus dispositivos. */
+export const NotificationSettings = ({ salonId }: { salonId?: string }) => {
+  const { support, permission, isSubscribed, subscribe, unsubscribe } = usePushNotificationsFCM();
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [notConfigured, setNotConfigured] = useState(false);
 
-  const handleToggle = async () => {
+  const toggle = async () => {
     setLoading(true);
-    try {
-      if (isSubscribed) {
-        await unsubscribe();
-        toast.success('Notificações desativadas');
-      } else {
-        const subscription = await subscribe();
-        if (subscription) {
-          toast.success('Notificações ativadas!');
-          // O FCM vai mostrar uma notificação de teste automaticamente
-        }
-      }
-    } catch (error) {
-      toast.error('Erro ao alterar configuração');
-    } finally {
-      setLoading(false);
+    if (isSubscribed) {
+      if (await unsubscribe()) toast.success('Avisos desativados neste aparelho.');
+      else toast.error('Não foi possível desativar.');
+    } else {
+      const r = await subscribe();
+      if (r === 'ok') toast.success('Avisos de novos agendamentos ativados neste aparelho.');
+      else if (r === 'denied') toast.error('Permissão negada pelo navegador.');
+      else toast.error('Não foi possível ativar. Salve o estabelecimento e tente de novo.');
     }
+    setLoading(false);
   };
 
-  const handleTestNotification = async () => {
-    // Mostrar toast como feedback - notificação real virá via push
-    toast.info('Notificações estão ativadas!', {
-      description: 'Você receberá notificações do estabelecimento.',
-    });
+  const test = async () => {
+    if (!salonId) return;
+    setTesting(true);
+    const r = await sendPush({ salon_id: salonId, audience: 'owner', type: 'test', title: 'Notificação de teste', body: 'Tudo certo! Você receberá os avisos de novos agendamentos aqui.', url: '/admin/appointments' });
+    setTesting(false);
+    setNotConfigured(r.code === 'push_not_configured');
+    if (r.ok && r.sent > 0) toast.success('Teste enviado. Confira a notificação no seu aparelho.');
+    else if (r.ok) toast.info('Nenhum aparelho seu está inscrito. Ative os avisos primeiro.');
+    else toast.error(r.message);
   };
 
-  if (!isSupported) {
+  if (support === 'ios-needs-install') {
     return (
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <AlertCircle size={20} />
-            <p className="text-sm">Notificações push não são suportadas neste navegador</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-start gap-3 text-sm text-muted-foreground">
+        <AlertCircle size={20} className="shrink-0" aria-hidden />
+        <p>No iPhone e iPad (iOS 16.4+), adicione o painel à Tela de Início pelo Safari (Compartilhar &gt; Adicionar à Tela de Início) e ative os avisos pelo app instalado.</p>
+      </div>
     );
   }
-
+  if (support === 'unsupported') {
+    return (
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <AlertCircle size={20} className="shrink-0" aria-hidden />
+        <p>Notificações push não são suportadas neste navegador.</p>
+      </div>
+    );
+  }
   if (permission === 'denied') {
     return (
-      <Card className="glass-card border-destructive/20">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <BellOff size={20} className="text-destructive flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-foreground mb-1">Notificações bloqueadas</p>
-              <p className="text-sm text-muted-foreground">
-                Você bloqueou as notificações. Para ativá-las, acesse as configurações do seu navegador.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-start gap-3">
+        <BellOff size={20} className="text-destructive flex-shrink-0 mt-0.5" aria-hidden />
+        <div>
+          <p className="font-medium text-foreground mb-1">Notificações bloqueadas</p>
+          <p className="text-sm text-muted-foreground">Libere as notificações nas permissões do site (ícone ao lado do endereço) e recarregue a página.</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="glass-card">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSubscribed ? 'bg-success/10' : 'bg-secondary'
-              }`}>
-              {isSubscribed ? (
-                <Bell size={20} className="text-success" />
-              ) : (
-                <BellOff size={20} className="text-muted-foreground" />
-              )}
-            </div>
-            <div>
-              <p className="font-medium text-foreground">Notificações Push</p>
-              <p className="text-sm text-muted-foreground">
-                {isSubscribed ? 'Ativadas' : 'Desativadas'}
-              </p>
-            </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${isSubscribed ? 'bg-success/10' : 'bg-secondary'}`}>
+            {isSubscribed ? <Bell size={20} className="text-success" aria-hidden /> : <BellOff size={20} className="text-muted-foreground" aria-hidden />}
           </div>
-
-          <Button
-            variant={isSubscribed ? 'outline' : 'brand'}
-            size="sm"
-            onClick={handleToggle}
-            disabled={loading}
-          >
-            {loading ? (
-              'Processando...'
-            ) : isSubscribed ? (
-              'Desativar'
-            ) : (
-              'Ativar'
-            )}
-          </Button>
+          <div className="min-w-0">
+            <p className="font-medium text-foreground">Avisos neste aparelho</p>
+            <p className="text-sm text-muted-foreground">{isSubscribed ? 'Ativados: você recebe os novos agendamentos aqui' : 'Desativados'}</p>
+          </div>
         </div>
-
-        {isSubscribed && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleTestNotification}
-              className="w-full"
-            >
-              Enviar notificação de teste
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <Button variant={isSubscribed ? 'outline' : 'brand'} className="h-11" onClick={toggle} disabled={loading} data-tour="settings-notifications-toggle">
+          {loading ? 'Processando…' : isSubscribed ? 'Desativar' : 'Ativar'}
+        </Button>
+      </div>
+      {isSubscribed && (
+        <Button variant="ghost" className="h-11 w-full" onClick={test} disabled={testing || !salonId} data-tour="settings-notifications-test">
+          <Send size={16} className="mr-2" aria-hidden />
+          {testing ? 'Enviando…' : 'Enviar notificação de teste'}
+        </Button>
+      )}
+      {notConfigured && (
+        <p role="status" className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-foreground">
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-warning" aria-hidden />
+          {PUSH_NOT_CONFIGURED_MESSAGE} Sua inscrição fica salva e passa a funcionar quando o envio for liberado.
+        </p>
+      )}
+    </div>
   );
 };
