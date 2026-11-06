@@ -34,7 +34,7 @@ export const subscriptionArticles: Article[] = [
       "Assinar ou renovar abre um checkout externo do Mercado Pago. O sistema não deve prometer aprovação, prazo ou resultado do pagamento.",
       "O cancelamento é feito na sua conta do Mercado Pago. O sistema não cancela sozinho: ele só abre a página do Mercado Pago.",
       "Depois de cancelar no Mercado Pago, use Atualizar status. A mudança depende da confirmação do Mercado Pago chegar ao sistema.",
-      "Se o salão ainda não tem assinatura registrada, a consulta pode iniciar automaticamente um teste de 21 dias. Também pode marcar um período vencido como expirado; abrir ou atualizar não é uma consulta totalmente sem alterações.",
+      "Se o salão ainda não tem assinatura registrada, a consulta pode iniciar automaticamente um teste de 30 dias. Também pode marcar um período vencido como expirado; abrir ou atualizar não é uma consulta totalmente sem alterações.",
       "O selo e as datas vêm dos registros do sistema. Valores padrão podem aparecer quando faltam dados; confira preço, condições de renovação e situação do pagamento diretamente no Mercado Pago.",
     ],
     keywords: ["assinatura", "plano", "mensal", "anual", "teste", "trial", "vencimento", "pagamento", "Mercado Pago", "renovar", "cancelar", "cobrança", "status", "suporte"],

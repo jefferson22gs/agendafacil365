@@ -28,7 +28,7 @@ Desenvolvido por **Código Base**
 
 **R$ 39,90/mês** - Tudo incluso, sem limitações
 
-- 7 dias de teste grátis
+- 30 dias de teste grátis
 - Profissionais ilimitados
 - Agendamentos ilimitados
 - Suporte prioritário

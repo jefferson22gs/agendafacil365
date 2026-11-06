@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Logo } from "@/components/icons/Logo";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { DEMO_URL, IS_DEMO } from "@/config/demo";
 
 const navLinks = [
   { label: "Funcionalidades", href: "#features" },
@@ -45,6 +46,11 @@ export const Navbar = () => {
           </ul>
 
           <div className="hidden items-center gap-2 md:flex">
+            {!IS_DEMO && (
+              <Button asChild variant="outline" className="h-11">
+                <a href={DEMO_URL}>Ver demonstração</a>
+              </Button>
+            )}
             <Button asChild variant="ghost" className="h-11">
               <Link to="/login">Entrar</Link>
             </Button>
@@ -75,6 +81,11 @@ export const Navbar = () => {
               </a>
             ))}
             <div className="grid gap-2 pt-3">
+              {!IS_DEMO && (
+                <Button asChild variant="outline" className="h-11 w-full">
+                  <a href={DEMO_URL}>Ver demonstração</a>
+                </Button>
+              )}
               <Button asChild variant="outline" className="h-11 w-full">
                 <Link to="/login" onClick={close}>Entrar</Link>
               </Button>

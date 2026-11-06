@@ -58,7 +58,7 @@ export const DEFAULT_PLAN: SubscriptionPlan = {
     currency: 'BRL',
     interval: 'month',
     intervalCount: 1,
-    trialDays: 7,
+    trialDays: 30,
     features: [
         'Agendamento online ilimitado',
         'Gestão de clientes (CRM)',

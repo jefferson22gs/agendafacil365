@@ -15,13 +15,13 @@ export const CTASection = () => {
           </h2>
 
           <p className="mx-auto mt-4 max-w-xl text-lg text-white/80">
-            Teste grátis por 21 dias, sem cartão de crédito.
+            Teste grátis por 30 dias, sem cartão de crédito.
           </p>
 
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
             <Button asChild variant="brand" size="xl" className="group">
               <Link to="/register">
-                Criar conta e testar 21 dias
+                Criar conta e testar 30 dias
                 <ArrowRight className="transition-transform group-hover:translate-x-1" aria-hidden />
               </Link>
             </Button>

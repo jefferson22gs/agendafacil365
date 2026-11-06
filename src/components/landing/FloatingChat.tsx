@@ -13,9 +13,9 @@ const quickMessages = [
 
 const botResponses: Record<string, string> = {
     "Quero conhecer o sistema": `Ótimo! 🎉 O ${BRAND.name} reúne agendamento online e gestão para negócios de serviços. Posso agendar uma demonstração gratuita para você! Qual melhor horário?`,
-    "Como funciona o trial?": "Ao criar sua conta, você tem 21 dias de teste com TODAS as funcionalidades liberadas! 🚀 Não precisa de cartão de crédito. Quer começar agora?",
+    "Como funciona o trial?": "Ao criar sua conta, você tem 30 dias de teste com TODAS as funcionalidades liberadas! 🚀 Não precisa de cartão de crédito. Quer começar agora?",
     "Preciso de ajuda para migrar": "Sem problemas! Nossa equipe faz a migração gratuita para você. 💪 Posso agendar?",
-    "Quanto custa?": `O ${BRAND.name} tem 2 opções: 💰 Mensal R$ 39,90/mês ou Anual R$ 400,00/ano (15% de desconto!). Tudo incluso: profissionais ilimitados, agendamentos ilimitados, sem taxas extras. Quer criar sua conta e testar por 21 dias?`,
+    "Quanto custa?": `O ${BRAND.name} tem 2 opções: 💰 Mensal R$ 39,90/mês ou Anual R$ 400,00/ano (15% de desconto!). Tudo incluso: profissionais ilimitados, agendamentos ilimitados, sem taxas extras. Quer criar sua conta e testar por 30 dias?`,
 };
 
 interface Message {

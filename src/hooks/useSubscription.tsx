@@ -212,7 +212,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         try {
             const now = new Date();
             const trialEndDate = new Date();
-            trialEndDate.setDate(trialEndDate.getDate() + 21);
+            trialEndDate.setDate(trialEndDate.getDate() + 30);
 
             // RPC restrita (supabase/pending/…_rls.sql) cria o trial no servidor; se ainda não existir
             // (função ausente = PGRST202), usa o insert direto de antes. Erro de regra da RPC NÃO cai no fallback.
@@ -243,7 +243,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 status: 'trial',
                 isActive: true,
                 isTrial: true,
-                daysRemaining: 21,
+                daysRemaining: 30,
                 trialEndDate,
                 currentPeriodEnd: null,
                 nextPaymentDate: null,

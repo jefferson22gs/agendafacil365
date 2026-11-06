@@ -38,7 +38,7 @@ const faqs = [
             },
             {
                 question: "Posso testar antes de assinar?",
-                answer: "Sim! Ao criar sua conta você tem 21 dias de teste grátis com acesso a todas as funcionalidades, sem cadastrar cartão de crédito. A assinatura (mensal ou anual) é feita depois, pelo Mercado Pago."
+                answer: "Sim! Ao criar sua conta você tem 30 dias de teste grátis com acesso a todas as funcionalidades, sem cadastrar cartão de crédito. A assinatura (mensal ou anual) é feita depois, pelo Mercado Pago."
             },
             {
                 question: "Como funciona o pagamento?",

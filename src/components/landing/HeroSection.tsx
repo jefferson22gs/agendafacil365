@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/config/brand";
-import { CalendarCheck, ChevronRight, Link2, MessageSquare } from "lucide-react";
+import { CalendarCheck, ChevronRight, Link2, MessageSquare, PlayCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { DEMO_SALON_SLUG, IS_DEMO } from "@/config/demo";
+import { DEMO_SALON_SLUG, DEMO_URL, IS_DEMO } from "@/config/demo";
 
 const benefits = [
   { icon: Link2, title: "Link de agendamento", text: "Seus clientes escolhem serviço, profissional e horário sem precisar ligar." },
@@ -43,15 +43,18 @@ export const HeroSection = () => {
             </div>
           ) : (
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            {/* /register cria o trial de 21 dias (useSubscription.startTrial). */}
+            {/* /register cria o trial de 30 dias (useSubscription.startTrial). */}
             <Button asChild variant="brand" size="xl" className="group">
               <Link to="/register">
-                Criar conta e testar 21 dias
+                Criar conta e testar 30 dias
                 <ChevronRight className="transition-transform group-hover:translate-x-1" aria-hidden />
               </Link>
             </Button>
             <Button asChild variant="outline" size="xl">
-              <a href="#pricing">Ver planos</a>
+              <a href={DEMO_URL}>
+                <PlayCircle aria-hidden />
+                Ver demonstração
+              </a>
             </Button>
           </div>
           )}

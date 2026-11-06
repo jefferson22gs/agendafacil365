@@ -4,7 +4,9 @@
  */
 export const IS_DEMO = import.meta.env.MODE === "demo";
 /** Landing real (produção), destino do botão "Contratar" da demo. */
-export const PRODUCTION_URL = "https://agendafacil365.vercel.app";
+export const PRODUCTION_URL = "https://agendafacil365.com.br";
+/** Demonstração pública (build:demo publicado à parte), destino do botão "Ver demonstração" da landing. */
+export const DEMO_URL = "https://agendafacil365-demo.vercel.app/admin";
 export const PRODUCTION_PRICING_URL = `${PRODUCTION_URL}/#pricing`;
 /** Estado em memória da demo/treinamento salvo por aba (sobrevive a F5; "Reiniciar demonstração" apaga). */
 export const DEMO_STORAGE_KEY = "af365-demo-db-v1";

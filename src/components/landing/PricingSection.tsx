@@ -119,7 +119,7 @@ export const PricingSection = () => {
             <p className="mt-4 text-center text-sm text-muted-foreground">
               Prefere testar antes?{" "}
               <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
-                Crie sua conta e use 21 dias grátis
+                Crie sua conta e use 30 dias grátis
               </Link>
             </p>
             <p className="mt-2 text-center text-sm text-muted-foreground">Cancele quando quiser • Sem fidelidade</p>

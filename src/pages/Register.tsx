@@ -102,7 +102,7 @@ const Register = () => {
   };
 
   const benefits = [
-    "21 dias grátis para testar",
+    "30 dias grátis para testar",
     "Sem cartão de crédito",
     "Suporte completo",
     "Cancele quando quiser",
