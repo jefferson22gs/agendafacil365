@@ -9,7 +9,7 @@ const feature = path.join(root, 'src/features/training');
 function load(file) {
   const exports = {};
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(source, { exports }, { filename: file });
+  vm.runInNewContext(source, { exports, URLSearchParams }, { filename: file });
   return exports;
 }
 function entries(dir, predicate) {

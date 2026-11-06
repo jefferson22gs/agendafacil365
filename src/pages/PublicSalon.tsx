@@ -1254,7 +1254,7 @@ const PublicSalon = () => {
                       <p className="text-muted-foreground">Nenhum serviço disponível</p>
                     </div>
                   ) : (
-                    <div className="grid gap-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                       {services.map((service) => (
                         <button
                           type="button"
@@ -1264,7 +1264,7 @@ const PublicSalon = () => {
                             ? removeFromCart(service.id, 'service')
                             : addToCart(service, 'service')
                           }
-                          className="relative flex items-center gap-3 sm:gap-4 p-4 rounded-2xl border-2 transition-all text-left"
+                          className="relative flex w-full min-w-0 items-center gap-3 sm:gap-4 p-4 rounded-2xl border-2 transition-all text-left"
                           style={{
                             borderColor: isInCart(service.id, 'service') ? primaryColor : 'hsl(var(--border))',
                             backgroundColor: isInCart(service.id, 'service') ? `${primaryColor}08` : 'transparent'
@@ -1309,7 +1309,7 @@ const PublicSalon = () => {
                       <p className="text-muted-foreground">Nenhum produto disponível</p>
                     </div>
                   ) : (
-                    <div className="grid gap-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                       {products.map((product) => (
                         <div
                           key={product.id}

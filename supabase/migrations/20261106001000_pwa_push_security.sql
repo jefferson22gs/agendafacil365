@@ -75,7 +75,8 @@ BEGIN
   IF p_salon_slug IS NULL OR p_salon_slug !~ '^[a-z0-9](?:[a-z0-9-]{0,198}[a-z0-9])?$' THEN
     RAISE EXCEPTION 'invalid_salon' USING ERRCODE = '22023';
   END IF;
-  IF p_fcm_token IS NULL OR p_fcm_token !~ '^[A-Za-z0-9_:.\-]{20,4096}$' THEN
+  -- Tamanho à parte: o regex do Postgres limita repetição a {0,255}.
+  IF p_fcm_token IS NULL OR length(p_fcm_token) NOT BETWEEN 20 AND 4096 OR p_fcm_token !~ '^[A-Za-z0-9_:.\-]+$' THEN
     RAISE EXCEPTION 'invalid_token' USING ERRCODE = '22023';
   END IF;
   v_salon := public.push_salon_for_slug(p_salon_slug);
