@@ -1,402 +1,108 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Plus,
-  Trash2,
-  RefreshCw,
-  Settings,
-  Brain,
-  Sparkles
-} from "lucide-react";
+import { Brain, Info, Loader2, RefreshCw, Save } from "lucide-react";
+import { aiAdmin, type AIAdminState, type AIConfig } from "./ai/api";
+import { ConfigTab } from "./ai/ConfigTab";
+import { TrainingTab } from "./ai/TrainingTab";
+import { UsageTab } from "./ai/UsageTab";
+import { LimitsTab } from "./ai/LimitsTab";
 
-interface AIProviderKey {
-  id: string;
-  provider: string;
-  api_key: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  usage_count?: number;
-  last_used?: string;
-}
-
-interface SalonAIConfig {
-  id: string;
-  salon_id: string;
-  provider: string;
-  api_key_id: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
+/**
+ * IA central da plataforma: só o super admin escolhe provedor, modelo, chave, treinamento e limites.
+ * Tudo passa pela Edge Function ai-admin; a chave nunca volta para o navegador.
+ */
 export const AISettingsManagement = () => {
   const { toast } = useToast();
+  const [state, setState] = useState<AIAdminState | null>(null);
+  const [draft, setDraftState] = useState<AIConfig | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [apiKeys, setApiKeys] = useState<AIProviderKey[]>([]);
-  const [salonConfigs, setSalonConfigs] = useState<SalonAIConfig[]>([]);
-  const [newApiKey, setNewApiKey] = useState({
-    provider: "",
-    api_key: "",
-    is_active: true
-  });
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const aiProviders = [
-    { value: "openai", name: "OpenAI", description: "GPT-4, GPT-3.5, etc." },
-    { value: "gemini", name: "Google Gemini", description: "Gemini Pro, Gemini Flash" },
-    { value: "groq", name: "Groq", description: "LLaMA 3, Mixtral, etc." },
-    { value: "anthropic", name: "Anthropic Claude", description: "Claude 3, Claude 2" },
-    { value: "openrouter", name: "OpenRouter", description: "Multi-model platform" },
-    { value: "mistral", name: "Mistral AI", description: "Mistral models" },
-    { value: "cohere", name: "Cohere", description: "Command models" },
-    { value: "perplexity", name: "Perplexity", description: "AI-powered search" },
-    { value: "together", name: "Together AI", description: "Open source models" },
-    { value: "fireworks", name: "Fireworks AI", description: "Llama models" },
-    { value: "azure-openai", name: "Azure OpenAI", description: "Microsoft Azure" },
-    { value: "nvidia", name: "NVIDIA", description: "NIM models" },
-    { value: "grok", name: "xAI Grok", description: "Grok models" },
-    { value: "zai", name: "Z.ai", description: "Zhipu AI models" },
-    { value: "glm", name: "GLM", description: "Zhipu GLM models" },
-    { value: "claude", name: "Claude (Anthropic)", description: "Claude 3.5 Sonnet, Opus, etc." },
-  ];
-
-  useEffect(() => {
-    loadAIConfigs();
+  const load = useCallback(async (keepDraft = false) => {
+    setLoading(true); setLoadError(null);
+    try {
+      const s = await aiAdmin<AIAdminState>("get");
+      setState(s);
+      if (!keepDraft) { setDraftState(s.config); setDirty(false); }
+    } catch (e) {
+      setLoadError((e as Error).message);
+    } finally { setLoading(false); }
   }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const loadAIConfigs = async () => {
-    setRefreshing(true);
+  const setDraft = (fn: (c: AIConfig) => AIConfig) => { setDraftState(c => (c ? fn(c) : c)); setDirty(true); };
+  const save = async () => {
+    if (!draft) return;
+    setSaving(true);
     try {
-      // Carregar chaves de API
-      const { data: keysData } = await supabase
-        .from("ai_provider_keys")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (keysData) {
-        setApiKeys(keysData);
-      }
-
-      // Carregar configurações de salão
-      const { data: configsData } = await supabase
-        .from("salon_ai_configs")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (configsData) {
-        setSalonConfigs(configsData);
-      }
-    } catch (error) {
-      console.error("Error loading AI configs:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar configurações de IA",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      await aiAdmin("save_config", { config: draft });
+      toast({ title: "Configuração salva", description: "Vale imediatamente para todos os salões." });
+      await load();
+    } catch (e) {
+      toast({ title: "Não foi possível salvar", description: (e as Error).message, variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
-  const handleAddApiKey = async () => {
-    if (!newApiKey.provider || !newApiKey.api_key) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("ai_provider_keys")
-        .insert({
-          provider: newApiKey.provider,
-          api_key: newApiKey.api_key,
-          is_active: newApiKey.is_active
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "✅ Chave adicionada",
-        description: `Chave para ${aiProviders.find(p => p.value === newApiKey.provider)?.name} adicionada com sucesso`
-      });
-
-      setNewApiKey({ provider: "", api_key: "", is_active: true });
-      loadAIConfigs();
-    } catch (error: any) {
-      console.error("Error adding API key:", error);
-      toast({
-        title: "Erro",
-        description: error.message || "Falha ao adicionar chave de API",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeleteApiKey = async (keyId: string) => {
-    try {
-      const { error } = await supabase
-        .from("ai_provider_keys")
-        .delete()
-        .eq("id", keyId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Chave removida",
-        description: "Chave de API removida com sucesso"
-      });
-
-      loadAIConfigs();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const toggleApiKeyStatus = async (keyId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("ai_provider_keys")
-        .update({ is_active: !currentStatus })
-        .eq("id", keyId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Status atualizado",
-        description: `Chave ${!currentStatus ? 'ativada' : 'desativada'} com sucesso`
-      });
-
-      loadAIConfigs();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading && !state) return <div className="flex justify-center py-12" role="status"><Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden /><span className="sr-only">Carregando configurações de IA</span></div>;
+  if (!state || !draft) return (
+    <Alert variant="destructive">
+      <AlertTitle>Não foi possível carregar a IA</AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p>{loadError ?? "Erro desconhecido."} Confirme que a migração de IA central foi aplicada e a função ai-admin publicada.</p>
+        <Button variant="outline" className="h-11" onClick={() => load()}>Tentar de novo</Button>
+      </AlertDescription>
+    </Alert>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Brain className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{apiKeys.length}</p>
-                <p className="text-xs text-muted-foreground">Chaves de IA</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success/20">
-                <Sparkles className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{apiKeys.filter(k => k.is_active).length}</p>
-                <p className="text-xs text-muted-foreground">Ativas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Settings className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{salonConfigs.length}</p>
-                <p className="text-xs text-muted-foreground">Configurações</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold flex items-center gap-2"><Brain className="w-6 h-6 text-primary shrink-0" aria-hidden />IA da plataforma</h2>
+          <p className="text-muted-foreground text-sm">Uma única chave e um único treinamento para todos os salões, com controle de gastos.</p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" className="h-11" onClick={() => load(dirty)} disabled={loading} aria-label="Atualizar dados">
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} aria-hidden />
+          </Button>
+          <Button className="h-11" onClick={save} disabled={saving || (!dirty && state.configured)}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden /> : <Save className="w-4 h-4 mr-2" aria-hidden />}
+            {state.configured ? "Salvar alterações" : "Ativar configuração central"}
+          </Button>
+        </div>
       </div>
 
-      {/* Add New API Key */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            Adicionar Nova Chave de API
-          </CardTitle>
-          <CardDescription>
-            Adicione chaves de API para provedores de IA que serão usados pelos salões
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="grid gap-2">
-              <Label>Provedor</Label>
-              <Select
-                value={newApiKey.provider}
-                onValueChange={(value) => setNewApiKey({...newApiKey, provider: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o provedor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {aiProviders.map(provider => (
-                    <SelectItem key={provider.value} value={provider.value}>
-                      {provider.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {!state.configured && (
+        <Alert>
+          <Info className="h-4 w-4" aria-hidden />
+          <AlertTitle>Configuração central ainda não ativada</AlertTitle>
+          <AlertDescription>
+            Enquanto não for salva, cada recurso continua no modo antigo (chaves legadas e o segredo GEMINI_API_KEY do servidor), sem limites de gasto.
+            Cadastre a chave, teste e clique em "Ativar configuração central".
+          </AlertDescription>
+        </Alert>
+      )}
+      {dirty && state.configured && <p className="text-sm text-amber-600" role="status">Há alterações não salvas.</p>}
 
-            <div className="grid gap-2">
-              <Label>Chave de API</Label>
-              <Input
-                type="password"
-                placeholder="sk-..."
-                value={newApiKey.api_key}
-                onChange={(e) => setNewApiKey({...newApiKey, api_key: e.target.value})}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Select
-                value={newApiKey.is_active.toString()}
-                onValueChange={(value) => setNewApiKey({...newApiKey, is_active: value === 'true'})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">Ativa</SelectItem>
-                  <SelectItem value="false">Inativa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-end">
-              <Button onClick={handleAddApiKey} className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API Keys Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5" />
-            Chaves de API Cadastradas ({apiKeys.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Provedor</TableHead>
-                  <TableHead>Chave</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Criada em</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {apiKeys.map((key) => {
-                  const providerInfo = aiProviders.find(p => p.value === key.provider);
-                  return (
-                    <TableRow key={key.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{providerInfo?.name || key.provider}</p>
-                          <p className="text-xs text-muted-foreground">{providerInfo?.description}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-mono text-xs">
-                          {key.api_key.substring(0, 6)}...{key.api_key.substring(key.api_key.length - 4)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          key.is_active
-                            ? 'bg-success/10 text-success'
-                            : 'bg-destructive/10 text-destructive'
-                        }`}>
-                          {key.is_active ? 'Ativa' : 'Inativa'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(key.created_at).toLocaleDateString('pt-BR')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleApiKeyStatus(key.id, key.is_active)}
-                          >
-                            {key.is_active ? 'Desativar' : 'Ativar'}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteApiKey(key.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="config" className="w-full">
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex w-max min-w-full sm:min-w-0">
+            <TabsTrigger value="config" className="min-h-[44px]">Configuração</TabsTrigger>
+            <TabsTrigger value="training" className="min-h-[44px]">Treinamento</TabsTrigger>
+            <TabsTrigger value="usage" className="min-h-[44px]">Consumo</TabsTrigger>
+            <TabsTrigger value="limits" className="min-h-[44px]">Limites por salão</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="config" className="mt-6"><ConfigTab state={state} draft={draft} setDraft={setDraft} onKeySaved={() => load(true)} /></TabsContent>
+        <TabsContent value="training" className="mt-6"><TrainingTab draft={draft} setDraft={setDraft} /></TabsContent>
+        <TabsContent value="usage" className="mt-6"><UsageTab state={state} /></TabsContent>
+        <TabsContent value="limits" className="mt-6"><LimitsTab state={state} reload={() => load(true)} /></TabsContent>
+      </Tabs>
     </div>
   );
 };

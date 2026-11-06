@@ -205,6 +205,7 @@ function analytics(salonId: unknown, period: string) {
 async function rpc(name: string, args: Record<string, unknown> = {}) {
   let data: unknown = null;
   if (name === "get_salon_analytics") data = analytics(args.p_salon_id, String(args.p_period ?? "month"));
+  else if (name === "get_my_ai_usage") data = [{ salon_id: args.p_salon_id ?? null, requests: 42, tokens: 18350, limit_requests: 500, limit_tokens: null, blocked: false, by_feature: { chatbot: 35, texto: 5, legenda: 2 } }];
   else if (name.includes("time_slots")) data = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"];
   else if (name === "whatsapp_import_contacts") {
     const contacts = (args.p_contacts as DemoRow[]) ?? []; const clients = (db.clients ??= []); let imported = 0;
@@ -226,6 +227,13 @@ const unavailable = () => Object.assign(new Error(DEMO_UNAVAILABLE), {
   name: "FunctionsHttpError",
   context: new Response(JSON.stringify({ error: "demo_unavailable" }), { status: 403, headers: { "Content-Type": "application/json" } }),
 });
+// IA na demo: texto fictício local, nunca rede (provedor/chave só existem no servidor real).
+const AI_DEMO: Record<string, (body: Record<string, unknown>) => unknown> = {
+  "generate-text-content": (b) => ({ success: true, text: `✨ ${String(b.text || "Novidade no salão!").slice(0, 300)}
+
+Agende seu horário, {nome}! 💇‍♀️ (texto de exemplo da demonstração)` }),
+  "generate-image-caption": () => ({ success: true, caption: "Resultado lindo de hoje no salão ✨ (legenda de exemplo da demonstração)" }),
+};
 const mock = {
   from: (table: string) => new DemoQuery(table),
   rpc,
@@ -240,7 +248,7 @@ const mock = {
     updateUser: async () => ({ data: { user }, error: null }),
     resetPasswordForEmail: async () => ({ data: {}, error: null }),
   },
-  functions: { invoke: async (name: string) => { if (!SILENT.has(name)) blocked(`function:${name}`); return { data: null, error: unavailable() }; } },
+  functions: { invoke: async (name: string, options?: { body?: Record<string, unknown> }) => { if (AI_DEMO[name]) return { data: AI_DEMO[name](options?.body ?? {}), error: null }; if (!SILENT.has(name)) blocked(`function:${name}`); return { data: null, error: unavailable() }; } },
   storage: { from: () => ({
     getPublicUrl: () => ({ data: { publicUrl: "" } }),
     upload: async () => { blocked("upload"); return { data: null, error: unavailable() }; },
