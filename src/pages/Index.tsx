@@ -10,6 +10,7 @@ import { CTASection } from "@/components/landing/CTASection";
 import { Footer } from "@/components/landing/Footer";
 import { FloatingChat } from "@/components/landing/FloatingChat";
 import { VideoSection } from "@/components/landing/VideoSection";
+import { IS_DEMO } from "@/config/demo";
 
 // TestimonialsSection agora é "Como funciona" (sem depoimentos).
 const Index = () => {
@@ -18,7 +19,7 @@ const Index = () => {
       <Navbar />
       <main>
         <HeroSection />
-        <VideoSection />
+        {IS_DEMO ? null : <VideoSection />}
         <PartnersSection />
         <FeaturesSection />
         <TestimonialsSection />
