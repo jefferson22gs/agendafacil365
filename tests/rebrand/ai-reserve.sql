@@ -55,8 +55,12 @@ BEGIN
 
   -- 5) Orçamento global US$ 1: reserva que ultrapassa é recusada antes da chamada (inclusive sem salão).
   UPDATE public.ai_platform_config SET default_salon_monthly_requests = NULL;
-  SELECT * INTO r FROM public.ai_reserve(NULL, 'teste', 'gemini', 'm', 10, 0.99);
+  -- Gasto acumulado até aqui ≈ US$ 0,0021 (itens 1–4); 0,999 a mais passa de US$ 1 e 0,9 cabe.
+  SELECT * INTO r FROM public.ai_reserve(NULL, 'teste', 'gemini', 'm', 10, 0.999);
   IF r.reason IS DISTINCT FROM 'budget' THEN RAISE EXCEPTION 'budget_not_enforced: %', r.reason; END IF;
+  SELECT * INTO r FROM public.ai_reserve(NULL, 'teste', 'gemini', 'm', 10, 0.9);
+  IF r.reservation_id IS NULL THEN RAISE EXCEPTION 'budget_blocked_within_limit'; END IF;
+  PERFORM public.ai_settle(r.reservation_id, 'error', 0, 0, 0, 0, 0, false, false, 'bad_request', 5);
 
   -- 6) Limite de tokens com exceção do salão e bloqueio.
   INSERT INTO public.ai_salon_limits(salon_id, monthly_tokens) VALUES (sal, 100);
