@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeSalon, serviceClient } from "../_shared/whatsapp/auth.ts";
 import { corsHeaders, errorResponse, jsonResponse, readRequest, WhatsAppError } from "../_shared/whatsapp/errors.ts";
-import { aiChat, AIError, aiErrorResponse, guardQuota, legacyPlatformKey, platformKey, resolveAI } from "../_shared/ai/gateway.ts";
+import { aiChat, AIError, aiErrorResponse, legacyPlatformKey, resolveAI } from "../_shared/ai/gateway.ts";
 import { AI_ERROR_TEXT, composeSystemPrompt } from "../_shared/ai/core.ts";
 
 const PROMPT = "Escreva uma legenda curta em português brasileiro para esta imagem do salão. Não invente preços nem promoções. Máximo 150 caracteres. Responda só com a legenda.";
@@ -19,16 +19,9 @@ serve(async(req)=>{
     const geminiModel=Deno.env.get("GEMINI_CAPTION_MODEL") || undefined;
     const ai=await resolveAI(db,()=>legacyPlatformKey(db,["gemini"],geminiModel));
     if(!ai) return jsonResponse({success:false,code:"not_configured",error:AI_ERROR_TEXT.not_configured},503);
-    // ponytail: Groq (modelos de texto) não lê imagem; usa a chave Gemini da plataforma se houver. Upgrade: campo "modelo de visão" na config.
-    if(ai.provider==="groq" && ai.cfg.enabled){
-      const key=await platformKey(db,"gemini");
-      if(!key) return jsonResponse({success:false,code:"not_configured",error:"O provedor de IA configurado não lê imagens. Escreva a legenda manualmente."},503);
-      Object.assign(ai,{provider:"gemini",model:geminiModel || "gemini-2.5-flash",key});
-    }
-    const quota=await guardQuota(db,ai,salonId,"legenda");
-    if(!quota.ok) return jsonResponse({success:false,code:"quota_exceeded",error:AI_ERROR_TEXT.quota_exceeded},429);
+    if(ai.provider!=="gemini") return jsonResponse({success:false,code:"not_configured",error:"A IA configurada não lê imagens. Escreva a legenda manualmente."},503);
     const system=composeSystemPrompt(ai.cfg,"","legenda");
-    const out=await aiChat(db,ai,{salonId,feature:"legenda",maxTokens:150,messages:[
+    const out=await aiChat(db,ai,{salonId,feature:"legenda",maxTokens:Math.max(ai.maxTokens,400),messages:[
       ...(system?[{role:"system" as const,content:system}]:[]),
       {role:"user",content:PROMPT,image:{mime:image[1],data:image[2]}},
     ]});
