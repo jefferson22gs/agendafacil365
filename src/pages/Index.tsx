@@ -9,14 +9,16 @@ import { FAQSection } from "@/components/landing/FAQSection";
 import { CTASection } from "@/components/landing/CTASection";
 import { Footer } from "@/components/landing/Footer";
 import { FloatingChat } from "@/components/landing/FloatingChat";
+import { VideoSection } from "@/components/landing/VideoSection";
 
-// VideoSection removida: não há vídeo oficial. TestimonialsSection agora é "Como funciona" (sem depoimentos).
+// TestimonialsSection agora é "Como funciona" (sem depoimentos).
 const Index = () => {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
       <Navbar />
       <main>
         <HeroSection />
+        <VideoSection />
         <PartnersSection />
         <FeaturesSection />
         <TestimonialsSection />

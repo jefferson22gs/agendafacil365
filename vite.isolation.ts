@@ -64,6 +64,8 @@ export function isolation({ csp, robots = false, outDir }: { csp: string; robots
       // public/ é copiado inteiro; workers e sitemap de produção não pertencem à demo.
       if (!outDir) return;
       for (const f of ["sw.js", "sw-push.js", "firebase-messaging-sw.js", "sitemap.xml"]) fs.rmSync(path.join(outDir, f), { force: true });
+      // Vídeo comercial (~46 MB) é da landing de produção; a demo só linka para ela.
+      fs.rmSync(path.join(outDir, "video"), { recursive: true, force: true });
       // robots.txt de produção libera indexação; a demo não deve aparecer em buscadores.
       fs.writeFileSync(path.join(outDir, "robots.txt"), "User-agent: *\nDisallow: /\n");
     },
