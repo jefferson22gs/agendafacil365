@@ -13,6 +13,9 @@ const messages: Record<string, string> = {
   provider_unavailable: "A conexão com o WhatsApp está indisponível.",
   send_uncertain: "Não foi possível confirmar o resultado do envio. Não repita sem conferir o histórico.",
   persistence_failed: "Não foi possível salvar o resultado. Confira o estado antes de repetir.",
+  conversation_missing: "Esta conversa não existe neste salão.",
+  provider_rate_limited: "Muitas mensagens em pouco tempo. Aguarde alguns minutos.",
+  feature_removed: "A IA agora é configurada pela plataforma. Não é preciso informar chave.",
 };
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

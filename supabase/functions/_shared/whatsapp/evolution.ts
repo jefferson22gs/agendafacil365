@@ -11,6 +11,8 @@ const operations = {
   delete: ["DELETE", "/instance/delete/"],
   webhook: ["POST", "/webhook/set/"],
   contacts: ["POST", "/chat/findContacts/"],
+  chats: ["POST", "/chat/findChats/"],
+  messages: ["POST", "/chat/findMessages/"],
   text: ["POST", "/message/sendText/"],
   media: ["POST", "/message/sendMedia/"],
   status: ["POST", "/message/sendStatus/"],

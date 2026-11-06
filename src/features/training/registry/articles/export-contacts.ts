@@ -3,17 +3,17 @@ import type { Article } from "../../types";
 export const exportContactsArticles: Article[] = [
   {
     id: "export-contacts-vcf",
-    version: 1,
+    version: 2,
     title: "Como exportar clientes para contatos do celular",
     summary: "Baixe um arquivo VCF para usar sua lista como contatos.",
     category: "clients",
     difficulty: "fácil",
     minutes: 4,
-    route: "/admin/export-contacts",
+    route: "/admin/whatsapp?aba=contatos&contatos=exportar",
     tourId: "export-contacts",
     steps: [
       {
-        text: "Abra Exportar Clientes e escolha VCF. Esse é o formato usado por agendas de celular.",
+        text: "Abra WhatsApp no menu, escolha a aba Contatos e depois Exportar. Escolha VCF. Esse é o formato usado por agendas de celular.",
         image: { src: "/training/export-contacts/format-vcf.webp", alt: "Formato VCF selecionado", pending: true },
       },
       { text: "Confira a lista e deixe marcados os clientes que devem entrar no arquivo." },
@@ -25,17 +25,17 @@ export const exportContactsArticles: Article[] = [
   },
   {
     id: "export-contacts-csv",
-    version: 1,
+    version: 2,
     title: "Como exportar clientes para planilha",
     summary: "Baixe um CSV para abrir no Excel ou Google Sheets.",
     category: "clients",
     difficulty: "fácil",
     minutes: 4,
-    route: "/admin/export-contacts",
+    route: "/admin/whatsapp?aba=contatos&contatos=exportar",
     tourId: "export-contacts",
     steps: [
       {
-        text: "Escolha CSV quando quiser abrir os clientes como planilha.",
+        text: "Na aba Contatos, em Exportar, escolha CSV quando quiser abrir os clientes como planilha.",
         image: { src: "/training/export-contacts/format-csv.webp", alt: "Formato CSV selecionado", pending: true },
       },
       { text: "Marque os clientes que devem aparecer no arquivo. Use Selecionar Todos para agilizar." },

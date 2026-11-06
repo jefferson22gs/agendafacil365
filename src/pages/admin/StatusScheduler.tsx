@@ -31,7 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { PageShell as AdminLayout } from "@/pages/admin/whatsapp/Shell";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -428,7 +428,7 @@ const StatusScheduler = () => {
                                     Conecte seu WhatsApp para que os posts sejam publicados automaticamente.
                                 </p>
                             </div>
-                            <Button variant="outline" onClick={() => window.location.assign("/admin/whatsapp")}>Conectar WhatsApp</Button>
+                            <Button variant="outline" onClick={() => window.location.assign("/admin/whatsapp?aba=conexao")}>Conectar WhatsApp</Button>
                         </CardContent>
                     </Card>
                 )}

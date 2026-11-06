@@ -2,21 +2,21 @@ import type { TourDef } from "../../types";
 
 export const statusSchedulerTour: TourDef = {
   id: "status-scheduler",
-  version: 1,
+  version: 2,
   title: "Agendador de Status",
   description: "Agende textos, fotos e vídeos para o Status do WhatsApp.",
   category: "whatsapp",
-  route: "/admin/status-scheduler",
+  route: "/admin/whatsapp?aba=status",
   steps: [
     {
       target: "status-scheduler-header",
       title: "Status agendado",
-      body: "Esta tela agenda publicações para o Status do WhatsApp do salão. Use para divulgar horários livres, promoções, antes e depois e avisos rápidos.",
+      body: "A aba Status da central WhatsApp agenda publicações para o Status do WhatsApp do salão. Use para divulgar horários livres, promoções, antes e depois e avisos rápidos.",
     },
     {
       target: "status-scheduler-connection",
       title: "WhatsApp precisa estar conectado",
-      body: "O status no topo mostra se a conexão está pronta. Se aparecer desconectado, abra WhatsApp no grupo Relacionamento do menu e conecte por lá, ou use o botão Conectar WhatsApp do aviso, que abre essa tela.",
+      body: "O status no topo mostra se a conexão está pronta. Se aparecer desconectado, conecte na aba Conexão; o botão Conectar WhatsApp do aviso abre essa aba.",
     },
     {
       target: "status-scheduler-new",

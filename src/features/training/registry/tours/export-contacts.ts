@@ -2,16 +2,16 @@ import type { TourDef } from "../../types";
 
 export const exportContactsTour: TourDef = {
   id: "export-contacts",
-  version: 1,
+  version: 2,
   title: "Exportar contatos",
   description: "Baixe sua lista de clientes em arquivo VCF ou CSV.",
   category: "clients",
-  route: "/admin/export-contacts",
+  route: "/admin/whatsapp?aba=contatos&contatos=exportar",
   steps: [
     {
       target: "export-contacts-header",
       title: "Exportar clientes",
-      body: "Esta tela baixa seus clientes em arquivo. É útil para guardar uma cópia ou usar em outro lugar.",
+      body: "Na aba Contatos da central WhatsApp, em Exportar, você baixa seus clientes em arquivo. É útil para guardar uma cópia ou usar em outro lugar.",
     },
     {
       target: "export-contacts-format",

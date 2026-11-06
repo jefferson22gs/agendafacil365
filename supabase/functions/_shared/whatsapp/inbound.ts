@@ -22,6 +22,103 @@ export function parseIncoming(data: unknown): IncomingMessage | null {
   const context = recordOf(extended?.contextInfo);
   return { id, jid, phone: `+${jid.split("@")[0]}`, text: text.trim(), name: typeof row.pushName === "string" ? row.pushName.slice(0, 120) : "Cliente", quotedMessageId: typeof context?.stanzaId === "string" ? context.stanzaId : null };
 }
+/** Mensagem para a caixa de entrada (Conversas): entrada e saída, texto e mídia. Só contatos individuais com número. */
+export interface InboxMessage {
+  id: string;
+  phone: string;
+  direction: "in" | "out";
+  kind: "text" | "interactive" | "media";
+  type: string;
+  body: string;
+  mediaUrl: string | null;
+  mediaMime: string | null;
+  mediaName: string | null;
+  name: string | null;
+  createdAt: string | null;
+}
+const MEDIA_TYPES: Record<string, string> = {
+  imageMessage: "image", videoMessage: "video", audioMessage: "audio", documentMessage: "document", stickerMessage: "sticker",
+  locationMessage: "location", liveLocationMessage: "location", contactMessage: "contact", contactsArrayMessage: "contact",
+  pollCreationMessage: "poll", pollCreationMessageV3: "poll",
+};
+// Só exibição no inbox (texto visível); a interpretação da escolha pertence ao chatbot.
+const INTERACTIVE_TYPES: Record<string, string> = {
+  listMessage: "list", buttonsMessage: "buttons", interactiveMessage: "interactive", templateMessage: "buttons",
+  listResponseMessage: "list_reply", buttonsResponseMessage: "buttons_reply", templateButtonReplyMessage: "buttons_reply", interactiveResponseMessage: "interactive_reply",
+};
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+function interactiveText(m: Record<string, unknown> | null): string {
+  if (!m) return "";
+  const single = recordOf(m.singleSelectReply), body = recordOf(m.body);
+  return str(m.title) || str(m.selectedDisplayText) || str(m.description) || str(m.contentText) || str(m.text) || str(body?.text) || str(single?.selectedRowId);
+}
+function safeMediaUrl(...values: unknown[]): string | null {
+  for (const v of values) {
+    if (typeof v !== "string" || v.length > 2000) continue;
+    try {
+      const u = new URL(v);
+      // URL do CDN do WhatsApp é criptografada (.enc) e inútil no navegador; só links de armazenamento próprio.
+      if (u.protocol === "https:" && !u.hostname.endsWith("whatsapp.net")) return u.toString();
+    } catch { /* ignora */ }
+  }
+  return null;
+}
+export function parseInboxMessage(data: unknown): InboxMessage | null {
+  const row = recordOf(data), key = recordOf(row?.key);
+  let message = recordOf(row?.message);
+  if (!row || !key || !message || typeof key.fromMe !== "boolean") return null;
+  if (message.protocolMessage || message.editedMessage || message.reactionMessage) return null;
+  const jid = key.remoteJid, id = key.id;
+  if (typeof jid !== "string" || !/^\d{7,15}@s\.whatsapp\.net$/.test(jid) || typeof id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(id)) return null;
+  const wrapped = recordOf(recordOf(message.documentWithCaptionMessage)?.message) ?? recordOf(recordOf(message.ephemeralMessage)?.message) ?? recordOf(recordOf(message.viewOnceMessage)?.message);
+  if (wrapped) message = wrapped;
+  const mediaKey = Object.keys(MEDIA_TYPES).find(k => recordOf(message![k]));
+  const interactiveKey = mediaKey ? undefined : Object.keys(INTERACTIVE_TYPES).find(k => recordOf(message![k]));
+  const media = mediaKey ? recordOf(message[mediaKey]) : null;
+  const type = mediaKey ? MEDIA_TYPES[mediaKey] : interactiveKey ? INTERACTIVE_TYPES[interactiveKey] : "text";
+  const kind = mediaKey ? "media" : interactiveKey ? "interactive" : "text";
+  const body = (kind === "text" ? str(message.conversation) || str(recordOf(message.extendedTextMessage)?.text)
+    : kind === "interactive" ? interactiveText(recordOf(message[interactiveKey!]))
+    : str(media?.caption) || str(media?.name) || str(media?.displayName) || str(media?.address) || str(media?.fileName)).trim().slice(0, 8000);
+  if (kind !== "media" && !body) return null;
+  const ts = Number(row.messageTimestamp);
+  return {
+    id, phone: `+${jid.split("@")[0]}`, direction: key.fromMe ? "out" : "in", kind, type, body,
+    mediaUrl: media ? safeMediaUrl(message.mediaUrl, row.mediaUrl, media.url) : null,
+    mediaMime: media && typeof media.mimetype === "string" ? media.mimetype.slice(0, 100) : null,
+    mediaName: media && typeof media.fileName === "string" ? media.fileName.slice(0, 200) : null,
+    name: !key.fromMe && typeof row.pushName === "string" && row.pushName.trim() ? row.pushName.trim().slice(0, 120) : null,
+    createdAt: Number.isFinite(ts) && ts > 1_000_000_000 ? new Date((ts > 1e12 ? ts : ts * 1000)).toISOString() : null,
+  };
+}
+/** Registros de /chat/findMessages (Evolution v2 devolve { messages: { records } }; versões antigas, array). */
+export function messageRecords(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  const root = recordOf(value), inner = recordOf(root?.messages);
+  const records = inner?.records ?? root?.records ?? root?.messages;
+  return Array.isArray(records) ? records : [];
+}
+export interface EvolutionContact { jid: string; phone: string; name: string }
+export interface ContactExclusions { group: number; broadcast: number; lid: number; invalid: number }
+/** Filtra /chat/findContacts e /chat/findChats: só pessoas com número; grupos, listas, canais e @lid são contados à parte. */
+export function evolutionContacts(list: unknown[], max = 10_000): { contacts: EvolutionContact[]; excluded: ContactExclusions } {
+  const excluded: ContactExclusions = { group: 0, broadcast: 0, lid: 0, invalid: 0 };
+  const seen = new Set<string>();
+  const contacts: EvolutionContact[] = [];
+  for (const entry of list.slice(0, max)) {
+    const c = recordOf(entry);
+    const jid = str(c?.remoteJid) || str(c?.id);
+    if (jid.endsWith("@g.us")) { excluded.group++; continue; }
+    if (jid.endsWith("@broadcast") || jid.endsWith("@newsletter")) { excluded.broadcast++; continue; }
+    if (jid.endsWith("@lid")) { excluded.lid++; continue; }
+    if (!/^\d{7,15}@s\.whatsapp\.net$/.test(jid)) { excluded.invalid++; continue; }
+    if (seen.has(jid)) continue;
+    seen.add(jid);
+    const name = (str(c?.name) || str(c?.pushName) || str(c?.verifiedName)).trim().slice(0, 120);
+    contacts.push({ jid, phone: `+${jid.split("@")[0]}`, name: name || "Contato do WhatsApp" });
+  }
+  return { contacts, excluded };
+}
 export function eventName(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase().replaceAll("_", ".") : "";
 }

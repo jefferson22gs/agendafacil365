@@ -9,12 +9,8 @@ serve(async req => {
     const body=await readRequest(req),db=serviceClient();
     await authorizeSalon(req,db,body.salonId);
     const salonId=body.salonId as string;
-    if(body.action==="save_key") {
-      if(typeof body.key!=="string" || body.key.length<1 || body.key.length>500) throw new WhatsAppError("invalid_request");
-      const {error}=await db.rpc("whatsapp_save_chatbot_secret",{p_salon_id:salonId,p_api_key:body.key});
-      if(error) throw new WhatsAppError("persistence_failed",503);
-      return jsonResponse({success:true});
-    }
+    // Chave por salão não existe mais: a IA é configurada pela plataforma (super admin).
+    if(body.action==="save_key") throw new WhatsAppError("feature_removed",410);
     if(body.action!=="test" || typeof body.text!=="string" || !body.text.trim() || body.text.length>4000) throw new WhatsAppError("invalid_request");
     // Mesmo pipeline de fatos e ferramentas, sem telefone real, persistência, reserva ou envio.
     const reply=await chatbotReply({db,salonId,phone:"+5511000000000",preview:true},body.text);
