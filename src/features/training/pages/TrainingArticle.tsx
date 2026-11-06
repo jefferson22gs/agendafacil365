@@ -66,7 +66,7 @@ export default function TrainingArticle() {
           <h1 className="font-display text-2xl sm:text-3xl font-bold">{article.title}</h1>
           <p className="text-muted-foreground mt-2">{article.summary}</p>
           <div className="flex gap-4 items-center text-sm text-muted-foreground mt-3"><span className="inline-flex items-center gap-1"><Clock size={15} aria-hidden /> Cerca de {article.minutes} min</span><span className="capitalize">{article.difficulty}</span><span>Versão {article.version}</span></div>
-          <div className="flex flex-wrap gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4" data-tour="training-article-actions">
             {article.tourId && <Button variant="brand" onClick={() => void startTour(article.tourId!)}><PlayCircle size={18} className="mr-2" aria-hidden /> Me mostre onde fazer</Button>}
             {article.route && <Button variant="outline" asChild><Link to={article.route}><ExternalLink size={16} className="mr-2" aria-hidden /> Abrir tela</Link></Button>}
           </div>
@@ -74,7 +74,7 @@ export default function TrainingArticle() {
 
         {article.notes?.length ? <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4"><p className="font-medium text-sm mb-2">Antes de começar</p><ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">{article.notes.map((note, i) => <li key={i}>{note}</li>)}</ul></CardContent></Card> : null}
 
-        <ol className="space-y-6">
+        <ol className="space-y-6" data-tour="training-article-steps">
           {article.steps.map((step, i) => (
             <li key={`${article.id}:${i}`} className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <div className="flex gap-3 items-start">
@@ -85,7 +85,7 @@ export default function TrainingArticle() {
           ))}
         </ol>
 
-        <div className="rounded-xl border border-border p-4 flex flex-wrap items-center gap-3">
+        <div className="rounded-xl border border-border p-4 flex flex-wrap items-center gap-3" data-tour="training-article-feedback">
           <span className="text-sm font-medium">Foi útil?</span>
           <Button size="sm" variant={feedback === true ? "default" : "outline"} onClick={() => rate(true)} aria-pressed={feedback === true}><ThumbsUp size={16} className="mr-1" aria-hidden /> Sim</Button>
           <Button size="sm" variant={feedback === false ? "default" : "outline"} onClick={() => rate(false)} aria-pressed={feedback === false}><ThumbsDown size={16} className="mr-1" aria-hidden /> Não</Button>

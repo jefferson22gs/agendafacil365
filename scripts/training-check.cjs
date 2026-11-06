@@ -47,10 +47,19 @@ for (const a of articles) {
     else { assert(fs.existsSync(path.join(root, 'public', s.image.src)), `Imagem faltando: ${s.image.src}`); captures.add(s.image.src); }
   }
 }
+// Toda rota /admin do App precisa de tour existente na ajuda contextual e de artigo (próprio ou do tour).
+const appSource = fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8');
+const adminRoutes = [...appSource.matchAll(/path="(\/admin[^"]*)"/g)].map(m => m[1].replace(':articleId', 'exemplo'));
+const { contextForRoute } = load(path.join(feature, 'registry/routeContext.ts'));
+const uncovered = adminRoutes.filter(route => {
+  const ctx = contextForRoute(route);
+  return !ctx || !ctx.tours.length || !ctx.tours.every(id => tourIds.has(id)) || !articles.some(a => ctx.tours.includes(a.tourId));
+});
+assert.deepEqual(uncovered, [], 'Rotas /admin sem tour ou artigo');
 const { searchArticles, normalize } = load(path.join(feature, 'search.ts'));
 assert.equal(normalize('Comissão e AGENDAMENTOS!'), 'comissao e agendamentos');
 for (const [query, expected] of [['agenda', 'appointments'], ['funcionário', 'professionals'], ['zap', 'whatsapp'], ['mensagem em massa', 'broadcast']]) {
   assert(searchArticles(articles, query).some(a => (a.tourId ?? a.id).includes(expected)), `Busca falhou: ${query}`);
 }
 assert.equal(searchArticles(articles, '').length, 0);
-console.log(JSON.stringify({ tours: tours.length, articles: articles.length, captures: captures.size, pendingImageReferences: pending, tests: 'PASS', coverage: tours.map(t => ({ id: t.id, steps: t.steps.length })) }, null, 2));
+console.log(JSON.stringify({ tours: tours.length, articles: articles.length, captures: captures.size, pendingImageReferences: pending, tests: 'PASS', adminRoutes: adminRoutes.length, coverage: tours.map(t => ({ id: t.id, steps: t.steps.length })) }, null, 2));

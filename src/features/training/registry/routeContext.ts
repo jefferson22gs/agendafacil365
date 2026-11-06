@@ -35,7 +35,7 @@ const MAP: Record<string, RouteContext> = {
   "/admin/subscription": { tours: ["subscription"], category: "settings" },
   "/admin/marketing": { tours: ["marketing"], category: "marketing" },
   "/admin/settings": { tours: ["settings-info", "settings-hours", "settings-public-link", "settings-branding", "settings-notifications", "settings-pix"], category: "settings" },
-  "/admin/training": { tours: ["overview"], category: "start" },
+  "/admin/training": { tours: ["training-center", "overview"], category: "start" },
 };
 
 /** Rotas antigas, caso ainda abram fora da central. */
@@ -56,7 +56,7 @@ export function contextForRoute(pathname: string, search = ""): RouteContext | u
     return MAP[`${WHATSAPP}?aba=${tab}${sub}`] ?? MAP[`${WHATSAPP}?aba=conversas`];
   }
   if (MAP[clean]) return MAP[clean];
-  if (clean.startsWith("/admin/training")) return MAP["/admin/training"];
+  if (clean.startsWith("/admin/training/")) return { tours: ["training-article"], category: "start" };
   return undefined;
 }
 

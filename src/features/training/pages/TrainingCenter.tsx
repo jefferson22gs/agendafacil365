@@ -43,20 +43,20 @@ export default function TrainingCenter() {
             </div>
             <p className="text-muted-foreground mt-2">Aprenda a usar o Agenda Fácil 365 passo a passo. Comece pelo que precisa hoje.</p>
           </div>
-          <Button variant="outline" onClick={() => void startTour("overview")}>
+          <Button variant="outline" data-tour="training-overview-button" onClick={() => void startTour("overview")}>
             <PlayCircle size={18} className="mr-2" aria-hidden /> Conheça o Agenda Fácil 365
           </Button>
         </header>
 
         {progress.error && <p role="status" className="rounded-lg border border-border p-3 text-sm text-muted-foreground">{progress.error}</p>}
-        <FirstStepsChecklist variant="center" />
+        <div data-tour="training-first-steps"><FirstStepsChecklist variant="center" /></div>
 
         <div className="space-y-4">
-          <div className="relative max-w-2xl">
+          <div className="relative max-w-2xl" data-tour="training-search">
             <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input className="pl-10 h-12 text-base" placeholder="Como podemos ajudar?" aria-label="Buscar tutorial" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <div className="flex flex-wrap gap-2" aria-label="Categorias de treinamento">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Categorias de treinamento" data-tour="training-categories">
             <Button size="sm" variant={category === "all" ? "default" : "outline"} onClick={() => setCategory("all")} aria-pressed={category === "all"}>Todos</Button>
             {CATEGORIES.map((c) => (
               <Button key={c.id} size="sm" variant={category === c.id ? "default" : "outline"} onClick={() => setCategory(c.id)} aria-pressed={category === c.id}>{c.title}</Button>
@@ -68,7 +68,7 @@ export default function TrainingCenter() {
           {filtered.length} {filtered.length === 1 ? "tutorial" : "tutoriais"} · {viewed} de {ARTICLES.length} vistos
         </p>
         {filtered.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="training-articles">
             {filtered.map((a) => {
               const read = progress.get(`article:${a.id}`, a.version);
               const tourDone = a.tourId && progress.get(a.tourId, a.version)?.status === "completed";
@@ -98,7 +98,7 @@ export default function TrainingCenter() {
           <Card><CardContent className="p-8 text-center"><p className="font-medium">Nenhum tutorial encontrado.</p><p className="text-sm text-muted-foreground mt-2">Tente uma palavra diferente, como “agenda”, “zap” ou “equipe”.</p><Button variant="ghost" className="mt-3" onClick={() => { setQuery(""); setCategory("all"); }}>Limpar busca</Button></CardContent></Card>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6" data-tour="training-support">
           <div><p className="font-medium">Ainda precisa de ajuda?</p><Button variant="link" className="px-0" asChild><a href={getSupportWhatsAppLink()} target="_blank" rel="noopener noreferrer"><MessageCircle size={16} className="mr-2" aria-hidden /> Falar com o suporte</a></Button></div>
           <AlertDialog>
             <AlertDialogTrigger asChild><Button variant="outline" disabled={resetting}><RotateCcw size={16} className="mr-2" aria-hidden /> Reiniciar treinamento</Button></AlertDialogTrigger>

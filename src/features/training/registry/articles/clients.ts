@@ -47,7 +47,7 @@ export const clientsArticles: Article[] = [
   },
   {
     id: "clients-import-export",
-    version: 1,
+    version: 2,
     title: "Como trazer ou baixar contatos de clientes",
     summary: "Use importação para entrar com vários contatos e exportação para baixar sua lista.",
     category: "clients",
@@ -56,7 +56,7 @@ export const clientsArticles: Article[] = [
     route: "/admin/clients",
     tourId: "clients",
     steps: [
-      { text: "Para trazer contatos para o Agenda Fácil 365, abra Importar Contatos, no grupo Relacionamento do menu." },
+      { text: "Para trazer contatos para o Agenda Fácil 365, abra WhatsApp, no grupo Relacionamento do menu, expanda a seta e escolha Contatos." },
       { text: "Para baixar os contatos cadastrados, clique em Exportar na tela Clientes." },
       { text: "Use VCF quando quiser trabalhar com contatos de celular. Use CSV quando quiser uma planilha." },
       { text: "Depois de importar, volte em Clientes para conferir nomes e telefones." },

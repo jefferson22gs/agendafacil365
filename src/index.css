@@ -267,6 +267,10 @@
     padding-right: var(--spacing-safe-right);
   }
 
+  .safe-right {
+    padding-right: var(--spacing-safe-right);
+  }
+
   /* Pull to refresh indicator */
   .pull-indicator {
     @apply flex items-center justify-center h-12 text-muted-foreground;
