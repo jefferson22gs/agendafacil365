@@ -1,5 +1,9 @@
 import type { DemoDb, DemoRow } from "./fixtures";
 import { SALON_ID } from "./fixtures";
+import { simulateAttendant, type AttendantMessage } from "./attendant";
+
+/** Conversa do teste do atendente na demonstração (memória da aba). */
+let attendantHistory: AttendantMessage[] | undefined;
 
 /**
  * Central WhatsApp na demonstração: instância conectada, conversas com IA e equipe, contatos fictícios da "Evolution"
@@ -10,6 +14,8 @@ const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
 
 export function seedWhatsAppDemo(db: DemoDb) {
   if (!db.whatsapp_instances?.length) db.whatsapp_instances = [{ id: id(1), salon_id: SALON_ID, instance_name: "demo_studio_bella", status: "connected", phone_number: "5511900000000", created_at: ago(90000) }];
+  db.whatsapp_automation_settings ??= [{ salon_id: SALON_ID, confirmation_enabled: true, reminders_enabled: true, reminder_minutes: [1440, 120, 30, 15], cancellation_enabled: true, reschedule_enabled: true, birthday_enabled: true, birthday_coupon_enabled: true, birthday_coupon_validity_days: 30, review_enabled: true, interactive_enabled: true, chatbot_booking_enabled: false, updated_at: ago(5000) }];
+  for (const salon of db.salons ?? []) if (salon.id === SALON_ID) salon.birthday_discount_percent ??= 10;
   if (db.whatsapp_messages) return;
   const talk: [string, string, [string, string, string, number, string?][]][] = [
     ["+5511900000001", "Mariana Alves", [["in", "contact", "Oi! Tem horário para corte amanhã à tarde?", 95], ["out", "ai", "Olá, Mariana! Amanhã temos 14:00 e 16:00 com a Carla. Quer reservar algum?", 94], ["in", "contact", "16h, por favor", 30]]],
@@ -87,7 +93,15 @@ export function whatsappDemoFunction(db: DemoDb, name: string, body: Record<stri
     return ok({ broadcastId: bId, message: "Campanha simulada na demonstração." });
   }
   if (name === "whatsapp-chatbot" && body.action === "test") {
-    return ok({ text: `Olá! Sou o assistente do Studio Bella (resposta de exemplo da demonstração). Você perguntou: "${String(body.text).slice(0, 200)}". Posso consultar serviços e horários livres.`, provider: "demo", model: "demo", preview: true });
+    // Atendente simulado (roteiro local): segue o mesmo fluxo do WhatsApp real com serviços/profissionais da demonstração.
+    const history = (attendantHistory ??= []);
+    if (/^(recome[cç]ar|reiniciar|limpar)$/i.test(String(body.text).trim())) history.length = 0;
+    history.push({ role: "user", content: String(body.text).slice(0, 500) });
+    const salon = rows(db, "salons").find(s => s.id === SALON_ID);
+    const r = simulateAttendant(history, rows(db, "services").filter(s => s.salon_id === SALON_ID && s.is_active !== false) as never, { professionals: rows(db, "professionals").filter(p => p.salon_id === SALON_ID && p.is_active !== false) as never, salonName: String(salon?.name ?? "Studio Bella"), phone: "+5511900000009" });
+    history.push({ role: "assistant", content: r.reply });
+    if (r.step === "done") history.length = 0;
+    return ok({ text: r.reply, provider: "demo", model: `demo_${r.step}`, preview: true });
   }
   if (name === "whatsapp-status" && body.action === "save") {
     const [date, time] = String(body.localDateTime).split("T");

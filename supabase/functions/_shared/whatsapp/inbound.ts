@@ -6,6 +6,10 @@ export interface IncomingMessage {
   text: string;
   name: string;
   quotedMessageId: string | null;
+  /** Id da linha/botão clicado (lista, botões, template). Só o servidor interpreta. */
+  selection?: string | null;
+  /** Imagem/documento recebido (comprovante de PIX). Sem URL: o servidor baixa via getBase64FromMediaMessage. */
+  media?: { type: "image" | "document"; mime: string | null; name: string | null; url: string | null } | null;
 }
 export function recordOf(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -17,10 +21,42 @@ export function parseIncoming(data: unknown): IncomingMessage | null {
   const jid = key.remoteJid, id = key.id;
   if (typeof jid !== "string" || !/^\d{7,15}@s\.whatsapp\.net$/.test(jid) || typeof id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(id)) return null;
   const extended = recordOf(message.extendedTextMessage);
+  const base = { id, jid, phone: `+${jid.split("@")[0]}`, name: typeof row.pushName === "string" ? row.pushName.slice(0, 120) : "Cliente" };
+  // Atendente: resposta de lista/botão chega como id selecionado; o texto visível vai junto como fallback.
+  const choice = selectionOf(message);
+  if (choice) return { ...base, text: choice.text || choice.id, quotedMessageId: null, selection: choice.id, media: null };
+  const media = mediaOf(message);
+  if (media) return { ...base, text: media.caption, quotedMessageId: null, selection: null, media: media.media };
   const text = message.conversation ?? extended?.text;
   if (typeof text !== "string" || !text.trim() || text.length > 8_000) return null;
   const context = recordOf(extended?.contextInfo);
-  return { id, jid, phone: `+${jid.split("@")[0]}`, text: text.trim(), name: typeof row.pushName === "string" ? row.pushName.slice(0, 120) : "Cliente", quotedMessageId: typeof context?.stanzaId === "string" ? context.stanzaId : null };
+  return { ...base, text: text.trim(), quotedMessageId: typeof context?.stanzaId === "string" ? context.stanzaId : null };
+}
+const SELECTION_ID = /^[a-z0-9]{1,12}\.[a-z0-9]{1,8}$/;
+/** listResponseMessage.singleSelectReply.selectedRowId | buttonsResponseMessage.selectedButtonId | templateButtonReplyMessage.selectedId | interactiveResponseMessage (nativeFlow paramsJson.id). */
+export function selectionOf(message: Record<string, unknown>): { id: string; text: string } | null {
+  const list = recordOf(message.listResponseMessage), buttons = recordOf(message.buttonsResponseMessage), template = recordOf(message.templateButtonReplyMessage);
+  const interactive = recordOf(message.interactiveResponseMessage);
+  let id: unknown = recordOf(list?.singleSelectReply)?.selectedRowId ?? buttons?.selectedButtonId ?? template?.selectedId;
+  let text: unknown = list?.title ?? buttons?.selectedDisplayText ?? template?.selectedDisplayText;
+  if (!id && interactive) {
+    try { id = JSON.parse(String(recordOf(interactive.nativeFlowResponseMessage)?.paramsJson ?? "{}"))?.id; } catch { id = null; }
+    text = recordOf(interactive.body)?.text;
+  }
+  if (typeof id !== "string" || !SELECTION_ID.test(id)) return null;
+  return { id, text: typeof text === "string" ? text.trim().slice(0, 200) : "" };
+}
+function mediaOf(message: Record<string, unknown>): { caption: string; media: NonNullable<IncomingMessage["media"]> } | null {
+  const doc = recordOf(message.documentMessage) ?? recordOf(recordOf(recordOf(message.documentWithCaptionMessage)?.message)?.documentMessage);
+  const img = recordOf(message.imageMessage);
+  const m = img ?? doc;
+  if (!m) return null;
+  const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n) : null);
+  const url = str(m.url, 2000);
+  return {
+    caption: (str(m.caption, 1000) ?? "").trim(),
+    media: { type: img ? "image" : "document", mime: str(m.mimetype, 100), name: str(m.fileName, 200), url: url && /^https:\/\//.test(url) && !/whatsapp\.net/.test(new URL(url).hostname) ? url : null },
+  };
 }
 /** Mensagem para a caixa de entrada (Conversas): entrada e saída, texto e mídia. Só contatos individuais com número. */
 export interface InboxMessage {

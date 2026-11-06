@@ -16,12 +16,20 @@ serve(async req => {
       const event=data?.[0]; if(!event) break;
       try {
         const payload=objectValue(event.payload);
-        const reply=await chatbotReply({db,salonId:event.salon_id,phone:event.sender_phone,eventId:event.id,preview:false},String(payload.text));
+        const reply=await chatbotReply({db,salonId:event.salon_id,phone:event.sender_phone,eventId:event.id,preview:false},String(payload.text??""),{selection:typeof payload.selection==="string"?payload.selection:null,media:payload.media??null});
         // Persistência atômica, dedup por origem. Nunca enviar diretamente dentro do consumer.
-        const {error:finishError}=await db.rpc("whatsapp_finish_inbound",{
+        // Atendente: várias mensagens (menu interativo, QR do PIX, copia e cola) vão em ordem pela v2.
+        const {error:finishError}=reply.messages?.length
+          ? await db.rpc("whatsapp_finish_inbound_v2",{p_event_id:event.id,p_claim:event.claim_token,p_messages:reply.messages,p_provider:reply.provider,p_model:reply.model})
+          : await db.rpc("whatsapp_finish_inbound",{
           p_event_id:event.id,p_claim:event.claim_token,p_response:reply.text,p_provider:reply.provider,p_model:reply.model,
         });
         if(finishError) throw new WhatsAppError("persistence_failed",503);
+        // Contagem com/sem IA para o painel (sem custo). Falha aqui não desfaz a resposta já gravada: só avisa.
+        if(reply.text){
+          const {error:logError}=await db.rpc("ai_log_reply",{p_salon_id:event.salon_id,p_event_id:event.id,p_with_ai:reply.provider!=="deterministic",p_kind:reply.model});
+          if(logError) console.warn("ai_reply_log_failed",logError.code);
+        }
         processed++;
       } catch(error) {
         const code=error instanceof WhatsAppError?error.code:"internal_error";
