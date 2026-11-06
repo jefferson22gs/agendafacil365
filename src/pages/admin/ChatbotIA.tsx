@@ -4,28 +4,19 @@ import {
     Bot,
     Settings,
     MessageSquare,
-    History,
     Play,
     Save,
-    RefreshCw,
     Send,
     Sparkles,
     Brain,
     Zap,
     Clock,
-    ToggleLeft,
-    ToggleRight,
-    ChevronDown,
     Trash2,
     Plus,
-    Search,
-    Filter,
-    Download,
     AlertCircle,
     CheckCircle,
     XCircle,
     Loader2,
-    User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
-import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -43,7 +34,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -53,16 +43,10 @@ import { cn } from "@/lib/utils";
 interface ChatbotSettings {
     id?: string;
     enabled: boolean;
-    ai_provider: 'openai' | 'gemini' | 'grok' | 'perplexity' | 'groq';
-    ai_model: string;
-    api_key: string;
     bot_name: string;
     welcome_message: string;
     system_prompt: string;
     custom_instructions: string;
-    temperature: number;
-    max_tokens: number;
-    response_delay_ms: number;
     active_hours_start: string;
     active_hours_end: string;
     active_days: number[];
@@ -77,16 +61,6 @@ interface ChatMessage {
     timestamp: Date;
 }
 
-interface ConversationHistory {
-    id: string;
-    client_phone: string;
-    client_name: string;
-    direction: 'incoming' | 'outgoing';
-    content: string;
-    ai_response: boolean;
-    created_at: string;
-}
-
 interface KnowledgeItem {
     id: string;
     category: string;
@@ -95,15 +69,6 @@ interface KnowledgeItem {
     keywords: string[];
     enabled: boolean;
 }
-
-// Provedores de IA disponíveis
-const AI_PROVIDERS = [
-    { id: 'openai', name: 'OpenAI', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
-    { id: 'gemini', name: 'Google Gemini', models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-pro'] },
-    { id: 'grok', name: 'xAI Grok', models: ['grok-2', 'grok-2-mini'] },
-    { id: 'perplexity', name: 'Perplexity', models: ['llama-3.1-sonar-large', 'llama-3.1-sonar-small'] },
-    { id: 'groq', name: 'Groq (Ultra Rápido)', models: ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'] },
-];
 
 const DAYS_OF_WEEK = [
     { id: 0, name: 'Dom', fullName: 'Domingo' },
@@ -117,9 +82,6 @@ const DAYS_OF_WEEK = [
 
 const DEFAULT_SETTINGS: ChatbotSettings = {
     enabled: false,
-    ai_provider: 'openai',
-    ai_model: 'gpt-4o-mini',
-    api_key: '',
     bot_name: 'Assistente',
     welcome_message: 'Olá! Sou o assistente virtual do salão. Como posso ajudar?',
     system_prompt: `Você é um assistente virtual profissional de um salão de beleza.
@@ -132,9 +94,6 @@ Suas responsabilidades:
 
 Sempre responda em português brasileiro de forma amigável e objetiva.`,
     custom_instructions: '',
-    temperature: 0.7,
-    max_tokens: 500,
-    response_delay_ms: 1000,
     active_hours_start: '08:00',
     active_hours_end: '22:00',
     active_days: [1, 2, 3, 4, 5, 6],
@@ -142,7 +101,12 @@ Sempre responda em português brasileiro de forma amigável e objetiva.`,
     fallback_message: 'Desculpe, não entendi sua mensagem. Pode reformular?',
 };
 
-const ChatbotIA = () => {
+// Colunas explícitas: nunca ler api_key nem parâmetros do provedor. A IA é gerenciada no servidor.
+const SETTINGS_COLUMNS = 'id,enabled,bot_name,welcome_message,system_prompt,custom_instructions,active_hours_start,active_hours_end,active_days,out_of_hours_message,fallback_message';
+const KNOWLEDGE_COLUMNS = 'id,category,question,answer,keywords,enabled';
+
+/** Conteúdo do chatbot sem layout, para a aba Chatbot da central /admin/whatsapp. */
+export const ChatbotContent = () => {
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState('settings');
     const [isLoading, setIsLoading] = useState(true);
@@ -157,11 +121,6 @@ const ChatbotIA = () => {
     const [testMessages, setTestMessages] = useState<ChatMessage[]>([]);
     const [testInput, setTestInput] = useState('');
     const [isTesting, setIsTesting] = useState(false);
-
-    // Estados do histórico
-    const [conversations, setConversations] = useState<ConversationHistory[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterDate, setFilterDate] = useState('today');
 
     // Estados da base de conhecimento
     const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeItem[]>([]);
@@ -194,7 +153,7 @@ const ChatbotIA = () => {
             // Buscar configurações do chatbot
             const { data: chatbotSettings, error: chatbotError } = await supabase
                 .from('chatbot_settings')
-                .select('*')
+                .select(SETTINGS_COLUMNS)
                 .eq('salon_id', salon.id)
                 .maybeSingle();
 
@@ -206,16 +165,10 @@ const ChatbotIA = () => {
                 setSettings({
                     id: chatbotSettings.id,
                     enabled: chatbotSettings.enabled ?? false,
-                    ai_provider: (chatbotSettings.ai_provider as any) || 'openai',
-                    ai_model: chatbotSettings.ai_model || 'gpt-4o-mini',
-                    api_key: chatbotSettings.api_key || '',
                     bot_name: chatbotSettings.bot_name || 'Assistente',
                     welcome_message: chatbotSettings.welcome_message || DEFAULT_SETTINGS.welcome_message,
                     system_prompt: chatbotSettings.system_prompt || DEFAULT_SETTINGS.system_prompt,
                     custom_instructions: chatbotSettings.custom_instructions || '',
-                    temperature: chatbotSettings.temperature ?? 0.7,
-                    max_tokens: chatbotSettings.max_tokens ?? 500,
-                    response_delay_ms: chatbotSettings.response_delay_ms ?? 1000,
                     active_hours_start: chatbotSettings.active_hours_start || '08:00',
                     active_hours_end: chatbotSettings.active_hours_end || '22:00',
                     active_days: chatbotSettings.active_days || [1, 2, 3, 4, 5, 6],
@@ -227,16 +180,13 @@ const ChatbotIA = () => {
             // Buscar base de conhecimento
             const { data: knowledge } = await supabase
                 .from('chatbot_knowledge_base')
-                .select('*')
+                .select(KNOWLEDGE_COLUMNS)
                 .eq('salon_id', salon.id)
                 .order('priority', { ascending: false });
 
             if (knowledge) {
                 setKnowledgeBase(knowledge as KnowledgeItem[]);
             }
-
-            // Buscar histórico de conversas
-            await loadConversations(salon.id);
 
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
@@ -245,66 +195,20 @@ const ChatbotIA = () => {
         }
     };
 
-    const loadConversations = async (salonIdParam?: string) => {
-        const id = salonIdParam || salonId;
-        if (!id) return;
-
-        let query = supabase
-            .from('chatbot_conversations')
-            .select('*')
-            .eq('salon_id', id)
-            .order('created_at', { ascending: false })
-            .limit(100);
-
-        if (searchTerm) {
-            query = query.or(`content.ilike.%${searchTerm}%,client_phone.ilike.%${searchTerm}%`);
-        }
-
-        const { data } = await query;
-        if (data) {
-            setConversations(data as ConversationHistory[]);
-        }
-    };
-
     const handleSaveSettings = async () => {
         if (!salonId) return;
         setIsSaving(true);
 
         try {
-            // Remove id and created_at to avoid primary key conflicts on upsert
-            const { id: _id, ...settingsWithoutId } = settings as any;
-
-            const payload = {
-                salon_id: salonId,
-                enabled: settingsWithoutId.enabled,
-                ai_provider: settingsWithoutId.ai_provider,
-                ai_model: settingsWithoutId.ai_model,
-                api_key: null,
-                bot_name: settingsWithoutId.bot_name,
-                welcome_message: settingsWithoutId.welcome_message,
-                system_prompt: settingsWithoutId.system_prompt,
-                custom_instructions: settingsWithoutId.custom_instructions,
-                temperature: settingsWithoutId.temperature,
-                max_tokens: settingsWithoutId.max_tokens,
-                response_delay_ms: settingsWithoutId.response_delay_ms,
-                active_hours_start: settingsWithoutId.active_hours_start,
-                active_hours_end: settingsWithoutId.active_hours_end,
-                active_days: settingsWithoutId.active_days,
-                out_of_hours_message: settingsWithoutId.out_of_hours_message,
-                fallback_message: settingsWithoutId.fallback_message,
-                updated_at: new Date().toISOString(),
-            };
+            // Sem id (evita conflito no upsert) e sem campos do provedor, que ficam só no servidor.
+            const { id: _id, ...salonSettings } = settings;
+            const payload = { ...salonSettings, salon_id: salonId, updated_at: new Date().toISOString() };
 
             const { error } = await supabase
                 .from('chatbot_settings')
                 .upsert(payload, { onConflict: 'salon_id' });
 
             if (error) throw error;
-            if (settings.api_key?.trim()) {
-                const { data: savedKey, error: keyError } = await supabase.functions.invoke('whatsapp-chatbot', { body: { action: 'save_key', salonId, key: settings.api_key.trim() } });
-                if (keyError || !savedKey?.success) throw new Error('Não foi possível guardar a credencial privada.');
-                setSettings(prev => ({ ...prev, api_key: '' }));
-            }
 
             toast({
                 title: "Configurações salvas!",
@@ -338,7 +242,7 @@ const ChatbotIA = () => {
 
         try {
             const { data, error } = await supabase.functions.invoke('whatsapp-chatbot', { body: { action: 'test', salonId, text: userMessage.content } });
-            if (error || !data?.success) throw new Error('Teste indisponível. Salve a configuração e confira o provedor.');
+            if (error || !data?.success) throw new Error('Teste indisponível no momento. Salve a configuração e tente novamente.');
             const aiResponse: ChatMessage = {
                 id: crypto.randomUUID(), role: 'assistant',
                 content: data.text, timestamp: new Date(),
@@ -409,30 +313,22 @@ const ChatbotIA = () => {
         }));
     };
 
-    const getAvailableModels = () => {
-        const provider = AI_PROVIDERS.find(p => p.id === settings.ai_provider);
-        return provider?.models || [];
-    };
-
     if (isLoading) {
         return (
-            <AdminLayout>
-                <div className="flex flex-col items-center justify-center h-96 gap-3" role="status">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
-                    <p className="text-sm text-muted-foreground">Carregando chatbot…</p>
-                </div>
-            </AdminLayout>
+            <div className="flex flex-col items-center justify-center h-96 gap-3" role="status">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+                <p className="text-sm text-muted-foreground">Carregando chatbot…</p>
+            </div>
         );
     }
 
     return (
-        <AdminLayout>
             <div className="space-y-6">
                 {whatsappConnected === false && (
                     <Card className="border-warning/40 bg-warning/10" role="alert">
                         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-warning shrink-0" aria-hidden /><span>Seu WhatsApp está desconectado. O chatbot só responde clientes com o WhatsApp conectado.</span></div>
-                            <Button asChild variant="outline" size="sm"><Link to="/admin/whatsapp">Conectar WhatsApp</Link></Button>
+                            <Button asChild variant="outline" size="sm"><Link to="/admin/whatsapp?aba=conexao">Conectar WhatsApp</Link></Button>
                         </CardContent>
                     </Card>
                 )}
@@ -463,7 +359,7 @@ const ChatbotIA = () => {
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+                    <TabsList className="grid grid-cols-3 w-full max-w-xl">
                         <TabsTrigger value="settings" className="flex items-center gap-2" data-tour="chatbot-settings-tab" aria-label="Configurações">
                             <Settings size={16} />
                             <span className="hidden sm:inline">Configurações</span>
@@ -475,10 +371,6 @@ const ChatbotIA = () => {
                         <TabsTrigger value="test" className="flex items-center gap-2" data-tour="chatbot-test-tab" aria-label="Testar">
                             <Play size={16} />
                             <span className="hidden sm:inline">Testar</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="history" className="flex items-center gap-2" data-tour="chatbot-history-tab" aria-label="Histórico">
-                            <History size={16} />
-                            <span className="hidden sm:inline">Histórico</span>
                         </TabsTrigger>
                     </TabsList>
 
@@ -510,72 +402,6 @@ const ChatbotIA = () => {
                         </Card>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Provedor e Modelo */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Sparkles className="w-5 h-5 text-primary" />
-                                        Provedor de IA
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="chatbot-provider">Provedor</Label>
-                                        <Select
-                                            value={settings.ai_provider}
-                                            onValueChange={(value: any) => setSettings(prev => ({
-                                                ...prev,
-                                                ai_provider: value,
-                                                ai_model: AI_PROVIDERS.find(p => p.id === value)?.models[0] || ''
-                                            }))}
-                                        >
-                                            <SelectTrigger id="chatbot-provider" data-tour="chatbot-provider">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {AI_PROVIDERS.map(provider => (
-                                                    <SelectItem key={provider.id} value={provider.id}>
-                                                        {provider.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="chatbot-field-1">Modelo</Label>
-                                        <Select
-                                            value={settings.ai_model}
-                                            onValueChange={(value) => setSettings(prev => ({ ...prev, ai_model: value }))}
-                                        >
-                                            <SelectTrigger id="chatbot-field-1" data-tour="chatbot-model">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {getAvailableModels().map(model => (
-                                                    <SelectItem key={model} value={model}>
-                                                        {model}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-2" data-tour="chatbot-api-key">
-                                        <Label htmlFor="chatbot-field-2">API Key</Label>
-                                        <Input id="chatbot-field-2"
-                                            type="password"
-                                            placeholder="sk-..."
-                                            value={settings.api_key}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, api_key: e.target.value }))}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Sua chave de API do provedor selecionado
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
                             {/* Personalização */}
                             <Card data-tour="chatbot-personalization">
                                 <CardHeader>
@@ -611,57 +437,6 @@ const ChatbotIA = () => {
                                             value={settings.fallback_message}
                                             onChange={(e) => setSettings(prev => ({ ...prev, fallback_message: e.target.value }))}
                                         />
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Configurações Avançadas */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Settings className="w-5 h-5 text-primary" />
-                                        Configurações Avançadas
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <Label>Temperatura: {settings.temperature}</Label>
-                                            <span className="text-xs text-muted-foreground">
-                                                {settings.temperature < 0.5 ? 'Mais preciso' : settings.temperature > 1 ? 'Mais criativo' : 'Balanceado'}
-                                            </span>
-                                        </div>
-                                        <Slider
-                                            value={[settings.temperature]}
-                                            onValueChange={(v) => setSettings(prev => ({ ...prev, temperature: v[0] }))}
-                                            min={0}
-                                            max={2}
-                                            step={0.1}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="chatbot-field-6">Máximo de Tokens</Label>
-                                        <Input id="chatbot-field-6"
-                                            type="number"
-                                            value={settings.max_tokens}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 500 }))}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Limite de tokens por resposta (afeta custo e tamanho)
-                                        </p>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="chatbot-field-7">Delay de Resposta (ms)</Label>
-                                        <Input id="chatbot-field-7"
-                                            type="number"
-                                            value={settings.response_delay_ms}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, response_delay_ms: parseInt(e.target.value) || 1000 }))}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Tempo de espera antes de enviar resposta (parecer mais humano)
-                                        </p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -975,100 +750,20 @@ const ChatbotIA = () => {
                                     </Button>
                                 </div>
 
-                                <p className="text-xs text-muted-foreground mt-2">Teste usa a configuração salva e o provedor real, mas não envia WhatsApp nem cria agendamento. Credenciais são guardadas somente no servidor.</p>
+                                <p className="text-xs text-muted-foreground mt-2">O teste usa a configuração salva e a IA real do sistema, mas não envia WhatsApp nem cria agendamento. Salve antes de testar mudanças.</p>
                             </CardContent>
                         </Card>
                     </TabsContent>
 
-                    {/* Tab: Histórico */}
-                    <TabsContent value="history" className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                    <div>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <History className="w-5 h-5 text-primary" />
-                                            Histórico de Conversas
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Todas as conversas processadas pelo chatbot
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex items-center gap-2 w-full md:w-auto">
-                                        <div className="relative flex-1 md:flex-none">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden />
-                                            <Input
-                                                aria-label="Buscar no histórico"
-                                                data-tour="chatbot-history-search"
-                                                placeholder="Buscar..."
-                                                className="pl-9 w-full md:w-64"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                            />
-                                        </div>
-                                        <Button variant="outline" size="icon" onClick={() => loadConversations()} data-tour="chatbot-history-refresh" aria-label="Atualizar histórico">
-                                            <RefreshCw size={16} aria-hidden />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent data-tour="chatbot-history-list">
-                                {conversations.length === 0 ? (
-                                    <EmptyState icon={History} title="Nenhuma conversa registrada ainda" description="As conversas processadas pelo chatbot aparecerão aqui." className="border-0 bg-transparent" />
-                                ) : (
-                                    <div className="space-y-2">
-                                        {conversations.map((conv) => (
-                                            <div
-                                                key={conv.id}
-                                                className={cn(
-                                                    "p-3 rounded-lg flex items-start gap-3",
-                                                    conv.direction === 'incoming' ? 'surface-2 border border-border' : 'bg-primary/10'
-                                                )}
-                                            >
-                                                {/* Ícone indica quem falou; o texto ao lado (telefone ou nome do bot) também identifica */}
-                                                <div className={cn(
-                                                    "w-8 h-8 shrink-0 rounded-full flex items-center justify-center",
-                                                    conv.direction === 'incoming' ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
-                                                )} aria-hidden>
-                                                    {conv.direction === 'incoming' ? <User size={16} /> : <Bot size={16} />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-                                                        <span className="font-medium text-sm">
-                                                            {conv.direction === 'incoming' ? conv.client_phone : settings.bot_name}
-                                                        </span>
-                                                        {conv.ai_response && (
-                                                            <Badge variant="secondary" className="text-xs">IA</Badge>
-                                                        )}
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {new Date(conv.created_at).toLocaleString('pt-BR')}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground truncate">{conv.content}</p>
-                                                    {conv.direction === 'incoming' && <div className="flex gap-2 mt-2">
-                                                        <Button size="sm" variant="outline" onClick={async () => {
-                                                            if (!salonId) return;
-                                                            const { error } = await supabase.rpc('whatsapp_conversation_takeover', { p_salon_id: salonId, p_phone: conv.client_phone, p_pause: true });
-                                                            toast({ title: error ? 'Não foi possível pausar.' : 'Conversa pausada para atendimento humano.' });
-                                                        }}>Assumir conversa</Button>
-                                                        <Button size="sm" variant="ghost" onClick={async () => {
-                                                            if (!salonId || !window.confirm('Retomar o assistente automático nesta conversa?')) return;
-                                                            const { error } = await supabase.rpc('whatsapp_conversation_takeover', { p_salon_id: salonId, p_phone: conv.client_phone, p_pause: false });
-                                                            toast({ title: error ? 'Não foi possível retomar.' : 'Assistente retomado.' });
-                                                        }}>Retomar assistente</Button>
-                                                    </div>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
                 </Tabs>
             </div>
-        </AdminLayout>
     );
 };
+
+const ChatbotIA = () => (
+    <AdminLayout>
+        <ChatbotContent />
+    </AdminLayout>
+);
 
 export default ChatbotIA;

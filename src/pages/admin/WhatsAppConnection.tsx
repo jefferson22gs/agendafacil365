@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Smartphone, QrCode, RefreshCw, CheckCircle, XCircle, Loader2, Wifi, WifiOff, MessageSquare, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { PageShell as AdminLayout } from "@/pages/admin/whatsapp/Shell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -126,7 +126,7 @@ export default function WhatsAppConnection() {
   const waiting = instance?.status === "connecting" || instance?.status === "qrcode";
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6 max-w-4xl mx-auto min-w-0">
         <div data-tour="whatsapp-header">
           <PageHeader className="mb-0" title={<span className="flex items-center gap-2"><Smartphone className="w-6 h-6 text-primary" aria-hidden />Conexão WhatsApp</span>} description="Conecte o WhatsApp do estabelecimento para mensagens, campanhas e atendimento automático." />
         </div>
@@ -163,7 +163,7 @@ export default function WhatsAppConnection() {
               </div>
             </CardContent></Card>
             {qrCode && <Card data-tour="whatsapp-qrcode"><CardHeader className="text-center"><CardTitle className="flex justify-center gap-2"><QrCode aria-hidden />Escaneie o QR Code</CardTitle><CardDescription>No celular: WhatsApp, Aparelhos conectados, Conectar aparelho.</CardDescription></CardHeader>
-              <CardContent className="flex flex-col items-center"><div className="p-4 bg-white rounded-xl"><img src={qrCode} alt="Código temporário para conectar o WhatsApp do estabelecimento"className="w-64 h-64" /></div><p className="text-xs text-muted-foreground mt-3">Não compartilhe este código.</p><Button className="mt-4" variant="outline" disabled={!!busy} onClick={() => void run("connect")} data-tour="whatsapp-new-qrcode">Gerar novo QR Code</Button></CardContent>
+              <CardContent className="flex flex-col items-center"><div className="p-4 bg-white rounded-xl"><img src={qrCode} alt="Código temporário para conectar o WhatsApp do estabelecimento"className="w-56 h-56 max-w-full sm:w-64 sm:h-64" /></div><p className="text-xs text-muted-foreground mt-3">Não compartilhe este código.</p><Button className="mt-4" variant="outline" disabled={!!busy} onClick={() => void run("connect")} data-tour="whatsapp-new-qrcode">Gerar novo QR Code</Button></CardContent>
             </Card>}
             {salonId && <AutomationSettings salonId={salonId} />}
             {salonId && <InsightsSettings salonId={salonId} />}

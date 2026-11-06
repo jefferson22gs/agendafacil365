@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { serviceClient, safeEqual } from "../_shared/whatsapp/auth.ts";
 import { readRequest, jsonResponse, errorResponse, objectValue, WhatsAppError } from "../_shared/whatsapp/errors.ts";
-import { eventName, parseIncoming, recordOf } from "../_shared/whatsapp/inbound.ts";
+import { eventName, parseInboxMessage, parseIncoming, recordOf } from "../_shared/whatsapp/inbound.ts";
+import { inboxRow } from "../_shared/whatsapp/inbox.ts";
 
 /** Ingestão durável. IA e envio não rodam dentro da resposta do webhook. */
 serve(async (req) => {
@@ -43,9 +44,16 @@ serve(async (req) => {
       }
       return jsonResponse({ accepted: true });
     }
-    if (event !== "messages.upsert") return jsonResponse({ accepted: false, reason: "unsupported_event" });
+    if (event !== "messages.upsert" && event !== "send.message") return jsonResponse({ accepted: false, reason: "unsupported_event" });
     const entries = Array.isArray(body.data) ? body.data : [body.data];
     if (entries.length > 100) throw new WhatsAppError("invalid_request", 413);
+    // Caixa de entrada: recebidas, enviadas pelo celular e pela API. Duplicatas (retry/outbox) são ignoradas.
+    const inbox = entries.map(parseInboxMessage).filter((m): m is NonNullable<typeof m> => !!m).map((m) => inboxRow(instance.salon_id, m));
+    if (inbox.length) {
+      const { error: inboxError } = await db.from("whatsapp_messages").upsert(inbox, { onConflict: "salon_id,provider_message_id", ignoreDuplicates: true });
+      if (inboxError) throw new WhatsAppError("persistence_failed", 503);
+    }
+    if (event === "send.message") return jsonResponse({ accepted: inbox.length });
     let accepted = 0;
     for (const entry of entries) {
       const message = parseIncoming(entry);

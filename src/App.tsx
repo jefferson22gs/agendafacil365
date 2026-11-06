@@ -50,12 +50,8 @@ const Gallery = lazy(() => import("./pages/admin/Gallery"));
 const AdvancedFeatures = lazy(() => import("./pages/admin/AdvancedFeatures"));
 const SubscriptionManagement = lazy(() => import("./pages/admin/SubscriptionManagement"));
 const Marketing = lazy(() => import("./pages/admin/Marketing"));
-const ChatbotIA = lazy(() => import("./pages/admin/ChatbotIA"));
-const StatusScheduler = lazy(() => import("./pages/admin/StatusScheduler"));
-const WhatsAppConnection = lazy(() => import("./pages/admin/WhatsAppConnection"));
-const BroadcastMessages = lazy(() => import("./pages/admin/BroadcastMessages"));
-const ImportContacts = lazy(() => import("./pages/admin/ImportContacts"));
-const ExportContacts = lazy(() => import("./pages/admin/ExportContacts"));
+const WhatsAppCentral = lazy(() => import("./pages/admin/whatsapp/WhatsAppCentral"));
+const LegacyWhatsAppRedirect = lazy(() => import("./pages/admin/whatsapp/WhatsAppCentral").then(m => ({ default: m.LegacyWhatsAppRedirect })));
 const TrainingCenter = lazy(() => import("./features/training/pages/TrainingCenter"));
 const TrainingArticle = lazy(() => import("./features/training/pages/TrainingArticle"));
 
@@ -248,42 +244,42 @@ const App = () => (
               <Route path="/admin/chatbot" element={
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
-                    <ChatbotIA />
+                    <LegacyWhatsAppRedirect />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/status-scheduler" element={
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
-                    <StatusScheduler />
+                    <LegacyWhatsAppRedirect />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/whatsapp" element={
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
-                    <WhatsAppConnection />
+                    <WhatsAppCentral />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/broadcast" element={
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
-                    <BroadcastMessages />
+                    <LegacyWhatsAppRedirect />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/import-contacts" element={
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
-                    <ImportContacts />
+                    <LegacyWhatsAppRedirect />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/export-contacts" element={
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
-                    <ExportContacts />
+                    <LegacyWhatsAppRedirect />
                   </Suspense>
                 </ProtectedRoute>
               } />

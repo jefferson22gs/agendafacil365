@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useTraining } from "./TrainingProvider";
 import { prefersReducedMotion, waitForTarget, findTarget } from "./dom";
+import { isAtRoute } from "./registry/routeContext";
 import type { TourStep } from "./types";
 
 const WAIT_MS = 4000;
@@ -89,7 +90,7 @@ export default function TourOverlay() {
     setMissing(false);
 
     const route = step.route ?? tour?.route;
-    if (route && location.pathname !== route) {
+    if (route && !isAtRoute(route, location.pathname, location.search)) {
       navigate(route);
       return () => controller.abort();
     }
@@ -124,7 +125,7 @@ export default function TourOverlay() {
       }
     });
     return () => controller.abort();
-  }, [step, stepIndex, location.pathname, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, stepIndex, location.pathname, location.search, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Acompanha scroll, resize e animações do alvo.
   useEffect(() => {
