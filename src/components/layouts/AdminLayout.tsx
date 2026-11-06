@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "@/components/icons/Logo";
-import { Button } from "@/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePWA } from "@/hooks/usePWA";
@@ -10,387 +11,179 @@ import { NotificationBell } from "@/components/admin/NotificationCenter";
 import { ThemeSelector } from "@/components/admin/ThemeSelector";
 import { FloatingActionButton } from "@/components/mobile/FloatingActionButton";
 import { SubscriptionWarningBanner } from "@/components/subscription/SubscriptionWarningBanner";
-import {
-  LayoutDashboard,
-  Calendar,
-  Users,
-  Scissors,
-  DollarSign,
-  Gift,
-  Settings,
-  Bell,
-  ChevronDown,
-  Menu,
-  X,
-  LogOut,
-  UserCog,
-  ClipboardList,
-  BarChart3,
-  Package,
-  ShoppingBag,
-  Star,
-  Building2,
-  Image,
-  Home,
-  WifiOff,
-  Trophy,
-  Clock,
-  Share2,
-  Brain,
-  Crown,
-  Megaphone,
-  Bot,
-  CalendarDays,
-  Smartphone,
-  Send,
-  Upload
-} from "lucide-react";
+import { ChevronDown, Menu, LogOut, WifiOff, Settings, Search, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GraduationCap } from "lucide-react";
 import { HelpButton } from "@/features/training/HelpButton";
-import { LAYOUT_IDS, sidebarId } from "@/features/training/tourIds";
+import { useOptionalTraining } from "@/features/training/TrainingProvider";
+import { LAYOUT_IDS, isMenuTarget, sidebarId } from "@/features/training/tourIds";
+import { NAV_GROUPS, BOTTOM_NAV, WHATSAPP_PATH, activeNav, filterNav, pageTitle, whatsappTabHref } from "./adminNav";
 
-interface AdminLayoutProps {
-  children: React.ReactNode;
-}
+const COLLAPSED_KEY = "agendafacil365.sidebar.collapsed";
+const navClass = "flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-lg px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring hover:bg-sidebar-accent";
+// Ativo: fundo + barra lateral (não depende só de cor; branco sobre navy passa AA em qualquer paleta).
+const selectedClass = "bg-sidebar-accent text-white font-semibold shadow-[inset_4px_0_0_hsl(var(--sidebar-ring))]";
 
-// Mesmos 23 destinos de antes, agrupados. Paths e data-tour (sidebarId) inalterados.
-const menuGroups = [
-  {
-    title: "Operação",
-    items: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/admin", shortLabel: "Início" },
-      { icon: Calendar, label: "Agendamentos", path: "/admin/appointments", shortLabel: "Agenda" },
-      { icon: Users, label: "Clientes", path: "/admin/clients", shortLabel: "Clientes" },
-      { icon: UserCog, label: "Profissionais", path: "/admin/professionals", shortLabel: "Equipe" },
-      { icon: ClipboardList, label: "Serviços", path: "/admin/services", shortLabel: "Serviços" },
-    ],
-  },
-  {
-    title: "Gestão",
-    items: [
-      { icon: DollarSign, label: "Financeiro", path: "/admin/financial", shortLabel: "Financeiro" },
-      { icon: BarChart3, label: "Analytics", path: "/admin/analytics", shortLabel: "Analytics" },
-      { icon: Package, label: "Pacotes", path: "/admin/packages", shortLabel: "Pacotes" },
-      { icon: Gift, label: "Cupons", path: "/admin/coupons", shortLabel: "Cupons" },
-      { icon: ShoppingBag, label: "Produtos", path: "/admin/products", shortLabel: "Produtos" },
-      { icon: Building2, label: "Multi-Unidades", path: "/admin/multi-units", shortLabel: "Unidades" },
-      { icon: Brain, label: "Recursos Avançados", path: "/admin/advanced", shortLabel: "Avançado" },
-    ],
-  },
-  {
-    title: "Relacionamento",
-    items: [
-      { icon: Smartphone, label: "WhatsApp", path: "/admin/whatsapp", shortLabel: "WhatsApp", isNew: true },
-      { icon: Bot, label: "Chatbot IA", path: "/admin/chatbot", shortLabel: "Chatbot", isNew: true },
-      { icon: Send, label: "Disparador", path: "/admin/broadcast", shortLabel: "Disparo", isNew: true },
-      { icon: CalendarDays, label: "Agendador Status", path: "/admin/status-scheduler", shortLabel: "Status", isNew: true },
-      { icon: Megaphone, label: "Marketing", path: "/admin/marketing", shortLabel: "Marketing" },
-      { icon: Star, label: "Avaliações", path: "/admin/reviews", shortLabel: "Avaliações" },
-      { icon: Image, label: "Galeria", path: "/admin/gallery", shortLabel: "Galeria" },
-      { icon: Upload, label: "Importar Contatos", path: "/admin/import-contacts", shortLabel: "Importar", isNew: true },
-    ],
-  },
-  {
-    title: "Configurações e ajuda",
-    items: [
-      { icon: Settings, label: "Configurações", path: "/admin/settings", shortLabel: "Config" },
-      { icon: Crown, label: "Minha Assinatura", path: "/admin/subscription", shortLabel: "Assinatura" },
-      { icon: GraduationCap, label: "Central de Treinamento", path: "/admin/training", shortLabel: "Ajuda" },
-    ],
-  },
-];
-const menuItems = menuGroups.flatMap(g => g.items);
-
-// Título do cabeçalho também para sub-rotas sem item próprio.
-const EXTRA_TITLES: Record<string, string> = { "/admin/export-contacts": "Exportar Contatos" };
-const pageTitle = (pathname: string) =>
-  menuItems.find(i => i.path === pathname)?.label
-  ?? EXTRA_TITLES[pathname]
-  ?? (pathname.startsWith("/admin/training/") ? "Central de Treinamento" : "Dashboard");
-
-// Bottom navigation items (mobile only) - most used features
-const bottomNavItems = [
-  { icon: Home, label: "Início", path: "/admin" },
-  { icon: Calendar, label: "Agenda", path: "/admin/appointments" },
-  { icon: Users, label: "Clientes", path: "/admin/clients" },
-  { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
-  { icon: Menu, label: "Menu", path: "menu" },
-];
-
-export const AdminLayout = ({ children }: AdminLayoutProps) => {
+export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [salonName, setSalonName] = useState<string>("");
+  const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(COLLAPSED_KEY) === "true"; } catch { return false; }
+  });
+  const [query, setQuery] = useState("");
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [salonName, setSalonName] = useState("");
   const [salonId, setSalonId] = useState<string | null>(null);
-  const { user, profile, signOut, isAdmin } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { isOnline } = usePWA();
+  const { isConnected } = useRealtimeNotifications(salonId || undefined);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Notificações em tempo real
-  const { notifications, unreadCount, isConnected } = useRealtimeNotifications(salonId || undefined);
+  const training = useOptionalTraining();
+  const openerRef = useRef<HTMLElement | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const current = activeNav(location.pathname, location.search);
+  const tourTarget = training?.active?.tour.steps[training.active.step]?.target;
+  const tourNeedsMenu = isMenuTarget(tourTarget);
+  const mini = desktop && collapsed && !tourNeedsMenu;
+  const groups = filterNav(NAV_GROUPS, tourNeedsMenu ? "" : query);
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "Usuário";
 
   useEffect(() => {
-    fetchSalonData();
+    const media = window.matchMedia("(min-width: 1024px)");
+    const sync = () => { setDesktop(media.matches); setSidebarOpen(false); };
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    if (user) void supabase.from("salons").select("id, name").eq("owner_id", user.id).maybeSingle().then(({ data }) => {
+      if (alive && data) { setSalonName(data.name); setSalonId(data.id); }
+    });
+    return () => { alive = false; };
   }, [user]);
 
-  // Close sidebar on route change (mobile)
+  useEffect(() => { setSidebarOpen(false); setQuery(""); }, [location.pathname, location.search]);
+  useEffect(() => { setWhatsappOpen(current.path === WHATSAPP_PATH); }, [current.path]);
+
+  // O tour pode revelar navegação, nunca clicar em ações da página. Sheet mantém o foco e trava o fundo.
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
-  // Drawer mobile: Esc fecha, foco entra no drawer e volta ao botão que abriu.
-  const sidebarRef = useRef<HTMLElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    openerRef.current = document.activeElement as HTMLElement | null;
-    sidebarRef.current?.querySelector<HTMLElement>("button")?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSidebarOpen(false);
-      if (e.key !== "Tab" || !sidebarRef.current) return;
-      const f = sidebarRef.current.querySelectorAll<HTMLElement>("button, a[href]");
-      if (!f.length) return;
-      const [first, last] = [f[0], f[f.length - 1]];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      openerRef.current?.focus?.();
-    };
-  }, [sidebarOpen]);
-
-  const fetchSalonData = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('salons')
-      .select('id, name')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-
-    if (data) {
-      setSalonName(data.name);
-      setSalonId(data.id);
-      console.log('🔔 Salon ID carregado para notificações:', data.id);
-    }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  const handleBottomNavClick = (path: string) => {
-    if (path === "menu") {
+    if (tourNeedsMenu && !desktop) {
+      openerRef.current = menuButtonRef.current;
       setSidebarOpen(true);
-    } else {
-      navigate(path);
-    }
-  };
+    } else setSidebarOpen(false);
+  }, [tourNeedsMenu, desktop]);
 
-  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
+  // A reserva acompanha a altura REAL da barra (fonte ampliada, safe-area e rotação incluídas).
+  useEffect(() => {
+    const bar = bottomRef.current;
+    if (!bar) return;
+    const observer = new ResizeObserver(() => rootRef.current?.style.setProperty("--admin-bottom-h", `${bar.getBoundingClientRect().height}px`));
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
+
+  const openMenu = (button: HTMLElement) => { openerRef.current = button; setSidebarOpen(true); };
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      try { localStorage.setItem(COLLAPSED_KEY, String(!value)); } catch { /* Preferência opcional. */ }
+      return !value;
+    });
+  };
+  const closeMenu = () => { setSidebarOpen(false); setQuery(""); };
+  const handleSignOut = async () => { await signOut(); navigate("/"); };
+  const labelled = (label: string, element: React.ReactElement) => mini ? (
+    <Tooltip><TooltipTrigger asChild>{element}</TooltipTrigger><TooltipContent side="right">{label}</TooltipContent></Tooltip>
+  ) : element;
+
+  const sidebar = (
+    <div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
+      <div className="flex shrink-0 items-center gap-2 border-b border-sidebar-border p-2">
+        {!mini && <Logo size="sm" variant="white" className="min-w-0 flex-1 !shrink max-w-[184px]" />}
+        {!desktop && <SheetClose className={cn(navClass, "ml-auto shrink-0")} aria-label="Fechar menu"><X size={22} aria-hidden /></SheetClose>}
+        {desktop && labelled(mini ? "Expandir menu" : "Recolher menu", <button type="button" onClick={toggleCollapsed} data-tour={LAYOUT_IDS.sidebarCollapse} aria-label={mini ? "Expandir menu" : "Recolher menu"} aria-expanded={!mini} className={cn(navClass, "shrink-0")}>{mini ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button>)}
+      </div>
+      {!mini && <div className="relative shrink-0 px-3 py-2">
+        <Search size={18} aria-hidden className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-sidebar-muted" />
+        <input type="search" aria-label="Buscar no menu" placeholder="Buscar no menu" value={tourNeedsMenu ? "" : query} onChange={(e) => setQuery(e.target.value)} data-tour={LAYOUT_IDS.menuSearch} className="min-h-[44px] w-full rounded-lg border border-sidebar-border bg-sidebar-accent py-2 pl-9 pr-2 text-sm text-white placeholder:text-sidebar-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring" />
+      </div>}
+      <nav aria-label="Menu principal" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3 momentum-scroll" data-tour={LAYOUT_IDS.sidebar}>
+        {labelled(salonName || "Configurar estabelecimento", <Link to="/admin/settings" onClick={closeMenu} data-tour={LAYOUT_IDS.salonSelector} aria-label={salonName ? `Configurações de ${salonName}` : "Configurar estabelecimento"} className={cn(navClass, "mb-2 bg-sidebar-accent")}>
+          <Settings size={20} className="shrink-0" aria-hidden />
+          {!mini && <span className="min-w-0 break-words"><span className="block font-semibold">{salonName || "Configurar estabelecimento"}</span><span className="block text-xs text-sidebar-muted">Administrador · {displayName}</span></span>}
+        </Link>)}
+        {!isOnline && <p role="status" className="my-2 flex items-center gap-2 px-3 py-2 text-sm"><WifiOff size={18} className="shrink-0" aria-hidden /><span className={mini ? "sr-only" : ""}>Modo offline</span></p>}
+        {!groups.length && <p role="status" className="px-3 py-4 text-sm text-sidebar-muted">Nenhum item encontrado. Tente outro nome.</p>}
+        {groups.map((group) => <section key={group.title} aria-label={group.title} className="mt-3">
+          <h2 className={mini ? "sr-only" : "px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-sidebar-muted"}>{group.title}</h2>
+          <ul className="space-y-1">
+            {group.items.map((item) => {
+              const active = current.path === item.path;
+              const expanded = !mini && (whatsappOpen || !!query.trim());
+              return <li key={item.path}>
+                <div className="flex items-center gap-1">
+                  {labelled(item.label, <Link to={item.path} onClick={closeMenu} data-tour={sidebarId(item.path)} aria-label={mini ? item.label : undefined} aria-current={active ? "page" : undefined} className={cn(navClass, "min-w-0 flex-1", active && selectedClass)}>
+                    <item.icon size={20} className="shrink-0" aria-hidden />
+                    {!mini && <span className="break-words">{item.label}</span>}
+                  </Link>)}
+                  {item.children && !mini && <button type="button" className={cn(navClass, "shrink-0 px-2")} aria-label={expanded ? "Recolher abas do WhatsApp" : "Expandir abas do WhatsApp"} aria-expanded={expanded} aria-controls="whatsapp-submenu" onClick={() => setWhatsappOpen((value) => !value)}><ChevronDown size={18} aria-hidden className={expanded ? "rotate-180" : ""} /></button>}
+                </div>
+                {item.children && expanded && <ul id="whatsapp-submenu" className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                  {item.children.map((sub) => <li key={sub.aba}><Link to={whatsappTabHref(sub.aba)} onClick={closeMenu} aria-current={active && current.aba === sub.aba ? "page" : undefined} className={cn(navClass, active && current.aba === sub.aba && selectedClass)}>{sub.label}</Link></li>)}
+                </ul>}
+              </li>;
+            })}
+          </ul>
+        </section>)}
+      </nav>
+      <div className="shrink-0 border-t border-sidebar-border p-2">
+        {labelled("Sair", <button type="button" onClick={() => void handleSignOut()} aria-label="Sair" className={cn(navClass, "w-full")}><LogOut size={20} className="shrink-0" aria-hidden />{!mini && <span>Sair</span>}</button>)}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar - Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-brand-navy/50 backdrop-blur-[2px] z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden
-        />
+    <div ref={rootRef} className="flex min-h-[100dvh] bg-background [--admin-bottom-h:5rem]">
+      {desktop ? <aside aria-label="Navegação do painel" className={cn("sticky top-0 shrink-0 self-start border-r border-sidebar-border bg-sidebar safe-top safe-bottom", mini ? "w-[4.5rem]" : "w-64")} style={{ height: "calc(100dvh - var(--demo-bar-h, 0px))" }}>{sidebar}</aside> : (
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent id="admin-sidebar" side="left" className="w-[min(22rem,calc(100vw-24px))] max-w-none border-sidebar-border bg-sidebar p-0 text-sidebar-foreground safe-top safe-bottom safe-left [&>button:last-child]:hidden" style={{ height: "calc(100dvh - var(--demo-bar-h, 0px))" }} onCloseAutoFocus={(e) => { e.preventDefault(); openerRef.current?.focus(); }}>
+            <SheetTitle className="sr-only">Menu principal</SheetTitle>
+            <SheetDescription className="sr-only">Navegue pelas áreas do painel. Busque um item ou role a lista. Escape fecha o menu.</SheetDescription>
+            {sidebar}
+          </SheetContent>
+        </Sheet>
       )}
-
-      {/* Sidebar navy (logo branco integral) */}
-      <aside
-        ref={sidebarRef}
-        id="admin-sidebar"
-        aria-label="Menu principal"
-        className={cn(
-          "fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50",
-          "w-[280px] lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
-          "transform transition-transform duration-300 ease-in-out",
-          "safe-top safe-bottom",
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )}
-      >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between gap-2 px-4 h-16 border-b border-sidebar-border">
-            <Logo size="sm" variant="white" className="max-w-[184px]" />
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent touch-target"
-              aria-label="Fechar menu"
-            >
-              <X size={22} aria-hidden />
-            </button>
-          </div>
-
-          {/* Estabelecimento */}
-          <div className="p-3">
-            <button
-              onClick={() => navigate('/admin/settings')}
-              data-tour={LAYOUT_IDS.salonSelector}
-              className="w-full flex items-center justify-between gap-2 p-3 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors touch-target focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0" aria-hidden>
-                  {salonName ? salonName.charAt(0).toUpperCase() : displayName.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left min-w-0">
-                  <p className="font-semibold text-sidebar-foreground text-sm truncate">
-                    {salonName || "Configurar estabelecimento"}
-                  </p>
-                  <p className="text-xs text-sidebar-muted">Administrador</p>
-                </div>
-              </div>
-              <Settings size={16} className="text-sidebar-muted flex-shrink-0" aria-hidden />
-            </button>
-          </div>
-
-          {!isOnline && (
-            <div role="status" className="mx-3 mb-2 px-3 py-2 rounded-lg bg-white/10 border border-white/15 flex items-center gap-2 text-sidebar-foreground text-sm">
-              <WifiOff size={16} aria-hidden />
-              <span>Modo offline</span>
-            </div>
-          )}
-
-          {/* Navegação agrupada */}
-          <nav className="flex-1 px-3 pb-3 overflow-y-auto momentum-scroll" data-tour={LAYOUT_IDS.sidebar}>
-            {menuGroups.map((group) => (
-              <div key={group.title} className="mt-3 first:mt-0">
-                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">{group.title}</p>
-                <ul className="space-y-0.5">
-                  {group.items.map((item) => {
-                    const isActive = location.pathname === item.path || (item.path === "/admin/training" && location.pathname.startsWith("/admin/training/"));
-                    return (
-                      <li key={item.path}>
-                        <button
-                          data-tour={sidebarId(item.path)}
-                          aria-current={isActive ? "page" : undefined}
-                          onClick={() => {
-                            navigate(item.path);
-                            setSidebarOpen(false);
-                          }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                            isActive
-                              ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold'
-                              : 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-white'
-                          )}
-                        >
-                          <item.icon size={18} className="flex-shrink-0" aria-hidden />
-                          <span className="truncate">{item.label}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </nav>
-
-          <div className="p-3 border-t border-sidebar-border safe-bottom">
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-            >
-              <LogOut size={18} aria-hidden />
-              <span className="font-medium">Sair</span>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0">
-        {/* Top Header */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky-header">
-          <div className="flex items-center justify-between gap-2 px-3 sm:px-4 lg:px-8 h-14 lg:h-16">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-lg text-foreground hover:bg-secondary touch-target -ml-2"
-                aria-label="Abrir menu"
-                aria-expanded={sidebarOpen}
-                aria-controls="admin-sidebar"
-                data-tour={LAYOUT_IDS.menuButton}
-              >
-                <Menu size={24} aria-hidden />
-              </button>
-              <Logo size="sm" showText={false} className="hidden sm:inline-flex lg:hidden" />
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2 py-1 sm:px-4 lg:px-8">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {!desktop && <button ref={menuButtonRef} type="button" onClick={(e) => openMenu(e.currentTarget)} className="touch-target shrink-0 rounded-lg text-foreground hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring" aria-label="Abrir menu" aria-expanded={sidebarOpen} aria-controls="admin-sidebar" data-tour={LAYOUT_IDS.menuButton}><Menu size={24} aria-hidden /></button>}
               <div className="min-w-0">
-                <p className="hidden sm:block text-xs text-muted-foreground truncate">{salonName || "Painel"}</p>
-                <h1 className="text-base sm:text-lg font-semibold text-foreground truncate">
-                  {pageTitle(location.pathname)}
-                </h1>
+                <p className="hidden truncate text-xs text-muted-foreground sm:block">{salonName || "Painel"}</p>
+                <h1 className="truncate text-base font-semibold sm:text-lg" title={pageTitle(location.pathname, location.search)}>{pageTitle(location.pathname, location.search)}</h1>
               </div>
             </div>
-
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="flex shrink-0 items-center gap-1 [&_button]:min-h-[44px] [&_button]:min-w-[44px]">
               <HelpButton />
               <ThemeSelector />
-
-              {isConnected && (
-                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/10 border border-success/20" role="status">
-                  <span className="w-2 h-2 rounded-full bg-success" aria-hidden />
-                  <span className="text-xs text-success font-medium">Tempo real</span>
-                </div>
-              )}
-
-              <div data-tour={LAYOUT_IDS.notifications}>
-                <NotificationBell />
-              </div>
-              <div className="hidden sm:flex w-9 h-9 rounded-full bg-primary items-center justify-center text-primary-foreground text-sm font-semibold" title={displayName} aria-hidden>
-                {displayName.charAt(0).toUpperCase()}
-              </div>
+              {isConnected && <div className="hidden items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-2 py-1 xl:flex" role="status"><span className="h-2 w-2 rounded-full bg-success" aria-hidden /><span className="text-xs font-medium text-success">Tempo real</span></div>}
+              <div data-tour={LAYOUT_IDS.notifications}><NotificationBell /></div>
+              <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground sm:flex" title={displayName} aria-hidden>{displayName.charAt(0).toUpperCase()}</div>
             </div>
           </div>
         </header>
-
-        {/* Subscription Warning Banner */}
         <SubscriptionWarningBanner />
-
-        {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          {children}
-        </main>
+        <main className="min-w-0 flex-1 overflow-x-auto p-4 sm:p-6 lg:p-8" style={!desktop ? { paddingBottom: "calc(var(--admin-bottom-h) + 5rem)" } : undefined}>{children}</main>
       </div>
-
-      {/* Bottom Navigation - Mobile Only */}
-      <nav className="bottom-nav lg:hidden" data-tour={LAYOUT_IDS.bottomNav}>
-        <div className="flex items-center justify-around h-16">
-          {bottomNavItems.map((item) => {
-            const isActive = item.path !== "menu" && location.pathname === item.path;
-            const isMenu = item.path === "menu";
-
-            return (
-              <button
-                key={item.label}
-                data-tour={isMenu ? LAYOUT_IDS.bottomMenu : `bottom-${sidebarId(item.path)}`}
-                onClick={() => handleBottomNavClick(item.path)}
-                aria-current={isActive ? "page" : undefined}
-                aria-expanded={isMenu ? sidebarOpen : undefined}
-                aria-controls={isMenu ? "admin-sidebar" : undefined}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[60px] touch-target rounded-lg",
-                  isActive ? "text-primary font-semibold" : "text-muted-foreground",
-                  isMenu && sidebarOpen && "text-primary"
-                )}
-              >
-                <item.icon size={22} aria-hidden />
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </button>
-            );
-          })}
+      <nav ref={bottomRef} aria-label="Atalhos do painel" className="bottom-nav safe-left safe-right z-40 lg:hidden" data-tour={LAYOUT_IDS.bottomNav}>
+        <div className="grid grid-cols-5 items-stretch gap-0.5 px-1 py-1">
+          {BOTTOM_NAV.map((item) => <Link key={item.path} to={item.path} data-tour={`bottom-${sidebarId(item.path)}`} aria-current={current.path === item.path ? "page" : undefined} className={cn("flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1 text-center text-xs focus-visible:ring-2 focus-visible:ring-ring", current.path === item.path ? "bg-secondary font-semibold text-foreground" : "text-muted-foreground")}><item.icon size={22} className="shrink-0" aria-hidden /><span className="max-w-full break-words">{item.label}</span></Link>)}
+          <button type="button" data-tour={LAYOUT_IDS.bottomMenu} onClick={(e) => openMenu(e.currentTarget)} aria-label="Abrir menu completo" aria-expanded={sidebarOpen} aria-controls="admin-sidebar" className="flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg py-1 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"><Menu size={22} aria-hidden /><span>Menu</span></button>
         </div>
       </nav>
-
-      {/* Floating Action Button - Mobile Only */}
-      <FloatingActionButton />
+      {!sidebarOpen && <FloatingActionButton className="bottom-[calc(var(--admin-bottom-h)+1rem)]" />}
     </div>
   );
 };

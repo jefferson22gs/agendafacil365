@@ -31,12 +31,21 @@ const MAP: Record<string, RouteContext> = {
   "/admin/subscription": { tours: ["subscription"], category: "settings" },
   "/admin/marketing": { tours: ["marketing"], category: "marketing" },
   "/admin/settings": { tours: ["settings-info", "settings-hours", "settings-public-link", "settings-branding", "settings-notifications", "settings-pix"], category: "settings" },
-  "/admin/training": { tours: ["overview"], category: "start" },
+  "/admin/training": { tours: ["training-center", "overview"], category: "start" },
 };
 
-export function contextForRoute(pathname: string): RouteContext | undefined {
+export function contextForRoute(pathname: string, search = ""): RouteContext | undefined {
+  void search; // abas de /admin/whatsapp: mapeadas pela central de WhatsApp (outra branch).
   const clean = pathname.replace(/\/+$/, "") || "/admin";
   if (MAP[clean]) return MAP[clean];
-  if (clean.startsWith("/admin/training")) return MAP["/admin/training"];
+  if (clean.startsWith("/admin/training/")) return { tours: ["training-article"], category: "start" };
   return undefined;
+}
+
+/** A tela atual já é a rota do tour? Com query, exige o caminho e cada parâmetro da rota (outros parâmetros são ignorados). */
+export function isAtRoute(route: string, pathname: string, search: string): boolean {
+  const [path, query = ""] = route.split("?");
+  if (pathname.replace(/\/+$/, "") !== path.replace(/\/+$/, "")) return false;
+  const current = new URLSearchParams(search);
+  return [...new URLSearchParams(query)].every(([key, value]) => current.get(key) === value);
 }

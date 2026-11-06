@@ -15,7 +15,13 @@ export const LAYOUT_IDS = {
   bottomNav: "layout-bottom-nav",
   bottomMenu: "layout-bottom-menu",
   salonSelector: "layout-salon-selector",
+  menuSearch: "layout-menu-search",
+  sidebarCollapse: "layout-sidebar-collapse",
 } as const;
+
+/** Alvos que ficam dentro do menu lateral: no celular/tablet o layout abre o menu enquanto o passo está ativo. */
+export const isMenuTarget = (id?: TourId) =>
+  !!id && (id.startsWith("sidebar-") || id === LAYOUT_IDS.sidebar || id === LAYOUT_IDS.salonSelector || id === LAYOUT_IDS.menuSearch || id === LAYOUT_IDS.sidebarCollapse);
 
 /** `data-tour` de cada item do menu lateral, derivado da rota: /admin/services → sidebar-services. */
 export const sidebarId = (path: string): TourId =>

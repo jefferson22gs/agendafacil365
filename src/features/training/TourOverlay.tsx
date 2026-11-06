@@ -3,13 +3,26 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X, ArrowLeft, ArrowRight, MousePointerClick, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useTraining } from "./TrainingProvider";
 import { prefersReducedMotion, waitForTarget, findTarget } from "./dom";
+import { isAtRoute } from "./registry/routeContext";
 import type { TourStep } from "./types";
 
 const WAIT_MS = 4000;
+// Mesmo ponto de quebra do AdminLayout (lg): abaixo dele há barra inferior e menu em gaveta.
+const COMPACT_QUERY = "(max-width: 1023px)";
+
+function useCompactLayout() {
+  const [compact, setCompact] = useState(() => window.matchMedia(COMPACT_QUERY).matches);
+  useEffect(() => {
+    const media = window.matchMedia(COMPACT_QUERY);
+    const sync = () => setCompact(media.matches);
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  return compact;
+}
 const PAD = 8;
 
 type Phase = "locating" | "ready";
@@ -37,7 +50,7 @@ function stepApplies(step: TourStep, isMobile: boolean) {
 
 export default function TourOverlay() {
   const { active, next, back, pause, skip, goTo } = useTraining();
-  const isMobile = useIsMobile();
+  const isMobile = useCompactLayout();
   const navigate = useNavigate();
   const location = useLocation();
   const titleId = useId();
@@ -89,7 +102,8 @@ export default function TourOverlay() {
     setMissing(false);
 
     const route = step.route ?? tour?.route;
-    if (route && location.pathname !== route) {
+    const onRoute = !!route && isAtRoute(route, location.pathname, location.search) || (!step.route && !!tour?.matchSubroutes && location.pathname.startsWith(`${route}/`));
+    if (route && !onRoute) {
       navigate(route);
       return () => controller.abort();
     }
@@ -124,7 +138,7 @@ export default function TourOverlay() {
       }
     });
     return () => controller.abort();
-  }, [step, stepIndex, location.pathname, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, stepIndex, location.pathname, location.search, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Acompanha scroll, resize e animações do alvo.
   useEffect(() => {
@@ -214,7 +228,7 @@ export default function TourOverlay() {
     // Mobile ou passo sem alvo: card ancorado embaixo, ou em cima se o alvo estiver na metade de baixo.
     const targetLow = rect ? rect.top + rect.height / 2 > vh / 2 : false;
     cardStyle = isMobile
-      ? { left: margin, right: margin, ...(targetLow ? { top: margin + 56 } : { bottom: margin + 72 }) }
+      ? { left: margin, right: margin, maxHeight: Math.max(160, vh - margin * 2 - 72), ...(targetLow ? { top: margin } : { bottom: margin + 72 }) }
       : { left: (vw - cardSize.w) / 2, top: Math.max(margin, (vh - cardSize.h) / 2) };
   } else {
     const below = rect.top + rect.height + margin;
@@ -271,8 +285,8 @@ export default function TourOverlay() {
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         className={cn(
-          "absolute pointer-events-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl p-4",
-          isMobile ? "" : "w-[340px] max-w-[calc(100vw-24px)]",
+          "absolute pointer-events-auto overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card text-card-foreground shadow-2xl p-4 max-h-[calc(100dvh-24px)]",
+          isMobile ? "" :"w-[340px] max-w-[calc(100vw-24px)]",
           !reduced && "transition-[top,left] duration-200 ease-out",
           phase === "locating" && "opacity-0",
         )}
@@ -290,7 +304,7 @@ export default function TourOverlay() {
           <button
             type="button"
             onClick={pause}
-            className="p-1 -m-1 rounded-md text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center -m-2 rounded-md text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
             aria-label="Fechar tour"
           >
             <X size={18} />

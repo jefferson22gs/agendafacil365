@@ -1,74 +1,21 @@
 import type { TourDef } from "../../types";
 
-/** Tour curto de apresentação. Não tenta explicar todas as telas: só onde fica cada coisa. */
 export const overviewTour: TourDef = {
-  id: "overview",
-  version: 1,
+  id: "overview", version: 2,
   title: "Conheça o Agenda Fácil 365",
-  description: "Um passeio rápido pelas principais áreas do painel.",
-  category: "start",
-  route: "/admin",
+  description: "Navegue pelo painel, pelo menu completo e pelos atalhos do celular.",
+  category: "start", route: "/admin",
   steps: [
-    {
-      title: "Bem-vindo ao Agenda Fácil 365",
-      body: "Em menos de 2 minutos você vai saber onde fica cada coisa. Você pode sair a qualquer momento em \"Pular\" ou com a tecla Esc.",
-    },
-    {
-      target: "layout-sidebar",
-      desktopOnly: true,
-      title: "Menu principal",
-      body: "Todas as áreas do sistema ficam neste menu, organizado em grupos: Operação, Gestão, Relacionamento e Configurações e ajuda. A tela aberta fica destacada.",
-    },
-    {
-      target: "layout-bottom-nav",
-      mobileOnly: true,
-      title: "Barra de atalhos",
-      body: "No celular, os atalhos mais usados ficam aqui embaixo: Início, Agenda, Clientes e Analytics. O restante fica em \"Menu\".",
-    },
-    {
-      target: "sidebar-appointments",
-      desktopOnly: true,
-      title: "Agendamentos",
-      body: "No grupo Operação, Agendamentos mostra a agenda do dia, marca horários e acompanha o status de cada atendimento.",
-    },
-    {
-      target: "sidebar-clients",
-      desktopOnly: true,
-      title: "Clientes",
-      body: "Cadastro e histórico dos seus clientes. Para importar os contatos do celular, use Importar Contatos, no grupo Relacionamento.",
-    },
-    {
-      target: "sidebar-services",
-      desktopOnly: true,
-      title: "Serviços e equipe",
-      body: "Em Serviços você define preços e duração. Logo acima, em Profissionais, cadastra quem atende.",
-    },
-    {
-      target: "sidebar-whatsapp",
-      desktopOnly: true,
-      title: "WhatsApp",
-      body: "No grupo Relacionamento, conecte o WhatsApp do estabelecimento para usar mensagens automáticas, disparos e o assistente com IA.",
-    },
-    {
-      target: "sidebar-financial",
-      desktopOnly: true,
-      title: "Financeiro",
-      body: "No grupo Gestão: faturamento e comissões calculados a partir dos atendimentos concluídos.",
-    },
-    {
-      target: "layout-bottom-menu",
-      mobileOnly: true,
-      title: "Menu completo",
-      body: "Toque em \"Menu\" para ver todas as áreas: Serviços, Profissionais, WhatsApp, Financeiro, Configurações e mais.",
-    },
-    {
-      target: "layout-help-button",
-      title: "Ajuda sempre à mão",
-      body: "Toque em \"Ajuda\" em qualquer tela para fazer o tour daquela tela, buscar um assunto ou continuar seus primeiros passos.",
-    },
-    {
-      title: "Tudo pronto para começar",
-      body: "Siga a lista \"Primeiros passos\" no Início. Ela mostra o que falta para o seu estabelecimento receber agendamentos. Minha Assinatura e a Central de Treinamento ficam em Configurações e ajuda.",
-    },
+    { title: "Seu painel de trabalho", body: "Este passeio explica como encontrar as áreas do estabelecimento. Próximo avança, Voltar revisa e Fechar tour ou Esc interrompe. Nenhum cadastro, envio ou pagamento é feito pelo tour." },
+    { target: "layout-bottom-nav", mobileOnly: true, title: "Atalhos no celular e tablet", body: "Início, Agenda, Clientes e WhatsApp abrem as telas mais usadas. Menu abre a navegação completa. A barra permanece disponível enquanto você rola a página." },
+    { target: "layout-bottom-menu", mobileOnly: true, title: "Menu completo", body: "Use Menu aqui embaixo ou o botão de três linhas no cabeçalho. O painel lateral fecha ao escolher um destino, tocar fora, usar o botão Fechar menu ou pressionar Esc. No próximo passo vamos abri-lo para mostrar a busca." },
+    { target: "layout-menu-search", title: "Encontre qualquer área", body: "Digite parte do nome, com ou sem acento, para filtrar os destinos. Por exemplo, agenda, financeiro ou contatos. Limpe o campo para recuperar todos os itens. A lista rola independentemente do cabeçalho e do botão Sair." },
+    { target: "sidebar-appointments", title: "Operação diária", body: "Agendamentos abre a agenda. No mesmo grupo ficam Clientes, Profissionais e Serviços. O item da tela atual fica destacado. Escolher um destino apenas abre a tela; não cria registros." },
+    { target: "sidebar-financial", title: "Gestão do estabelecimento", body: "Financeiro acompanha valores e comissões dos atendimentos. Neste grupo também estão Analytics, Pacotes, Cupons, Produtos, Multi-Unidades e Recursos Avançados. Use a ajuda de cada tela para conhecer seus critérios e limitações." },
+    { target: "sidebar-whatsapp", title: "Uma entrada para WhatsApp", body: "WhatsApp fica em Relacionamento. A seta ao lado expande os atalhos, nesta ordem: Conversas, Disparador, Agendador de status, Chatbot IA, Contatos e Conexão. Cada atalho abre a aba correspondente da central. Marketing continua uma tela separada." },
+    { target: "sidebar-settings", title: "Configurações e ajuda", body: "No final da lista ficam Configurações, Minha Assinatura e Central de Treinamento. Role o menu para alcançá-los, mesmo em celulares na horizontal. Configurações reúne os dados do estabelecimento e as opções disponíveis para personalizá-lo." },
+    { title: "Mais espaço no computador", desktopOnly: true, body: "O botão no topo do menu alterna entre a navegação completa e somente ícones. Passe o mouse ou coloque o foco em um ícone para ler o nome. A preferência é salva neste navegador, quando o armazenamento está disponível. Expandir mostra novamente busca, grupos e abas do WhatsApp." },
+    { target: "layout-help-button", title: "Ajuda em todas as telas", body: "Ajuda fica sempre no cabeçalho, inclusive no celular. Abra Fazer tour desta tela para aprender o que está vendo. Você também pode buscar um tutorial, continuar um tour interrompido ou abrir a Central de Treinamento." },
+    { title: "Pronto para trabalhar", body: "Os controles de aparência e notificações ficam ao lado da Ajuda. Sem conexão, o menu mostra Modo offline; isso não garante que operações possam ser salvas. Na demonstração, a faixa superior identifica os dados fictícios e as integrações ficam desligadas." },
   ],
 };

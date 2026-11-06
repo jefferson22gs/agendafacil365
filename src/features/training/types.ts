@@ -47,6 +47,8 @@ export interface TourDef {
   category: CategoryId;
   /** Rota inicial do tour. */
   route: string;
+  /** true = qualquer sub-rota de `route` serve (ex.: o artigo aberto em /admin/training/:id); o tour não navega. */
+  matchSubroutes?: boolean;
   steps: TourStep[];
 }
 

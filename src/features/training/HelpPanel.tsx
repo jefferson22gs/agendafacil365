@@ -35,7 +35,7 @@ export default function HelpPanel() {
   const [query, setQuery] = useState("");
   const { completed, total, nextTask, hasSalon } = useFirstSteps();
 
-  const context = contextForRoute(location.pathname);
+  const context = contextForRoute(location.pathname, location.search);
   const pageTours = (context?.tours ?? []).map((id) => getTour(id)).filter((t): t is NonNullable<typeof t> => !!t);
   const related = useMemo(() => {
     if (!context) return ARTICLES.slice(0, 4);
