@@ -98,9 +98,11 @@ export async function effectiveModel(db: SupabaseClient, cfg: PlatformConfig, ke
  * null = nenhuma chave disponível. IA desligada não é null: a reserva registra o bloqueio e o recurso cai no padrão.
  */
 export async function resolveAI(db: SupabaseClient, legacy: () => Promise<LegacyAI>, doFetch: FetchLike = fetch): Promise<ResolvedAI | null> {
-  const cfg = await loadPlatformConfig(db);
+  // Config e chave em paralelo (uma ida ao banco a menos). No legado a chave é descartada, inclusive erro dela.
+  const [cfg, central] = await Promise.all([loadPlatformConfig(db), platformKey(db, "gemini").then(key => ({ key }), (error: unknown) => ({ error }))]);
   if (cfg) {
-    const key = await platformKey(db, "gemini");
+    if ("error" in central) throw central.error;
+    const key = central.key;
     if (!key) return cfg.enabled ? null : { mode: "central", cfg, provider: "gemini", model: cachedModel(cfg) ?? staleModel(cfg), key: "", temperature: 0.5, maxTokens: 1024 };
     const model = cfg.enabled ? await effectiveModel(db, cfg, key, doFetch) : (cachedModel(cfg) ?? staleModel(cfg));
     return { mode: "central", cfg, provider: "gemini", model, key, temperature: clampNum(cfg.temperature, 0, 1, 0.5), maxTokens: clampNum(cfg.max_tokens, 50, 8192, 1024) };
@@ -110,7 +112,8 @@ export async function resolveAI(db: SupabaseClient, legacy: () => Promise<Legacy
   return { mode: "legacy", cfg: DEFAULT_CONFIG, provider: l.provider, model: l.model, key: l.key, temperature: clampNum(l.temperature, 0, 1, 0.5), maxTokens: clampNum(l.maxTokens, 100, 1000, 500) };
 }
 
-export interface ChatCall { salonId: string | null; feature: Feature; messages: AIMessage[]; tools?: unknown[]; timeoutMs?: number; maxTokens?: number }
+/** `thinkingLevel`: sobrepõe o da config (chatbot usa LOW fixo para responder rápido). */
+export interface ChatCall { salonId: string | null; feature: Feature; messages: AIMessage[]; tools?: unknown[]; timeoutMs?: number; maxTokens?: number; thinkingLevel?: PlatformConfig["thinking_level"] }
 
 /**
  * Uma chamada paga. Antes: reserva atômica (bloqueio vira AIError "quota_exceeded" com `reason`).
@@ -121,7 +124,7 @@ export interface ChatCall { salonId: string | null; feature: Feature; messages: 
 export async function aiChat(db: SupabaseClient, ai: ResolvedAI, call: ChatCall, doFetch: FetchLike = fetch): Promise<ChatResult> {
   const maxTokens = call.maxTokens ?? ai.maxTokens;
   let req: ReturnType<typeof buildRequest>;
-  try { req = buildRequest(ai.provider, ai.model, ai.key, call.messages, { temperature: ai.temperature, maxTokens, tools: call.tools, thinkingLevel: ai.cfg.thinking_level }); }
+  try { req = buildRequest(ai.provider, ai.model, ai.key, call.messages, { temperature: ai.temperature, maxTokens, tools: call.tools, thinkingLevel: call.thinkingLevel ?? ai.cfg.thinking_level }); }
   catch { throw new AIError("not_configured", 503); } // provedor legado desconhecido
 
   const est = reservationEstimate(ai.model, call.messages, maxTokens, call.tools, ai.cfg);

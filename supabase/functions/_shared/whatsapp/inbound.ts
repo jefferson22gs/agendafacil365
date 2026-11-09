@@ -14,7 +14,36 @@ export interface IncomingMessage {
 export function recordOf(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
+const PRIVATE_JID = /^\d{7,15}@s\.whatsapp\.net$/;
+const filled = (v: unknown) => typeof v === "string" ? v.trim() !== "" : v != null && v !== false;
+/**
+ * Algum contextInfo do envelope indica grupo/comunidade/anúncio. contextInfo.participant NÃO conta:
+ * em conversa 1:1 ele aparece ao citar uma mensagem (autor da citada).
+ */
+function groupContext(ctx: Record<string, unknown> | null): boolean {
+  return !!ctx && (ctx.isGroup === true || filled(ctx.groupSubject) || filled(ctx.parentGroupJid));
+}
+/**
+ * Conversa individual (1:1) inequívoca. O atendente NUNCA responde grupo, comunidade, anúncio de comunidade,
+ * status, canal (@newsletter), chamada ou LID sem número. Na dúvida, rejeita (fail-closed).
+ * Evolution 2.3.7 troca remoteJid @lid por remoteJidAlt quando resolve o número; se ainda for @lid, não há número.
+ */
+export function isPrivateChat(data: unknown): boolean {
+  const row = recordOf(data), key = recordOf(row?.key), message = recordOf(row?.message);
+  if (!row || !key) return false;
+  const jid = typeof key.remoteJid === "string" ? key.remoteJid.trim().toLowerCase() : "";
+  if (!jid || /@(g\.us|broadcast|newsletter|lid|call)$/.test(jid) || jid.includes("-") || !PRIVATE_JID.test(jid)) return false;
+  // Mensagem com participante = enviada dentro de grupo/comunidade.
+  if (filled(key.participant) || filled(key.participantAlt) || filled(row.participant) || filled(row.participantAlt)) return false;
+  if (row.isGroup === true || key.isGroup === true) return false;
+  if (message && (message.groupInviteMessage || message.senderKeyDistributionMessage || message.fastRatchetKeySenderKeyDistributionMessage)) return false;
+  const contexts: (Record<string, unknown> | null)[] = [recordOf(row.contextInfo), recordOf(message?.messageContextInfo)];
+  for (const v of Object.values(message ?? {})) contexts.push(recordOf(recordOf(v)?.contextInfo));
+  return !contexts.some(groupContext);
+}
 export function parseIncoming(data: unknown): IncomingMessage | null {
+  // Defesa em profundidade: grupos/comunidades/canais/status nunca viram comando do atendente.
+  if (!isPrivateChat(data)) return null;
   const row = recordOf(data), key = recordOf(row?.key), message = recordOf(row?.message);
   // Somente inbound inequívoco. Edit/revoke/protocol/status/grupo/LID não resolvido não são comandos.
   if (!row || key?.fromMe !== false || !message || message.protocolMessage || message.editedMessage) return null;

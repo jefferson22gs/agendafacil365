@@ -3,6 +3,8 @@ import { authorizeWorker, serviceClient } from "../_shared/whatsapp/auth.ts";
 import { processOutboxItem } from "../_shared/whatsapp/outbox.ts";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/whatsapp/errors.ts";
 
+// Rede de segurança (cron 1/min). Respostas de conversa saem já no whatsapp-inbound-worker; aqui a fila geral
+// usa whatsapp_claim_outbox, que dá prioridade à conversa (gate 1 s) e mantém campanhas a 3 s por instância.
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {

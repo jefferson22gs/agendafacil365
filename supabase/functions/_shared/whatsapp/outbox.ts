@@ -1,9 +1,16 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { evolutionClient } from "./evolution.ts";
+import { evolutionClient, privateNumber } from "./evolution.ts";
 import { objectValue, WhatsAppError } from "./errors.ts";
 
-export async function processOutboxItem(db: SupabaseClient): Promise<boolean> {
-  const { data, error } = await db.rpc("whatsapp_claim_outbox");
+/**
+ * Sem opções: fila geral (whatsapp_claim_outbox, conversa primeiro). `sourceEvent`: só a resposta deste evento
+ * (envio imediato pelo worker inbound). `chatbotOnly`: só conversa (dreno curto do dispatcher).
+ */
+export interface ClaimFilter { sourceEvent?: string; chatbotOnly?: boolean }
+export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter): Promise<boolean> {
+  const { data, error } = filter
+    ? await db.rpc("whatsapp_claim_outbox_v2", { p_source_event: filter.sourceEvent ?? null, p_chatbot_only: !!filter.chatbotOnly })
+    : await db.rpc("whatsapp_claim_outbox");
   if (error) throw new WhatsAppError("persistence_failed", 503);
   const item = data?.[0];
   if (!item) return false;
@@ -13,6 +20,10 @@ export async function processOutboxItem(db: SupabaseClient): Promise<boolean> {
   };
   let sendStarted = false;
   try {
+    // Atendente nunca responde grupo/comunidade/canal: número só com dígitos (8–15). Demais categorias já exigem E.164 no banco.
+    if (item.category === "chatbot" && !privateNumber(String(item.recipient_phone ?? "").replace(/^\+/, ""))) {
+      await finish("cancelled", "not_private_chat"); return true;
+    }
     const { data: instance, error: instanceError } = await db.from("whatsapp_instances").select("instance_name,salon_id").eq("id", item.instance_id).eq("salon_id", item.salon_id).maybeSingle();
     if (instanceError) throw new WhatsAppError("persistence_failed", 503);
     if (!instance) { await finish("failed", "instance_missing"); return true; }

@@ -7,10 +7,10 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, CheckCircle2, Download, Loader2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Loader2, Timer, X } from "lucide-react";
 import {
-  aiAdmin, AUTOMATION_LABEL, brl, downloadCsv, FEATURE_LABEL, int, plainKindLabel, presetRange, spDate, usd,
-  type AIAdminState, type PeriodPreset, type UsageReport,
+  aiAdmin, AUTOMATION_LABEL, brl, downloadCsv, FEATURE_LABEL, int, plainKindLabel, presetRange, seconds, spDate, usd,
+  type AIAdminState, type PeriodPreset, type ReplyLatency, type UsageReport,
 } from "./api";
 
 const ERROR_LABEL: Record<string, string> = {
@@ -115,6 +115,8 @@ export const UsageTab = ({ state }: { state: AIAdminState }) => {
           </Card>
         </div>
       )}
+
+      <ReplyLatencyCard />
 
       <Card>
         <CardHeader>
@@ -261,6 +263,53 @@ export const UsageTab = ({ state }: { state: AIAdminState }) => {
       )}
       <p className="text-xs text-muted-foreground">Custos são estimativas a partir dos tokens informados pelo Google e da tabela de preços. O valor cobrado de verdade aparece no faturamento do Google AI Studio / Cloud.</p>
     </div>
+  );
+};
+
+/** Meta do atendente: p50 até 8 s e p95 até 15 s, do recebimento da mensagem ao envio da resposta. */
+const TARGET_P50_MS = 8_000, TARGET_P95_MS = 15_000;
+const ReplyLatencyCard = () => {
+  const [data, setData] = useState<ReplyLatency | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setData((await aiAdmin<{ latency: ReplyLatency }>("reply_latency")).latency); }
+    catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const ok = data?.p50_ms != null && data.p95_ms != null && data.p50_ms <= TARGET_P50_MS && data.p95_ms <= TARGET_P95_MS;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center gap-2"><Timer className="w-5 h-5 shrink-0" aria-hidden />Tempo de resposta do atendente</CardTitle>
+        <CardDescription>WhatsApp, últimos 7 dias, todos os salões: do recebimento da mensagem ao envio da resposta. Meta: metade em até 8 s e 95% em até 15 s.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading && !data && <p className="flex items-center text-sm text-muted-foreground" role="status"><Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden />Carregando…</p>}
+        {error && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-destructive" role="alert">{error}</p>
+            <Button variant="outline" className="h-11" onClick={load}>Tentar de novo</Button>
+          </div>
+        )}
+        {data && (data.replies === 0 ? <p className="text-sm text-muted-foreground">Nenhuma resposta enviada pelo atendente no período.</p> : <>
+          <dl className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Mediana (p50)", seconds(data.p50_ms)], ["95% até (p95)", seconds(data.p95_ms)],
+              ["Mais lenta", seconds(data.max_ms)], ["Respostas", int(data.replies)],
+            ].map(([k, v]) => (
+              <div key={k} className="rounded-md border p-3 min-w-0"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="text-lg font-semibold break-words">{v}</dd></div>
+            ))}
+          </dl>
+          <p className={`text-xs flex items-start gap-1.5 ${ok ? "text-muted-foreground" : "text-amber-700 dark:text-amber-400"}`}>
+            {ok ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" aria-hidden /> : <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden />}
+            <span>{ok ? "Dentro da meta." : "Acima da meta."} Preparo da resposta (até gravar o envio): mediana {seconds(data.processing_p50_ms)}, p95 {seconds(data.processing_p95_ms)}.{data.not_sent ? ` ${int(data.not_sent)} respostas ainda sem confirmação de envio.` : ""}</span>
+          </p>
+        </>)}
+      </CardContent>
+    </Card>
   );
 };
 
