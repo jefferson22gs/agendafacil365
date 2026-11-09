@@ -196,7 +196,8 @@ CREATE OR REPLACE FUNCTION public.push_legacy_salons(p_fcm_token text)
 RETURNS text[] LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT coalesce(array_agg(DISTINCT s.slug), '{}')
     FROM public.push_subscriptions ps JOIN public.salons s ON s.id = ps.salon_id
-   WHERE p_fcm_token ~ '^[A-Za-z0-9_:.\-]{20,4096}$' AND ps.fcm_token = p_fcm_token
+   -- Tamanho à parte: o regex do Postgres limita repetição a {0,255}.
+   WHERE length(p_fcm_token) BETWEEN 20 AND 4096 AND p_fcm_token ~ '^[A-Za-z0-9_:.\-]+$' AND ps.fcm_token = p_fcm_token
      AND (ps.is_active OR ps.deactivated_reason = 'fcm_legacy') AND s.slug IS NOT NULL
 $$;
 
