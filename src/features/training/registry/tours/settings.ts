@@ -99,7 +99,7 @@ export const settingsHoursTour: TourDef = {
 
 export const settingsPublicLinkTour: TourDef = {
   id: "settings-public-link",
-  version: 1,
+  version: 2,
   title: "Link público de agendamento",
   description: "Encontre seu link, confira o agendamento online e copie ou abra a página.",
   category: "start",
@@ -120,6 +120,13 @@ export const settingsPublicLinkTour: TourDef = {
       title: "Agendamento online",
       body: "Confira a opção Agendamento Online Ativo. Se alterar a opção, clique em Salvar no topo para gravar a mudança.",
       fallbackBody: "Primeiro preencha o endereço do link e salve o salão. Depois aparecerá a opção Agendamento Online Ativo no cartão do link público.",
+    },
+    {
+      target: "settings-auto-confirm",
+      title: "Confirmação dos agendamentos",
+      body: "Escolha Automática para o cliente receber a confirmação na hora, ou Manual para você confirmar cada pedido na Agenda. Depois clique em Salvar no topo.",
+      fallbackBody: "Depois de salvar o salão com um endereço de link, a opção Confirmação dos agendamentos aparece no cartão Link Público de Agendamento.",
+      tip: "O padrão é Manual. Agendamentos criados por você no painel não mudam com esta opção.",
     },
     {
       target: "settings-public-link-copy",

@@ -295,12 +295,20 @@ const ReplyLatencyCard = () => {
           </div>
         )}
         {data && (data.replies === 0 ? <p className="text-sm text-muted-foreground">Nenhuma resposta enviada pelo atendente no período.</p> : <>
+          {data.evolution_p95_ms != null && data.evolution_p95_ms > 15_000 && (
+            <div className="flex items-center gap-2 p-2.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-medium" role="alert">
+              <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden />
+              <span>Atraso da Evolution elevado: p95 de {seconds(data.evolution_p95_ms)} (&gt; 15 s). Mensagens demorando do celular do cliente até a chegada no webhook.</span>
+            </div>
+          )}
           <dl className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             {[
-              ["Mediana (p50)", seconds(data.p50_ms)], ["95% até (p95)", seconds(data.p95_ms)],
-              ["Mais lenta", seconds(data.max_ms)], ["Respostas", int(data.replies)],
+              ["Tempo do sistema (p50 / p95)", `${seconds(data.p50_ms)} · ${seconds(data.p95_ms)}`],
+              ["Atraso da Evolution (p50 / p95)", data.evolution_samples ? `${seconds(data.evolution_p50_ms)} · ${seconds(data.evolution_p95_ms)}` : "Sem amostras"],
+              ["Total celular ➔ saída (p50 / p95)", data.phone_to_reply_p50_ms != null ? `${seconds(data.phone_to_reply_p50_ms)} · ${seconds(data.phone_to_reply_p95_ms)}` : `${seconds(data.p50_ms)} · ${seconds(data.p95_ms)}`],
+              ["Respostas (mais lenta)", `${int(data.replies)} (${seconds(data.max_ms)})`],
             ].map(([k, v]) => (
-              <div key={k} className="rounded-md border p-3 min-w-0"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="text-lg font-semibold break-words">{v}</dd></div>
+              <div key={k} className="rounded-md border p-3 min-w-0"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="text-base font-semibold break-words">{v}</dd></div>
             ))}
           </dl>
           <p className={`text-xs flex items-start gap-1.5 ${ok ? "text-muted-foreground" : "text-amber-700 dark:text-amber-400"}`}>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, XCircle, Edit, Ban, UserX, Phone, MessageCircle } from "lucide-react";
+import { Plus, Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, XCircle, Edit, Ban, UserX, Phone, MessageCircle, AlertCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnhancedSalonCalendar } from "@/components/admin/EnhancedSalonCalendar";
@@ -43,6 +43,7 @@ const Appointments = () => {
   const [salonId, setSalonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [batchBusy, setBatchBusy] = useState(false);
   // Use local date to avoid UTC timezone offset (Brazil UTC-3 can show tomorrow after 21h)
   const getLocalToday = () => {
     const now = new Date();
@@ -184,6 +185,41 @@ const Appointments = () => {
       fetchData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar status");
+    }
+  };
+
+  const pendingAppointments = appointments.filter(a => a.status === 'pending');
+
+  const confirmAllPending = async () => {
+    if (!pendingAppointments.length || batchBusy) return;
+    setBatchBusy(true);
+    try {
+      const ids = pendingAppointments.map(a => a.id);
+      const { error } = await supabase.from('appointments').update({ status: 'confirmed' }).in('id', ids);
+      if (error) throw error;
+      toast.success(`${ids.length} agendamento(s) confirmado(s)!`);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao confirmar agendamentos");
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const rejectAllPending = async () => {
+    if (!pendingAppointments.length || batchBusy) return;
+    if (!window.confirm(`Recusar todos os ${pendingAppointments.length} agendamentos pendentes deste dia?`)) return;
+    setBatchBusy(true);
+    try {
+      const ids = pendingAppointments.map(a => a.id);
+      const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).in('id', ids);
+      if (error) throw error;
+      toast.success(`${ids.length} agendamento(s) recusado(s).`);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao recusar agendamentos");
+    } finally {
+      setBatchBusy(false);
     }
   };
 
@@ -384,6 +420,33 @@ const Appointments = () => {
           </TabsList>
 
           <TabsContent value="list" className="space-y-4">
+            {/* Destaque: Aguardando sua confirmação */}
+            {pendingAppointments.length > 0 && (
+              <Card className="border-amber-500/40 bg-amber-500/10" data-tour="appointments-pending">
+                <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" aria-hidden />
+                    <div>
+                      <p className="font-semibold text-sm sm:text-base text-foreground">
+                        Aguardando sua confirmação ({pendingAppointments.length})
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Clientes aguardando aprovação para os horários solicitados neste dia.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" variant="brand" onClick={confirmAllPending} disabled={batchBusy}>
+                      Confirmar todos ({pendingAppointments.length})
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={rejectAllPending} disabled={batchBusy}>
+                      Recusar todos
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Navegação de data: setas + seletor; no mobile o nome do dia vai para a linha de baixo */}
             <Card data-tour="appointments-date-navigation">
           <CardContent className="p-3 sm:p-4">
@@ -509,13 +572,33 @@ const Appointments = () => {
                           </p>
                         )}
                         {/* Mobile: status e valor abaixo dos dados para não espremer o nome */}
-                        <div className="mt-2 flex items-center gap-2 sm:hidden">
+                        <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
                           <AppointmentStatusBadge data-tour="appointments-status" status={appointment.status} />
                           <span className="text-sm font-semibold text-foreground tabular-nums">R$ {appointment.final_price.toFixed(2)}</span>
+                          {appointment.status === 'pending' && (
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 dark:text-emerald-400" onClick={() => updateStatus(appointment.id, 'confirmed')}>
+                                <Check size={12} className="mr-1" /> Confirmar
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10" onClick={() => updateStatus(appointment.id, 'cancelled')}>
+                                <X size={12} className="mr-1" /> Recusar
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      {appointment.status === 'pending' && (
+                        <div className="hidden sm:flex items-center gap-1.5">
+                          <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 dark:text-emerald-400" onClick={() => updateStatus(appointment.id, 'confirmed')}>
+                            <Check size={14} className="mr-1" /> Confirmar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10" onClick={() => updateStatus(appointment.id, 'cancelled')}>
+                            <X size={14} className="mr-1" /> Recusar
+                          </Button>
+                        </div>
+                      )}
                       <AppointmentStatusBadge data-tour="appointments-status" status={appointment.status} className="hidden sm:inline-flex" />
                       <div className="text-right hidden sm:block">
                         <p className="font-bold text-foreground tabular-nums">

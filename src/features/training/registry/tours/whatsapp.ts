@@ -116,7 +116,7 @@ export const whatsappStatusTour: TourDef = {
 
 export const whatsappInboxTour: TourDef = {
   id: "whatsapp-inbox",
-  version: 1,
+  version: 2,
   title: "Atender pela aba Conversas",
   description: "Acompanhe mensagens, assuma o atendimento da IA e responda clientes.",
   category: "whatsapp",
@@ -146,7 +146,7 @@ export const whatsappInboxTour: TourDef = {
     {
       target: "inbox-thread",
       title: "Mensagens",
-      body: "Mostra o histórico da conversa. Use Carregar anteriores para ver mensagens mais antigas. No celular, Voltar retorna à lista.",
+      body: "Mostra o histórico da conversa. Embaixo de cada mensagem enviada aparece o status: Na fila, Enviada ao WhatsApp (um tique: aceita, ainda não confirmada no celular), Entregue (dois tiques), Lida (dois tiques azuis) ou Falhou, com o motivo e o botão Tentar de novo.",
       fallbackBody: "Abra uma conversa da lista para ver as mensagens.",
     },
     {

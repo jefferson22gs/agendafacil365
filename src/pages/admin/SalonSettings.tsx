@@ -38,6 +38,7 @@ interface SalonData {
   slug: string;
   description: string;
   public_booking_enabled: boolean;
+  auto_confirm_appointments?: boolean;
   pix_key?: string;
   lunch_break_config: {
     enabled: boolean;
@@ -73,6 +74,7 @@ const defaultSalon: SalonData = {
   slug: "",
   description: "",
   public_booking_enabled: true,
+  auto_confirm_appointments: false,
   lunch_break_config: {
     enabled: false,
     start_time: "12:00",
@@ -152,6 +154,8 @@ const SalonSettings = () => {
           slug: data.slug || "",
           description: data.description || "",
           public_booking_enabled: data.public_booking_enabled ?? true,
+          // Coluna existe em produção; types.ts desatualizado.
+          auto_confirm_appointments: (data as typeof data & { auto_confirm_appointments?: boolean | null }).auto_confirm_appointments ?? false,
           pix_key: data.pix_key || "",
           lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
           working_hours: data.working_hours || null
@@ -230,6 +234,7 @@ const SalonSettings = () => {
         slug: salon.slug || null,
         description: salon.description || null,
         public_booking_enabled: salon.public_booking_enabled,
+        auto_confirm_appointments: !!salon.auto_confirm_appointments,
         pix_key: salon.pix_key || null,
         lunch_break_config: salon.lunch_break_config,
         working_hours: salon.working_hours,
@@ -497,6 +502,28 @@ const SalonSettings = () => {
                   checked={salon.public_booking_enabled}
                   onCheckedChange={(checked) => setSalon({ ...salon, public_booking_enabled: checked })}
                 />
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t" data-tour="settings-auto-confirm">
+                <div className="space-y-1 pr-3">
+                  <Label htmlFor="auto_confirm">Confirmação dos agendamentos</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {salon.auto_confirm_appointments
+                      ? "Automática: o cliente recebe a confirmação na hora pelo link e WhatsApp."
+                      : "Manual: você confere e confirma cada agendamento na agenda ou pelo aviso."}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+                    {salon.auto_confirm_appointments ? "Automática" : "Manual"}
+                  </span>
+                  <Switch
+                    id="auto_confirm"
+                    aria-label="Confirmação automática de agendamentos"
+                    checked={!!salon.auto_confirm_appointments}
+                    onCheckedChange={(checked) => setSalon({ ...salon, auto_confirm_appointments: checked })}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

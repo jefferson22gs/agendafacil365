@@ -2,7 +2,7 @@ import type { TourDef } from "../../types";
 
 export const appointmentsTour: TourDef = {
   id: "appointments",
-  version: 1,
+  version: 2,
   title: "Agendamentos",
   description: "Veja a agenda do dia, crie horários e acompanhe o status dos atendimentos.",
   category: "agenda",
@@ -22,6 +22,13 @@ export const appointmentsTour: TourDef = {
       target: "appointments-list-tab",
       title: "Lista do dia",
       body: "Esta aba mostra os agendamentos da data escolhida em formato de lista. É boa para conferir nomes, telefones e valores.",
+    },
+    {
+      target: "appointments-pending",
+      title: "Aguardando sua confirmação",
+      body: "No modo de confirmação manual, os pedidos do link público e do WhatsApp chegam como Pendente. Este aviso mostra quantos são no dia e permite Confirmar todos ou Recusar todos. Cada cartão pendente também tem Confirmar e Recusar.",
+      fallbackBody: "Quando houver agendamentos pendentes no dia, aparece aqui o aviso Aguardando sua confirmação, com Confirmar e Recusar.",
+      tip: "O cliente recebe a mensagem de confirmado só quando você confirma. No modo automático, os pedidos já chegam confirmados.",
     },
     {
       target: "appointments-date-navigation",

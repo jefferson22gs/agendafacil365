@@ -76,6 +76,7 @@ export const settingsArticles: Article[] = [
         text: "No cartão do link, confira Agendamento Online Ativo. Se mudar a opção, clique em Salvar no topo para gravar a alteração.",
         image: { src: "/training/settings/public-link.webp", alt: "Cartão do link público com botões de copiar, abrir e opção de agendamento online", pending: false },
       },
+      { text: "Em Confirmação dos agendamentos, escolha Automática (o cliente recebe a confirmação na hora) ou Manual (você confirma cada pedido em Agendamentos). Clique em Salvar no topo." },
       { text: "Clique em Copiar link, o botão com símbolo de cópia. Aguarde Link copiado e cole o endereço na conversa com o cliente ou no perfil do salão. O sistema copia o endereço, mas não envia uma mensagem." },
       { text: "Para conferir como o cliente vê o salão, clique em Abrir em nova aba. Se a aba não abrir, confira o bloqueio de novas janelas do navegador." },
       { text: "Confira dados do salão, serviços e profissionais antes de compartilhar. Abrir a página não cria um agendamento; só finalize um atendimento se realmente quiser cadastrá-lo." },
@@ -83,9 +84,10 @@ export const settingsArticles: Article[] = [
     notes: [
       "O endereço é formado pelo site que você está usando, seguido de /s/ e do nome definido no campo do link. Não divulgue endereços de demonstração como se fossem produção.",
       "Copiar ou abrir com sucesso registra esse passo no checklist. Isso não comprova que o link foi enviado a um cliente nem que ele recebeu a mensagem.",
+      "Confirmação Manual é o padrão. No modo Automático, o pedido continua passando pela checagem de horário livre; se o horário estiver ocupado, ele não é criado.",
       "Desativar o agendamento online bloqueia a página pública após salvar. O botão Copiar link ainda pode aparecer, por isso confira a opção antes de divulgar.",
     ],
-    keywords: ["link", "agendamento", "online", "página", "público", "copiar", "abrir", "compartilhar", "whatsapp", "zap", "instagram", "endereço", "slug"],
+    keywords: ["link", "agendamento", "online", "página", "público", "copiar", "abrir", "compartilhar", "whatsapp", "zap", "instagram", "endereço", "slug", "confirmação", "automática", "manual"],
   },
   {
     id: "settings-personalize-salon",

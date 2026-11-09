@@ -106,8 +106,10 @@ serve(async req => {
       }
       case "reply_latency": {
         // Tempo de resposta do atendente WhatsApp (recebimento -> envio aceito), últimos 7 dias, todos os salões.
+        // v2 inclui atraso da Evolution (horário da mensagem no WhatsApp -> chegada no webhook) e tempo total do cliente.
         const to = new Date(), from = new Date(to.getTime() - 7 * 86_400_000);
-        const latency = must(await db.rpc("whatsapp_reply_latency", { p_from: from.toISOString(), p_to: to.toISOString() }));
+        let latency = (await db.rpc("whatsapp_reply_latency_v2", { p_from: from.toISOString(), p_to: to.toISOString() })).data;
+        if (!latency) latency = must(await db.rpc("whatsapp_reply_latency", { p_from: from.toISOString(), p_to: to.toISOString() }));
         return jsonResponse({ success: true, latency });
       }
       case "save_limit": {

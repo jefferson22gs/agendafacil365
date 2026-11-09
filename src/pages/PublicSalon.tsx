@@ -190,6 +190,8 @@ const PublicSalon = () => {
   const [submitting, setSubmitting] = useState(false);
   // Segredo do link do agendamento: vincula o aparelho inscrito ao horário (lembrete/avaliação por push).
   const [bookedToken, setBookedToken] = useState<string | null>(null);
+  // Status real devolvido pelo banco (confirmação automática do salão vira 'confirmed' no INSERT).
+  const [bookedStatus, setBookedStatus] = useState<string>('pending');
 
   // Review system states
   const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
@@ -802,6 +804,7 @@ const PublicSalon = () => {
 
       if (error) throw error;
       setBookedToken((appointmentData as { cancellation_token?: string | null }).cancellation_token ?? null);
+      setBookedStatus(String((appointmentData as { status?: string }).status ?? 'pending'));
 
       // Enviar confirmação WhatsApp
       try {
@@ -900,7 +903,7 @@ const PublicSalon = () => {
           .eq('id', couponApplied.id);
       }
 
-      toast.success("Agendamento realizado com sucesso!");
+      toast.success(String((appointmentData as { status?: string }).status) === "confirmed" ? "Agendamento confirmado!" : "Solicitação enviada! Aguardando confirmação do salão.");
       setStep(5);
     } catch (err: any) {
       console.error("Error creating appointment:", err);
@@ -1002,10 +1005,12 @@ const PublicSalon = () => {
             <Check size={40} style={{ color: primaryColor }} />
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground mb-4">
-            Agendamento Confirmado!
+            {bookedStatus === 'confirmed' ? 'Agendamento confirmado!' : 'Aguardando confirmação do salão'}
           </h1>
           <p className="text-muted-foreground mb-6">
-            Seu agendamento foi realizado com sucesso em <strong>{salon.name}</strong>.
+            {bookedStatus === 'confirmed'
+              ? <>Seu horário está confirmado em <strong>{salon.name}</strong>.</>
+              : <>Recebemos sua solicitação. <strong>{salon.name}</strong> vai confirmar o horário e você será avisado.</>}
           </p>
           <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-left shadow-lg">
             <div className="space-y-3">

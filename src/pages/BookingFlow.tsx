@@ -315,7 +315,8 @@ const BookingFlow = () => {
       if (appointmentData) {
       // Notificações são enfileiradas no servidor, nunca enviadas pelo navegador.
 
-        toast.success("Agendamento realizado com sucesso!");
+        // Status real: salão com confirmação automática devolve "confirmed" já no INSERT.
+        toast.success(appointmentData.status === "confirmed" ? "Agendamento confirmado!" : "Solicitação enviada! Aguardando confirmação do salão.");
 
         // Redirecionar para página de confirmação
         navigate(`/appointment-confirmation?id=${appointmentData.id}`);
