@@ -25,12 +25,14 @@ export function seedWhatsAppDemo(db: DemoDb) {
   ];
   db.whatsapp_messages = talk.flatMap(([phone, name, rows], c) => rows.map(([direction, author, body, min, type], i) => ({
     id: id(100 + c * 10 + i), salon_id: SALON_ID, phone, direction, author, body: body || (type === "image" ? "Foto de referência" : ""),
-    kind: type ? "media" : "text", message_type: type ?? "text", media_url: null, payload: null, status: direction === "in" ? "received" : "read", contact_name: direction === "in" ? name : null, created_at: ago(min),
+    kind: type ? "media" : "text", message_type: type ?? "text", media_url: null, payload: null, status: direction === "in" ? "received" : c === 3 ? "sent" : c === 2 ? "delivered" : "read", error_code: null, contact_name: direction === "in" ? name : null, created_at: ago(min),
   })));
   // Lista interativa enviada pela IA e a opção escolhida (exibição no inbox).
   db.whatsapp_messages.push(
-    { id: id(150), salon_id: SALON_ID, phone: "+5511900000001", direction: "out", author: "ai", body: "Escolha o serviço:", kind: "interactive", message_type: "list", payload: { options: ["Corte feminino", "Escova", "Hidratação"] }, media_url: null, status: "read", contact_name: null, created_at: ago(29) },
+    { id: id(150), salon_id: SALON_ID, phone: "+5511900000001", direction: "out", author: "ai", body: "Qual serviço você quer agendar?", kind: "interactive", message_type: "poll", payload: { options: ["1. ✂️ Corte feminino · R$ 80,00 · 45 min", "2. Escova · R$ 50,00 · 30 min", "3. Hidratação · R$ 90,00 · 40 min"] }, media_url: null, status: "read", contact_name: null, created_at: ago(29) },
     { id: id(151), salon_id: SALON_ID, phone: "+5511900000001", direction: "in", author: "contact", body: "Corte feminino", kind: "interactive", message_type: "list_reply", payload: null, media_url: null, status: "received", contact_name: "Mariana Alves", created_at: ago(28) },
+    // Lembrete que falhou: demonstra motivo + "Tentar de novo" (status honesto).
+    { id: id(152), salon_id: SALON_ID, phone: "+5511900000004", direction: "out", author: "system", body: "Lembrete: Corte no Studio Bella amanhã às 10:00.", kind: "text", message_type: "text", payload: null, media_url: null, status: "failed", error_code: "disconnected", contact_name: null, created_at: ago(60) },
   );
   db.whatsapp_conversation_state = [{ id: id(200), salon_id: SALON_ID, phone: "+5511900000002", human_takeover: true, taken_over_at: ago(299), last_read_at: ago(200) }];
   db.whatsapp_marketing_suppression = [{ salon_id: SALON_ID, phone: "+5511900000004", created_at: ago(3000) }];
@@ -62,6 +64,12 @@ export function whatsappDemoFunction(db: DemoDb, name: string, body: Record<stri
       return ok({ contacts: book, excluded: { group: 1, broadcast: 1, lid: 1, invalid: 0 }, truncated: false });
     }
     if (["status", "connect", "fetch"].includes(String(body.action))) return ok({ status: "connected", state: "open", phoneNumber: "5511900000000" });
+    if (body.action === "retry_message") {
+      // Reenvio idempotente: só falhou/incerto volta para a fila; na demo a mensagem "sai" na hora.
+      const m = rows(db, "whatsapp_messages").find(x => x.id === body.messageId && ["failed", "uncertain"].includes(String(x.status)));
+      if (m) Object.assign(m, { status: "sent", error_code: null });
+      return ok({ requeued: !!m });
+    }
     return undefined; // criar/desconectar/excluir: indisponível na demo
   }
   if (name === "whatsapp-reply") {
@@ -101,7 +109,8 @@ export function whatsappDemoFunction(db: DemoDb, name: string, body: Record<stri
     const r = simulateAttendant(history, rows(db, "services").filter(s => s.salon_id === SALON_ID && s.is_active !== false) as never, { professionals: rows(db, "professionals").filter(p => p.salon_id === SALON_ID && p.is_active !== false) as never, salonName: String(salon?.name ?? "Studio Bella"), phone: "+5511900000009" });
     history.push({ role: "assistant", content: r.reply });
     if (r.step === "done") history.length = 0;
-    return ok({ text: r.reply, provider: "demo", model: `demo_${r.step}`, preview: true });
+    // chips = opções tocáveis do preview (no WhatsApp real: enquete com fallback numerado).
+    return ok({ text: r.reply, provider: "demo", model: `demo_${r.step}`, preview: true, chips: r.chips ?? [] });
   }
   if (name === "whatsapp-status" && body.action === "save") {
     const [date, time] = String(body.localDateTime).split("T");

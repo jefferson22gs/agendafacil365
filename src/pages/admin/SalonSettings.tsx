@@ -154,7 +154,8 @@ const SalonSettings = () => {
           slug: data.slug || "",
           description: data.description || "",
           public_booking_enabled: data.public_booking_enabled ?? true,
-          auto_confirm_appointments: data.auto_confirm_appointments ?? false,
+          // Coluna existe em produção; types.ts desatualizado.
+          auto_confirm_appointments: (data as typeof data & { auto_confirm_appointments?: boolean | null }).auto_confirm_appointments ?? false,
           pix_key: data.pix_key || "",
           lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
           working_hours: data.working_hours || null

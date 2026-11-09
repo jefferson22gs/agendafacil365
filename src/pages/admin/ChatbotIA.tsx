@@ -761,11 +761,11 @@ export const ChatbotContent = () => {
                                         placeholder="Digite uma mensagem para testar..."
                                         value={testInput}
                                         onChange={(e) => setTestInput(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleTestMessage()}
+                                        onKeyPress={(e) => e.key === 'Enter' && void handleTestMessage()}
                                         disabled={isTesting}
                                     />
                                     <Button
-                                        onClick={handleTestMessage}
+                                        onClick={() => void handleTestMessage()}
                                         data-tour="chatbot-test-send"
                                         aria-label="Enviar mensagem de teste"
                                         disabled={isTesting || !testInput.trim()}
