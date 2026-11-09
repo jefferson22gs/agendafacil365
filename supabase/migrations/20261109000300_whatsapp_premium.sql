@@ -325,6 +325,30 @@ GRANT EXECUTE ON FUNCTION public.whatsapp_delivery_candidates(integer),public.wh
  public.whatsapp_reply_latency_v2(timestamptz,timestamptz),
  public.whatsapp_book_appointment_v2(uuid,uuid,uuid,date,time,text,text,date,text,text) TO service_role;
 
+-- Trigger legado: grava histórico em client_notifications (sem leitor) e quebrava o INSERT do agendamento quando
+-- não há telefone/nome (colunas NOT NULL), como em agendamento feito pelo painel. Mesmo registro; só não bloqueia mais.
+CREATE OR REPLACE FUNCTION public.notify_client_new_appointment()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_service_name text; v_professional_name text; v_salon_name text; v_message text;
+BEGIN
+  IF NEW.client_phone IS NULL OR NEW.client_name IS NULL THEN RETURN NEW; END IF;
+  SELECT name INTO v_service_name FROM services WHERE id = NEW.service_id;
+  SELECT name INTO v_professional_name FROM professionals WHERE id = NEW.professional_id;
+  SELECT name INTO v_salon_name FROM salons WHERE id = NEW.salon_id;
+  v_message := E'🎉 *Agendamento Confirmado!*\n\n📍 *Salão:* ' || coalesce(v_salon_name, 'Salão') ||
+    E'\n✂️ *Serviço:* ' || coalesce(v_service_name, 'Serviço') ||
+    E'\n👤 *Profissional:* ' || coalesce(v_professional_name, 'Qualquer disponível') ||
+    E'\n📅 *Data:* ' || to_char(NEW.date, 'DD/MM/YYYY') || E'\n⏰ *Horário:* ' || to_char(NEW.start_time, 'HH24:MI') ||
+    E'\n\n_Você pode cancelar ou reagendar até 2 horas antes do horário._';
+  INSERT INTO client_notifications (salon_id, appointment_id, client_phone, client_name, type, title, message, metadata)
+  VALUES (NEW.salon_id, NEW.id, NEW.client_phone, NEW.client_name, 'appointment_confirmed', 'Agendamento Confirmado', v_message,
+          jsonb_build_object('service_name', v_service_name, 'professional_name', v_professional_name, 'date', NEW.date, 'time', NEW.start_time));
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NEW; -- histórico nunca impede o agendamento
+END $$;
+
 COMMIT;
 
 -- Rollback (manual, revisar antes):
