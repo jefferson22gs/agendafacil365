@@ -422,7 +422,7 @@ const Appointments = () => {
           <TabsContent value="list" className="space-y-4">
             {/* Destaque: Aguardando sua confirmação */}
             {pendingAppointments.length > 0 && (
-              <Card className="border-amber-500/40 bg-amber-500/10">
+              <Card className="border-amber-500/40 bg-amber-500/10" data-tour="appointments-pending">
                 <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" aria-hidden />

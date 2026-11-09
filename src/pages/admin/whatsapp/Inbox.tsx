@@ -127,9 +127,10 @@ export default function Inbox() {
                   ) : (
                     <span className="inline-flex flex-wrap items-center gap-1 text-destructive font-medium">
                       <span>⚠ {statuses[m.status] || m.status}{m.error_code ? ` (${m.error_code})` : ""}</span>
-                      <Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-xs text-primary underline" disabled={busy} onClick={() => void retry(m.id)}>
+                      {/* Resposta manual não passa pelo outbox: reenviar = escrever de novo (após conferir no celular). */}
+                      {m.author !== "human" && <Button type="button" size="sm" variant="ghost" className="min-h-11 px-2 text-xs text-primary underline" disabled={busy} onClick={() => void retry(m.id)}>
                         Tentar de novo
-                      </Button>
+                      </Button>}
                     </span>
                   )}
                 </div>

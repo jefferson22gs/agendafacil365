@@ -3,7 +3,7 @@ import type { Article } from "../../types";
 export const appointmentsArticles: Article[] = [
   {
     id: "appointments-manage-day",
-    version: 1,
+    version: 2,
     title: "Como acompanhar os agendamentos do dia",
     summary: "Veja quem está marcado, em qual horário e com qual status.",
     category: "agenda",
@@ -18,11 +18,16 @@ export const appointmentsArticles: Article[] = [
       },
       { text: "Use as setas ou o campo de data para trocar o dia. Assim você confere ontem, hoje ou os próximos dias." },
       { text: "Leia cada cartão: horário, cliente, serviço, profissional, status e valor ficam juntos." },
+      { text: "Se o salão usa confirmação manual, os pedidos do link público e do WhatsApp chegam como Pendente. O aviso Aguardando sua confirmação mostra quantos são no dia: use Confirmar todos, Recusar todos, ou Confirmar e Recusar em cada cartão." },
       { text: "Use os três pontinhos do cartão para mudar o status quando o atendimento avançar." },
       { text: "Se aparecer Nenhum agendamento para esta data, use as setas para ver outros dias ou crie um novo pelo botão Novo Agendamento no topo." },
     ],
-    notes: ["Mudar status pode enviar uma notificação de avaliação quando o atendimento for marcado como concluído."],
-    keywords: ["agenda", "horário", "agendamento", "status", "confirmado", "cancelado", "cliente"],
+    notes: [
+      "Mudar status pode enviar uma notificação de avaliação quando o atendimento for marcado como concluído.",
+      "Ao confirmar, o cliente recebe pelo WhatsApp a mensagem de agendamento confirmado, se os avisos de confirmação estiverem ligados. Recusar cancela o horário.",
+      "A escolha entre confirmação Automática e Manual fica em Configurações, no cartão Link Público de Agendamento.",
+    ],
+    keywords: ["agenda", "horário", "agendamento", "status", "confirmado", "cancelado", "cliente", "pendente", "confirmar", "recusar", "aprovar", "aguardando"],
   },
   {
     id: "appointments-create-new",
