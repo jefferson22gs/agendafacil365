@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { SalonAppCard } from "@/components/pwa/SalonAppCard";
+import { AppointmentPushOptIn } from "@/components/pwa/AppointmentPushOptIn";
 import { useSalonHead } from "@/components/pwa/useSalonHead";
 import { safeHexColor } from "@/config/brand";
 import { toast } from "sonner";
@@ -187,6 +188,8 @@ const PublicSalon = () => {
   const [showTerms, setShowTerms] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+  // Segredo do link do agendamento: vincula o aparelho inscrito ao horário (lembrete/avaliação por push).
+  const [bookedToken, setBookedToken] = useState<string | null>(null);
 
   // Review system states
   const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
@@ -798,6 +801,7 @@ const PublicSalon = () => {
         .single();
 
       if (error) throw error;
+      setBookedToken((appointmentData as { cancellation_token?: string | null }).cancellation_token ?? null);
 
       // Enviar confirmação WhatsApp
       try {
@@ -1039,6 +1043,7 @@ const PublicSalon = () => {
           </div>
 
           <div className="flex flex-col gap-3">
+            <AppointmentPushOptIn salonSlug={salon.slug} cancellationToken={bookedToken} salonName={salon.name} />
             <button
               type="button"
               onClick={() => window.open(generateGoogleCalendarLink(), '_blank')}

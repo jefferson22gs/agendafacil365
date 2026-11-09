@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
+import { AppointmentPushOptIn } from "@/components/pwa/AppointmentPushOptIn";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -37,6 +38,7 @@ interface Appointment {
   can_be_modified: boolean;
   salon: {
     name: string;
+    slug: string | null;
     address: string | null;
     phone: string | null;
     primary_color: string | null;
@@ -83,7 +85,7 @@ export default function ManageAppointment() {
         .from('appointments')
         .select(`
           *,
-          salon:salons(name, address, phone, primary_color),
+          salon:salons(name, slug, address, phone, primary_color),
           service:services(name, duration_minutes),
           professional:professionals(name)
         `)
@@ -264,6 +266,11 @@ export default function ManageAppointment() {
                 <CheckCircle className="w-6 h-6" style={{ color: primaryColor }} />
                 <h2 className="text-xl font-bold">Seu Agendamento</h2>
               </div>
+              {appointment.salon.slug && appointment.status !== 'completed' && (
+                <div className="mb-4">
+                  <AppointmentPushOptIn salonSlug={appointment.salon.slug} cancellationToken={token} salonName={appointment.salon.name} />
+                </div>
+              )}
 
               <div className="space-y-4">
                 <div className="flex items-start gap-3">

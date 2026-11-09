@@ -1,16 +1,27 @@
-// Lógica pura do envio de push (sem Deno, sem rede): testada em tests/rebrand/pwa.test.cjs.
+// Lógica pura do push (sem Deno, sem rede): testada em tests/rebrand/push-full.test.cjs e pwa.test.cjs.
 
 export const STORAGE_ORIGIN = "https://ocbwsaydgkiseeardjga.supabase.co";
 export const DEFAULT_ICON = "/pwa-192x192.png";
-export const MAX_TARGETS = 500;
+/** Payload cifrado cabe em 1 registro de 4096 bytes; serviços de push aceitam ~4 KB. Margem para o JSON. */
+export const MAX_PAYLOAD_BYTES = 3000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TOKEN = /^[A-Za-z0-9_:.\-]{20,4096}$/;
-
-export type Audience = "clients" | "subscribers" | "owner";
-export interface Subscription { id: string; user_id: string | null; client_id: string | null; fcm_token: string | null }
 
 export const isUuid = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
-export const isFcmToken = (v: unknown): v is string => typeof v === "string" && TOKEN.test(v);
+
+/**
+ * Endpoint de push aceito (o servidor faz POST nele: lista fechada evita SSRF).
+ * Chrome/Android: fcm.googleapis.com · Firefox: updates.push.services.mozilla.com · Edge: *.notify.windows.com · Safari/iOS: web.push.apple.com.
+ * Mesma regra na RPC register_web_push (migração 20261109000200).
+ */
+export function isPushEndpoint(value: unknown): value is string {
+  if (typeof value !== "string" || value.length < 30 || value.length > 2048) return false;
+  let u: URL;
+  try { u = new URL(value); } catch { return false; }
+  if (u.protocol !== "https:" || u.username || u.password || u.port) return false;
+  const h = u.hostname.toLowerCase();
+  return h === "fcm.googleapis.com" || h === "updates.push.services.mozilla.com" || h === "web.push.apple.com" ||
+    /^[a-z0-9-]+(\.[a-z0-9-]+)*\.notify\.windows\.com$/.test(h);
+}
 
 /** Só caminho relativo do próprio site: "/x", sem "//", "\\", esquema, controle ou "..". Qualquer outro valor cai no fallback. */
 export function safeRelativeUrl(value: unknown, fallback: string): string {
@@ -35,53 +46,56 @@ export function cleanText(value: unknown, max: number): string {
   return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
 }
 
-/**
- * Quem recebe. Sempre dentro do salão (o chamador já filtrou por salon_id).
- *  - owner: só dispositivos do dono (user_id = owner_id).
- *  - clients: só dispositivos vinculados a client_ids informados ([] ou ausente => ninguém). Nunca o dono.
- *  - subscribers: todos os dispositivos inscritos no salão, exceto o dono (campanha para quem ativou os avisos do salão).
- * Token repetido é enviado uma única vez; limite de MAX_TARGETS.
- */
-export function selectTargets(subs: Subscription[], opts: { audience: Audience; ownerId: string; clientIds?: unknown }): Subscription[] {
-  const ids = new Set(Array.isArray(opts.clientIds) ? opts.clientIds.filter(isUuid) : []);
-  const seen = new Set<string>();
-  const out: Subscription[] = [];
-  for (const s of subs) {
-    if (!s.fcm_token || seen.has(s.fcm_token)) continue;
-    const isOwner = s.user_id === opts.ownerId;
-    const ok = opts.audience === "owner" ? isOwner
-      : opts.audience === "subscribers" ? !isOwner
-      : !isOwner && !!s.client_id && ids.has(s.client_id);
-    if (!ok) continue;
-    seen.add(s.fcm_token);
-    out.push(s);
-    if (out.length >= MAX_TARGETS) break;
+export const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,198}[a-z0-9])?$/;
+
+/** Destino padrão por tipo de aviso (o banco já grava a URL; isto é a rede de segurança). */
+export function defaultUrl(kind: string, salonSlug: string, appointmentId?: string | null): string {
+  switch (kind) {
+    case "new_appointment": case "appointment_cancelled": case "appointment_rescheduled": case "test": return "/admin/appointments";
+    case "whatsapp_human": case "payment_proof": return "/admin/whatsapp?aba=conversas";
+    case "new_review": return "/admin/reviews";
+    case "review_request": return isUuid(appointmentId) ? `/avaliar/${appointmentId}` : `/s/${salonSlug}`;
+    default: return `/s/${salonSlug}`;
   }
-  return out;
 }
 
-export function parseAudience(value: unknown): Audience {
-  return value === "owner" || value === "subscribers" ? value : "clients";
+export interface PushPayloadInput {
+  title: unknown; body: unknown; url?: unknown; icon?: unknown; kind?: unknown; tag?: unknown; salonSlug: string; appointmentId?: string | null;
 }
-
-/** Falha permanente do FCM (token morto): desativa. Rede/5xx/quota: mantém ativo para tentar de novo. */
-export function isPermanentFcmError(status: number, bodyText: string): boolean {
-  if (status === 404) return true;
-  if (status !== 400) return false;
-  try {
-    const e = JSON.parse(bodyText)?.error;
-    const codes = (e?.details ?? []).map((d: { errorCode?: string }) => d?.errorCode);
-    return codes.includes("UNREGISTERED") || e?.status === "NOT_FOUND" || (e?.status === "INVALID_ARGUMENT" && /registration token/i.test(e?.message ?? ""));
-  } catch { return false; }
-}
-
-export interface PushPayloadInput { title: string; body: string; icon?: unknown; url?: unknown; type?: unknown; salonSlug: string }
-/** Mensagem FCM só com `data` (o SW monta a notificação com título/ícone do salão). */
-export function buildMessage(token: string, input: PushPayloadInput) {
-  const url = safeRelativeUrl(input.url, `/s/${input.salonSlug}`);
-  const data = {
-    title: cleanText(input.title, 100), body: cleanText(input.body, 300), icon: safeIconUrl(input.icon), url,
-    type: cleanText(input.type, 40) || "generic", salon: input.salonSlug,
+/** JSON lido pelo service worker (public/push-sw.js). Pequeno, sem dado pessoal além do texto do aviso. */
+export function buildPayload(input: PushPayloadInput) {
+  const kind = cleanText(input.kind, 40) || "generic";
+  const slug = SLUG.test(input.salonSlug) ? input.salonSlug : "";
+  const payload = {
+    title: cleanText(input.title, 100) || "Agenda Fácil 365",
+    body: cleanText(input.body, 300),
+    url: safeRelativeUrl(input.url, defaultUrl(kind, slug, input.appointmentId)),
+    icon: safeIconUrl(input.icon),
+    tag: cleanText(input.tag, 80) || `${kind}:${slug}`,
+    kind,
+    salon: slug,
   };
-  return { message: { token, data, webpush: { headers: { Urgency: "high", TTL: "86400" } } } };
+  return payload;
 }
+export const payloadBytes = (p: unknown) => new TextEncoder().encode(JSON.stringify(p)).length;
+
+export type PushOutcome = "ok" | "gone" | "too_large" | "retry" | "auth_error" | "rejected";
+/**
+ * Resposta do serviço de push (RFC 8030):
+ * 201/200/202 entregue · 404/410 inscrição morta (desativar) · 413 payload grande · 429/5xx tentar de novo depois ·
+ * 401/403 chave VAPID recusada (configuração; não desativa a inscrição) · demais 4xx recusado.
+ */
+export function classifyPushResponse(status: number): PushOutcome {
+  if (status >= 200 && status < 300) return "ok";
+  if (status === 404 || status === 410) return "gone";
+  if (status === 413) return "too_large";
+  if (status === 429 || status >= 500) return "retry";
+  if (status === 401 || status === 403) return "auth_error";
+  return "rejected";
+}
+
+/** Backoff exponencial (minutos) entre tentativas do worker: 1, 2, 4, 8, 16 (teto 30). */
+export const backoffMinutes = (attempt: number) => Math.min(30, 2 ** Math.max(0, attempt - 1));
+
+/** Marketing: no máximo N campanhas push por salão a cada 24 h. */
+export const MARKETING_DAILY_LIMIT = 3;

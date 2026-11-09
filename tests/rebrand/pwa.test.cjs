@@ -95,49 +95,17 @@ test('contraste AA: texto preto/branco pela luminância', () => {
   assert.equal(pwa.storageImage(STORAGE), STORAGE); assert.equal(pwa.storageImage('https://evil.com/a.png'), null);
 });
 
-test('push: alvo do envio nunca sai do público pedido', () => {
-  const owner = '00000000-0000-4000-8000-000000000000';
-  const c1 = '11111111-1111-4111-8111-111111111111', c2 = '22222222-2222-4222-8222-222222222222';
-  const subs = [
-    { id: 'a', user_id: owner, client_id: null, fcm_token: 'tok-owner' },
-    { id: 'b', user_id: null, client_id: c1, fcm_token: 'tok-c1' },
-    { id: 'c', user_id: null, client_id: c2, fcm_token: 'tok-c2' },
-    { id: 'd', user_id: null, client_id: null, fcm_token: 'tok-anon' },
-    { id: 'e', user_id: null, client_id: c1, fcm_token: 'tok-c1' }, // token repetido
-    { id: 'f', user_id: null, client_id: null, fcm_token: null },
-  ];
-  const ids = o => [...core.selectTargets(subs, { ownerId: owner, ...o }).map(s => s.id)]; // array de outro realm (vm)
-  assert.deepEqual(ids({ audience: 'owner' }), ['a'], 'teste/novo agendamento: só o dono');
-  assert.deepEqual(ids({ audience: 'clients', clientIds: [c1] }), ['b'], 'cliente escolhido, token único');
-  assert.deepEqual(ids({ audience: 'clients', clientIds: [] }), [], 'lista vazia = ninguém (nunca broadcast)');
-  assert.deepEqual(ids({ audience: 'clients' }), [], 'sem lista = ninguém');
-  assert.deepEqual(ids({ audience: 'clients', clientIds: ["x' or 1=1", owner] }), [], 'ids inválidos/dono ignorados');
-  assert.deepEqual(ids({ audience: 'subscribers' }), ['b', 'c', 'd'], 'campanha: inscritos do salão, sem o dono');
-  assert.equal(core.parseAudience('everyone'), 'clients', 'audiência desconhecida cai na mais restrita');
-  const many = Array.from({ length: 900 }, (_, i) => ({ id: String(i), user_id: null, client_id: null, fcm_token: 't' + i }));
-  assert.equal(core.selectTargets(many, { audience: 'subscribers', ownerId: owner }).length, core.MAX_TARGETS);
-});
-
-test('push: link só relativo do mesmo site, ícone só do Storage, payload só data', () => {
+test('push: link só relativo do mesmo site, ícone só do Storage, payload pequeno', () => {
   for (const ok of ['/s/ana', '/avaliar/123', '/admin/appointments?x=1#y']) assert.equal(core.safeRelativeUrl(ok, 'F'), ok);
   for (const bad of ['https://evil.com', '//evil.com', '/\\evil.com', 'javascript:alert(1)', '/a/../admin', '', null, '/x y', '/' + 'a'.repeat(600)]) {
     assert.equal(core.safeRelativeUrl(bad, 'F'), 'F', String(bad));
   }
   assert.equal(core.safeIconUrl('https://evil.com/a.png'), core.DEFAULT_ICON);
   assert.equal(core.safeIconUrl(STORAGE), STORAGE);
-  const msg = core.buildMessage('tok', { title: 'Oi\u0000', body: 'b'.repeat(500), url: 'https://evil.com', salonSlug: 'ana', icon: STORAGE });
-  assert.equal(msg.message.notification, undefined, 'sem notification: o SW monta com título/ícone do salão');
-  assert.equal(msg.message.data.url, '/s/ana', 'URL externa vira a página do salão');
-  assert.equal(msg.message.data.body.length, 300); assert.equal(msg.message.data.title, 'Oi');
-  assert.ok(Object.values(msg.message.data).every(v => typeof v === 'string'), 'FCM data só aceita strings');
-  assert.equal(core.isFcmToken('abc'), false); assert.equal(core.isFcmToken('a'.repeat(40) + ':APA91b'), true);
-});
-
-test('push: só token morto é desativado', () => {
-  assert.equal(core.isPermanentFcmError(404, ''), true);
-  assert.equal(core.isPermanentFcmError(400, JSON.stringify({ error: { status: 'INVALID_ARGUMENT', details: [{ errorCode: 'UNREGISTERED' }] } })), true);
-  assert.equal(core.isPermanentFcmError(400, JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'bad payload' } })), false);
-  for (const s of [401, 403, 429, 500, 503]) assert.equal(core.isPermanentFcmError(s, ''), false, String(s));
+  const p = core.buildPayload({ title: 'Oi ', body: 'b'.repeat(500), url: 'https://evil.com', salonSlug: 'ana', icon: STORAGE });
+  assert.equal(p.url, '/s/ana', 'URL externa vira a página do salão');
+  assert.equal(p.body.length, 300); assert.equal(p.title, 'Oi');
+  assert.ok(core.payloadBytes(p) < core.MAX_PAYLOAD_BYTES);
 });
 
 test('contratos: front não dispara push anônimo nem escreve na tabela', () => {
@@ -145,6 +113,7 @@ test('contratos: front não dispara push anônimo nem escreve na tabela', () => 
   assert.doesNotMatch(read('src/pages/PublicSalon.tsx'), /send-push|functions\.invoke\(['"]send/);
   assert.doesNotMatch(read('src/pages/admin/Appointments.tsx'), /VITE_SUPABASE_ANON_KEY/);
   assert.doesNotMatch(read('src/hooks/usePushNotificationsFCM.tsx'), /from\('push_subscriptions'\)\s*\.(insert|update|upsert|delete)/);
+  assert.doesNotMatch(read('src/hooks/usePushNotificationsFCM.tsx'), /firebase\//, 'push sem Firebase');
   const sql = read('supabase/migrations/20261106001000_pwa_push_security.sql');
   for (const p of ['push_subscriptions_select_policy', 'push_subscriptions_update_policy', 'push_subscriptions_delete_policy', 'push_subscriptions_insert_policy']) assert.match(sql, new RegExp(`DROP POLICY IF EXISTS ${p}`));
   assert.match(sql, /REVOKE ALL ON public\.push_subscriptions FROM anon, authenticated/);

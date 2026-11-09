@@ -189,9 +189,9 @@ export const settingsBrandingTour: TourDef = {
 
 export const settingsNotificationsTour: TourDef = {
   id: "settings-notifications",
-  version: 1,
-  title: "Notificações no navegador",
-  description: "Entenda os alertas do navegador e as permissões necessárias.",
+  version: 2,
+  title: "Notificações push",
+  description: "Ative os avisos neste aparelho, escolha os tipos de aviso e acompanhe os envios.",
   category: "settings",
   route: "/admin/settings",
   steps: [
@@ -203,15 +203,40 @@ export const settingsNotificationsTour: TourDef = {
     {
       target: "settings-notifications-toggle",
       title: "Ativar neste aparelho",
-      body: "Clique em Ativar e autorize no navegador. Este aparelho passa a receber um aviso a cada novo agendamento do seu salão. Se estiverem bloqueadas, libere nas permissões do site.",
+      body: "Clique em Ativar e autorize no navegador. Este aparelho passa a receber os avisos do seu salão. Se estiverem bloqueadas, libere nas permissões do site.",
       tip: "Ativar ou Desativar já altera a inscrição de notificações, sem usar o botão Salvar do salão.",
       fallbackBody: "O botão Ativar aparece quando o navegador aceita notificações. No iPhone, adicione o painel à Tela de Início pelo Safari e ative pelo app instalado.",
     },
     {
       target: "settings-notifications-test",
       title: "Teste de verdade",
-      body: "Depois de ativar, Enviar notificação de teste manda um push real só para os seus aparelhos. Se aparecer o aviso de que as notificações ainda não foram ativadas pela plataforma, sua inscrição fica salva e passa a funcionar quando o envio for liberado.",
+      body: "Depois de ativar, Enviar teste para meu celular manda um push real só para os aparelhos em que você entrou com a sua conta. Se aparecer o aviso de que as notificações ainda não foram ativadas pela plataforma, sua inscrição fica salva e passa a funcionar quando o envio for liberado.",
       fallbackBody: "O botão de teste aparece depois que os avisos estão ativados neste aparelho.",
+    },
+    {
+      target: "settings-notifications-status",
+      title: "Situação do envio",
+      body: "Mostra se o envio de notificações está ativo na plataforma. Quando estiver indisponível, as inscrições continuam salvas.",
+    },
+    {
+      target: "settings-notifications-devices",
+      title: "Aparelhos inscritos",
+      body: "Seus aparelhos, os da equipe (dono e administradores) e os de clientes que ativaram as notificações do salão.",
+    },
+    {
+      target: "settings-notifications-prefs",
+      title: "Quais avisos você recebe",
+      body: "Ligue ou desligue cada tipo: novo agendamento, cancelamento, remarcação, mensagem no WhatsApp em atendimento humano, comprovante PIX e nova avaliação. Cada chave salva na hora.",
+    },
+    {
+      target: "settings-notifications-client-prefs",
+      title: "Avisos para clientes",
+      body: "Lembrete antes do horário, confirmação ou mudança feita pelo salão e pedido de avaliação. Só chegam ao aparelho em que o cliente pediu o lembrete ao agendar. Escolha também quando o lembrete sai.",
+    },
+    {
+      target: "settings-notifications-history",
+      title: "Últimos envios",
+      body: "Lista os avisos recentes do salão com o resultado: enviado, falhou, expirou ou na fila. Lembrete que passaria do horário expira e não é enviado.",
     },
     {
       title: "Próximo passo",
@@ -267,7 +292,7 @@ export const settingsMyAppTour: TourDef = {
     {
       target: "settings-myapp-devices",
       title: "Quem recebe",
-      body: "Este número mostra quantos aparelhos de clientes ativaram as notificações do salão. Use Marketing para enviar uma notificação a eles.",
+      body: "Este número mostra quantos aparelhos de clientes ativaram as notificações do salão. Use Marketing para enviar uma novidade a eles (até 3 campanhas por dia; quem desligou as promoções não recebe).",
     },
     {
       target: "settings-save",

@@ -4,16 +4,16 @@ import path from "path";
 
 /**
  * Isolamento compartilhado por `training` (dev) e `demo` (build público). Nunca usado por `npm run build`.
- * Troca o client Supabase e o Firebase por stubs locais, injeta CSP e um guarda síncrono que corta rede externa,
+ * Troca o client Supabase e o Web Push por stubs locais, injeta CSP e um guarda síncrono que corta rede externa,
  * window.open externo e service workers antes de qualquer módulo do app.
  */
 export const DEMO_DIR = path.resolve(__dirname, "src/features/training/demo");
 const MOCK = path.join(DEMO_DIR, "mockSupabase.ts");
-const FIREBASE_STUB = path.join(DEMO_DIR, "firebaseStub.ts");
+const WEB_PUSH_STUB = path.join(DEMO_DIR, "webPushStub.ts");
 
 export const isolationAliases = [
   { find: "@/integrations/supabase/client", replacement: MOCK },
-  { find: "@/lib/firebase", replacement: FIREBASE_STUB },
+  { find: "@/lib/webPush", replacement: WEB_PUSH_STUB },
   { find: "@", replacement: path.resolve(__dirname, "src") },
 ];
 
@@ -48,7 +48,7 @@ export function isolation({ csp, robots = false, outDir }: { csp: string; robots
     enforce: "pre",
     resolveId(source) {
       if (/integrations\/supabase\/client(?:\.ts)?$/.test(source)) return MOCK;
-      if (/(?:^|\/)lib\/firebase(?:\.ts)?$/.test(source)) return FIREBASE_STUB;
+      if (/(?:^|\/)lib\/webPush(?:\.ts)?$/.test(source)) return WEB_PUSH_STUB;
       return null;
     },
     transformIndexHtml: {
@@ -63,7 +63,7 @@ export function isolation({ csp, robots = false, outDir }: { csp: string; robots
     closeBundle() {
       // public/ é copiado inteiro; workers e sitemap de produção não pertencem à demo.
       if (!outDir) return;
-      for (const f of ["sw.js", "sw-push.js", "firebase-messaging-sw.js", "sitemap.xml"]) fs.rmSync(path.join(outDir, f), { force: true });
+      for (const f of ["sw.js", "sw-push.js", "push-sw.js", "firebase-messaging-sw.js", "sitemap.xml"]) fs.rmSync(path.join(outDir, f), { force: true });
       // Vídeo comercial (~46 MB) é da landing de produção; a demo só linka para ela.
       fs.rmSync(path.join(outDir, "video"), { recursive: true, force: true });
       // robots.txt de produção libera indexação; a demo não deve aparecer em buscadores.

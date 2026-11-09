@@ -90,6 +90,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SellersManagement } from "@/components/admin/SellersManagement";
 import { AISettingsManagement } from "@/components/admin/AISettingsManagement";
+import { PushHealthCard } from "@/components/admin/PushHealthCard";
 import { StatCard } from "@/components/admin/StatCard";
 import { displayPlanName } from "@/config/brand";
 
@@ -823,6 +824,7 @@ const SuperAdmin = () => {
                         <StatCard icon={TrendingUp} value={`+${stats.newSalonsThisMonth}`} label="Novos este mês" tone="neutral" />
                     </div>
                 )}
+                <PushHealthCard />
 
                 {/* Filters */}
                 <Card>

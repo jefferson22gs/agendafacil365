@@ -48,7 +48,8 @@ test('contratos técnicos preservados', () => {
   assert.match(read('supabase/functions/evolution-webhook/index.ts'), /x-syshair-webhook-secret/);
   assert.match(read('supabase/functions/whatsapp-instances/index.ts'), /`syshair_\$\{/);
   assert.match(read('src/features/training/TrainingProvider.tsx'), /syshair\.training\.activeTour:/);
-  assert.match(read('src/lib/firebase.ts'), /projectId: "belezatech-infinite"/);
+  // Push passou a ser Web Push padrão (VAPID), sem Firebase: só a chave pública vai no front.
+  assert.match(read('src/lib/webPush.ts'), /VAPID_PUBLIC_KEY = "B[A-Za-z0-9_-]{86}"/);
 });
 
 test('chatbot: código de verificação aceita prefixo legado e novo', () => {

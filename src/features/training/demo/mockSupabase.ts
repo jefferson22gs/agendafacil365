@@ -204,6 +204,25 @@ function analytics(salonId: unknown, period: string) {
     hourly_distribution: Array.from({ length: 11 }, (_, i) => i + 9).map((hour) => ({ hour, count: appts.filter((a) => parseInt(String(a.start_time)) === hour).length })),
   };
 }
+// Push na demo: preferências em memória, aparelhos e histórico fictícios. Nenhum envio real.
+const pushPrefs: Record<string, unknown> = { new_appointment: true, appointment_cancelled: true, appointment_rescheduled: true, whatsapp_human: true,
+  payment_proof: true, new_review: true, client_reminder: true, client_status: true, client_review_request: true, reminder_minutes: 120 };
+function pushDemoRpc(name: string, args: Record<string, unknown>): unknown {
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  if (name === "push_get_preferences") return { ...pushPrefs };
+  if (name === "push_set_preferences") { Object.assign(pushPrefs, args.p_prefs ?? {}); return { ...pushPrefs }; }
+  if (name === "push_overview") return {
+    configured: true, my_devices: 1, team_devices: 2, client_devices: 12, marketing_devices: 10, legacy_devices: 0, campaigns_today: 0,
+    history: [
+      { kind: "new_appointment", audience: "owner", title: "Novo agendamento", status: "sent", sent_count: 2, failed_count: 0, last_error: null, created_at: ago(35) },
+      { kind: "client_reminder", audience: "appointment", title: "Lembrete de horário", status: "sent", sent_count: 1, failed_count: 0, last_error: null, created_at: ago(120) },
+      { kind: "marketing", audience: "subscribers", title: "Novidade", status: "sent", sent_count: 9, failed_count: 1, last_error: "partial", created_at: ago(1500) },
+    ],
+  };
+  if (name === "push_enqueue_campaign") { blocked("push"); return { queued: false, recipients: 0 }; }
+  if (name === "push_health") return { configured: true, last_run_at: ago(1), last_success_at: ago(1), last_error: null, sent_24h: 40, failed_24h: 1, pending: 0, expired_24h: 0, removed_24h: 1, active_subscriptions: 15, legacy_inactive: 0 };
+  return null;
+}
 async function rpc(name: string, args: Record<string, unknown> = {}) {
   const wa = whatsappDemoRpc(db, name, args);
   if (wa) { persist(); return { ...wa, count: null, status: 200, statusText: "OK" }; }
@@ -211,6 +230,7 @@ async function rpc(name: string, args: Record<string, unknown> = {}) {
   if (name === "get_salon_analytics") data = analytics(args.p_salon_id, String(args.p_period ?? "month"));
   else if (name === "get_my_ai_usage") data = [{ salon_id: args.p_salon_id ?? null, requests: 42, tokens: 18350, limit_requests: 500, limit_tokens: null, blocked: false, by_feature: { chatbot: 35, texto: 5, legenda: 2 } }];
   else if (name.includes("time_slots")) data = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"];
+  else if (name.startsWith("push_")) data = pushDemoRpc(name, args);
   else if (name === "whatsapp_import_contacts") {
     const contacts = (args.p_contacts as DemoRow[]) ?? []; const clients = (db.clients ??= []); let imported = 0;
     for (const c of contacts) if (!clients.some((x) => x.salon_id === args.p_salon_id && x.phone === c.phone)) { clients.push({ id: crypto.randomUUID(), salon_id: args.p_salon_id, created_at: new Date().toISOString(), ...c }); imported++; }

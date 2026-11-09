@@ -941,7 +941,7 @@ const SalonSettings = () => {
                 Notificações Push
               </CardTitle>
               <CardDescription>
-                Ative neste celular ou computador para receber um aviso a cada novo agendamento.
+                Ative neste celular ou computador para receber os avisos do salão e escolha quais avisos você e seus clientes recebem.
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -35,7 +35,7 @@ const imageSize = (file: File) => new Promise<{ w: number; h: number }>((resolve
 });
 
 /** "Meu aplicativo": o app instalável do salão (nome, cores, ícone), prévias e divulgação do link. */
-export function MyAppCard({ salonId, salonName, slug, logoUrl, primaryColor, value, onChange, ownerId }: Props) {
+export function MyAppCard({ salonId, salonName, slug, logoUrl, primaryColor, value, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const [devices, setDevices] = useState<number | null>(null);
   const app = identity({ name: salonName || 'Seu salão', primary_color: primaryColor, logo_url: logoUrl, ...value });
@@ -47,11 +47,11 @@ export function MyAppCard({ salonId, salonName, slug, logoUrl, primaryColor, val
   useEffect(() => {
     if (!salonId) return;
     let alive = true;
-    let q = (supabase as any).from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('salon_id', salonId).eq('is_active', true);
-    if (ownerId) q = q.or(`user_id.is.null,user_id.neq.${ownerId}`);
-    q.then(({ count, error }: { count: number | null; error: unknown }) => { if (alive && !error) setDevices(count ?? 0); });
+    // Aparelhos de clientes (sem dono/equipe) com inscrição Web Push ativa. Endpoint e chaves nunca chegam ao navegador.
+    (supabase as any).rpc('push_overview', { p_salon_id: salonId })
+      .then(({ data, error }: { data: { client_devices?: number } | null; error: unknown }) => { if (alive && !error) setDevices(Number(data?.client_devices) || 0); });
     return () => { alive = false; };
-  }, [salonId, ownerId]);
+  }, [salonId]);
 
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
