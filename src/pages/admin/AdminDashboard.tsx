@@ -43,6 +43,7 @@ const AdminDashboard = () => {
     idleHours: 0,
   });
   const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     fetchDashboardData();
@@ -105,6 +106,13 @@ const AdminDashboard = () => {
         .from('clients')
         .select('*', { count: 'exact', head: true })
         .eq('salon_id', salon.id);
+
+      const { count: pendingTotal } = await supabase
+        .from('appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('salon_id', salon.id)
+        .eq('status', 'pending');
+      setPendingCount(pendingTotal || 0);
 
       setStats({
         todayAppointments: todayCount,
@@ -211,6 +219,28 @@ const AdminDashboard = () => {
                   Configurar estabelecimento
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Destaque: Aguardando confirmação */}
+        {pendingCount > 0 && (
+          <Card className="border-amber-500/40 bg-amber-500/10" data-tour="dashboard-pending-highlight">
+            <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" aria-hidden />
+                <div>
+                  <p className="font-semibold text-sm sm:text-base text-foreground">
+                    Aguardando sua confirmação ({pendingCount})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Existem agendamentos solicitados pelos clientes aguardando sua aprovação.
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="brand" onClick={() => navigate('/admin/appointments')}>
+                Ver na Agenda
+              </Button>
             </CardContent>
           </Card>
         )}

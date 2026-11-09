@@ -212,7 +212,8 @@ export function pollVotes(value: unknown): PollVote[] {
   if (poll && isPrivateChat(r) && key?.fromMe === false) {
     const origin = recordOf(poll.pollCreationMessageKey), vote = recordOf(poll.vote);
     const selected = vote?.selectedOptions;
-    if (origin?.fromMe === false || typeof origin?.id !== "string" || !Array.isArray(selected) || selected.length !== 1 || typeof selected[0] !== "string") return [];
+    // A enquete é validada depois pelo id enviado por NÓS para este mesmo telefone (whatsapp_outbox).
+    if (typeof origin?.id !== "string" || !Array.isArray(selected) || selected.length !== 1 || typeof selected[0] !== "string") return [];
     return [{ pollId: origin.id, phone: `+${String(key?.remoteJid).split("@")[0]}`, option: selected[0], voteId: typeof key?.id === "string" ? key.id : undefined }];
   }
   const pollId = key?.id ?? r.keyId, remote = key?.remoteJid ?? r.remoteJid;

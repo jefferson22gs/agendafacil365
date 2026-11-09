@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { whatsappDb as db, whatsappCall, useWhatsAppSalon } from "./api";
 
 interface Conversation { phone: string; contact_name: string | null; last_body: string; last_kind: string; last_type: string; last_at: string; unread: number; human_takeover: boolean }
-interface Message { id: string; direction: string; author: string; body: string; kind: string; message_type: string; media_url: string | null; payload: Record<string, unknown> | null; status: string; created_at: string }
+interface Message { id: string; direction: string; author: string; body: string; kind: string; message_type: string; media_url: string | null; payload: Record<string, unknown> | null; status: string; error_code?: string | null; created_at: string }
 const authors: Record<string, string> = { contact: "Cliente", ai: "IA", human: "Equipe", system: "Sistema" };
-const statuses: Record<string, string> = { received: "Recebida", sending: "Confirmando envio", sent: "Enviada", delivered: "Entregue", read: "Lida", failed: "Falhou", uncertain: "Resultado incerto — confira no celular antes de repetir" };
+const statuses: Record<string, string> = { received: "Recebida", queued: "Na fila", sending: "Na fila", sent: "Enviada ao WhatsApp", delivered: "Entregue", read: "Lida", failed: "Falhou", uncertain: "Envio incerto" };
 const media: Record<string, string> = { image: "Imagem", video: "Vídeo", audio: "Áudio", document: "Documento", sticker: "Figurinha", location: "Localização", contact: "Contato", poll: "Enquete", list: "Lista de opções", buttons: "Botões", interactive: "Mensagem interativa", list_reply: "Opção escolhida", buttons_reply: "Botão escolhido", interactive_reply: "Opção escolhida", pix: "PIX" };
 const typeLabel = (kind: string, type: string) => media[type] ?? (kind === "interactive" ? "Mensagem interativa" : kind === "media" ? "Mídia" : "");
 /** Opções de lista/botões gravadas em payload.options (strings ou { title }). */
@@ -33,7 +33,7 @@ export default function Inbox() {
     return data as Conversation[];
   }});
   const messages = useQuery({ queryKey: ["wa-messages", salonId, phone, limit], enabled: !!salonId && !!phone, refetchInterval: 10000, queryFn: async () => {
-    const { data, error } = await db.from("whatsapp_messages").select("id,direction,author,body,kind,message_type,media_url,payload,status,created_at").eq("salon_id", salonId!).eq("phone", phone!).order("created_at", { ascending: false }).limit(limit);
+    const { data, error } = await db.from("whatsapp_messages").select("id,direction,author,body,kind,message_type,media_url,payload,status,error_code,created_at").eq("salon_id", salonId!).eq("phone", phone!).order("created_at", { ascending: false }).limit(limit);
     if (error) throw error;
     return (data as Message[]).reverse();
   }});
@@ -50,6 +50,20 @@ export default function Inbox() {
       if (!error) void cache.invalidateQueries({ queryKey: ["wa-threads", salonId] });
     });
   }, [salonId, phone, messages.dataUpdatedAt]);
+  async function retry(messageId: string) {
+    if (!salonId || busy) return;
+    setBusy(true);
+    try {
+      const res = await whatsappCall("whatsapp-instances", { action: "retry_message", salonId, messageId });
+      if (res.requeued) toast.success("Mensagem recolocada na fila para envio.");
+      else toast.info("Esta mensagem já foi enviada ou está em processamento.");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível reenviar.");
+      refresh();
+    } finally { setBusy(false); }
+  }
+
   async function action(action: string) {
     if (!salonId || !phone || busy) return;
     if (action === "release" && !window.confirm("Devolver esta conversa para a IA? Ela responderá às próximas mensagens conforme as configurações do salão.")) return;
@@ -92,7 +106,35 @@ export default function Inbox() {
           <div className="h-[45vh] min-h-48 overflow-y-auto space-y-3" role="log" aria-label="Histórico da conversa" aria-live="polite">
             {(messages.data?.length ?? 0) >= limit && <Button variant="ghost" onClick={() => setLimit(l => l + 100)}>Carregar anteriores</Button>}
             {messages.isLoading && <p role="status">Carregando histórico…</p>}
-            {messages.data?.map(m => <article key={m.id} className={`max-w-[95%] w-fit rounded-lg p-3 ${m.direction === "out" ? "ml-auto bg-primary/10" : "bg-muted"}`}><p className="text-xs font-medium">{authors[m.author] || m.author}</p>{m.kind !== "text" && <p className="text-sm font-medium">{typeLabel(m.kind, m.message_type)}</p>}<p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{m.body}</p>{options(m.payload).length > 0 && <ol className="mt-1 list-decimal pl-5 text-sm">{options(m.payload).map((o, i) => <li key={i} className="break-words">{o}</li>)}</ol>}{safeLink(m.media_url) && <a className="inline-flex min-h-11 items-center underline" href={safeLink(m.media_url)!} target="_blank" rel="noopener noreferrer">Abrir mídia</a>}<p className="mt-1 text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString("pt-BR")} · {statuses[m.status] || m.status}</p></article>)}
+            {messages.data?.map(m => (
+              <article key={m.id} className={`max-w-[95%] w-fit rounded-lg p-3 ${m.direction === "out" ? "ml-auto bg-primary/10" : "bg-muted"}`}>
+                <p className="text-xs font-medium">{authors[m.author] || m.author}</p>
+                {m.kind !== "text" && <p className="text-sm font-medium">{typeLabel(m.kind, m.message_type)}</p>}
+                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{m.body}</p>
+                {options(m.payload).length > 0 && <ol className="mt-1 list-decimal pl-5 text-sm">{options(m.payload).map((o, i) => <li key={i} className="break-words">{o}</li>)}</ol>}
+                {safeLink(m.media_url) && <a className="inline-flex min-h-11 items-center underline" href={safeLink(m.media_url)!} target="_blank" rel="noopener noreferrer">Abrir mídia</a>}
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <time>{new Date(m.created_at).toLocaleString("pt-BR")}</time>
+                  <span>·</span>
+                  {m.direction === "in" ? <span>Recebida</span> : m.status === "queued" || m.status === "sending" ? (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground" title="Aguardando envio na fila">⏳ Na fila</span>
+                  ) : m.status === "sent" ? (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground" title="Aceito pela Evolution / a caminho do celular">✓ Enviada ao WhatsApp</span>
+                  ) : m.status === "delivered" ? (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground font-medium" title="Entregue no celular">✓✓ Entregue</span>
+                  ) : m.status === "read" ? (
+                    <span className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 font-medium" title="Mensagem lida">✓✓ Lida</span>
+                  ) : (
+                    <span className="inline-flex flex-wrap items-center gap-1 text-destructive font-medium">
+                      <span>⚠ {statuses[m.status] || m.status}{m.error_code ? ` (${m.error_code})` : ""}</span>
+                      <Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-xs text-primary underline" disabled={busy} onClick={() => void retry(m.id)}>
+                        Tentar de novo
+                      </Button>
+                    </span>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
           <form data-tour="inbox-reply" className="space-y-2" onSubmit={e => { e.preventDefault(); void action("send"); }}><label htmlFor="wa-reply" className="text-sm font-medium">Responder pelo WhatsApp</label><Textarea id="wa-reply" value={text} onChange={e => setText(e.target.value)} maxLength={4096} disabled={busy} placeholder="Digite sua resposta…" /><p className="text-xs text-muted-foreground">Ao responder, você assume o atendimento e pausa a IA neste contato.</p><Button type="submit" disabled={busy || !text.trim()}>{busy ? "Aguarde…" : "Enviar resposta"}</Button></form>
         </>}

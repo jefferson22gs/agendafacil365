@@ -59,6 +59,13 @@ interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    chips?: string[];
+}
+
+function extractChips(text: string): string[] {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const numbered = lines.map(l => l.match(/^\d+[.)]\s*(.+)$/)?.[1]).filter((v): v is string => !!v && v.length <= 60);
+    return numbered.length >= 2 && numbered.length <= 10 ? numbered : [];
 }
 
 interface KnowledgeItem {
@@ -226,13 +233,14 @@ export const ChatbotContent = () => {
         }
     };
 
-    const handleTestMessage = async () => {
-        if (!testInput.trim() || !salonId) return;
+    const handleTestMessage = async (overrideText?: string) => {
+        const textToSend = (overrideText ?? testInput).trim();
+        if (!textToSend || !salonId) return;
 
         const userMessage: ChatMessage = {
             id: Date.now().toString(),
             role: 'user',
-            content: testInput,
+            content: textToSend,
             timestamp: new Date(),
         };
 
@@ -243,9 +251,10 @@ export const ChatbotContent = () => {
         try {
             const { data, error } = await supabase.functions.invoke('whatsapp-chatbot', { body: { action: 'test', salonId, text: userMessage.content } });
             if (error || !data?.success) throw new Error('Teste indisponível no momento. Salve a configuração e tente novamente.');
+            const chips = Array.isArray(data.chips) ? data.chips : extractChips(data.text || '');
             const aiResponse: ChatMessage = {
                 id: crypto.randomUUID(), role: 'assistant',
-                content: data.text, timestamp: new Date(),
+                content: data.text, timestamp: new Date(), chips,
             };
 
             setTestMessages(prev => [...prev, aiResponse]);
@@ -705,13 +714,28 @@ export const ChatbotContent = () => {
                                             >
                                                 <div
                                                     className={cn(
-                                                        "max-w-[80%] p-3 rounded-2xl",
+                                                        "max-w-[85%] p-3 rounded-2xl shadow-sm",
                                                         msg.role === 'user'
                                                             ? 'bg-primary text-primary-foreground rounded-br-sm'
                                                             : 'bg-card border rounded-bl-sm'
                                                     )}
                                                 >
-                                                    <p className="text-sm">{msg.content}</p>
+                                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                                    {msg.role === 'assistant' && (msg.chips ?? extractChips(msg.content)).length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-border/50">
+                                                            {(msg.chips ?? extractChips(msg.content)).map((chip, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    type="button"
+                                                                    disabled={isTesting}
+                                                                    onClick={() => void handleTestMessage(chip)}
+                                                                    className="text-xs px-2.5 py-1 rounded-full border border-primary/40 bg-primary/5 hover:bg-primary/20 text-primary font-medium transition-all active:scale-95 disabled:opacity-50"
+                                                                >
+                                                                    {chip}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     <p className="text-xs opacity-70 mt-1">
                                                         {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                     </p>

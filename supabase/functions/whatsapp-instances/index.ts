@@ -25,7 +25,7 @@ serve(async (req) => {
     const body = await readRequest(req);
     const db = serviceClient();
     const action = body.action;
-    if (!["create", "connect", "status", "fetch", "disconnect", "delete", "contacts", "sync_webhook"].includes(String(action))) throw new WhatsAppError("invalid_request");
+    if (!["create", "connect", "status", "fetch", "disconnect", "delete", "contacts", "sync_webhook", "set_groups_ignore", "retry_message"].includes(String(action))) throw new WhatsAppError("invalid_request");
     // Compatibilidade com chamadas antigas: resolve nome no servidor e depois autoriza o salão real.
     let salonId = body.salonId;
     if (!salonId && typeof body.instanceName === "string") {
@@ -67,6 +67,22 @@ serve(async (req) => {
       const { error: markError } = await db.rpc("whatsapp_webhook_synced", { p_instance_id: instance.id, p_mark: true });
       if (markError) throw new WhatsAppError("persistence_failed", 503);
     };
+    if (action === "retry_message") {
+      // "Tentar de novo" na Central: reenfileira o mesmo item do outbox (idempotente; só falhou/incerto).
+      const { data: ok, error } = await db.rpc("whatsapp_retry_outbox", { p_salon_id: tenant, p_message_id: body.messageId });
+      if (error) throw new WhatsAppError("persistence_failed", 503);
+      return jsonResponse({ success: true, requeued: ok === true });
+    }
+    if (action === "set_groups_ignore") {
+      // Evolution 2.3.7 settings.schema.ts exige rejectCall, groupsIgnore, alwaysOnline, readMessages, readStatus,
+      // syncFullHistory: lê o conjunto atual (GET /settings/find) e reenvia só com groupsIgnore alterado.
+      if (typeof body.groupsIgnore !== "boolean") throw new WhatsAppError("invalid_request");
+      const current = objectValue(await api.request("settingsFind", instance.instance_name));
+      const keep = (k: string, fallback: unknown) => current[k] ?? fallback;
+      const settings = { rejectCall: keep("rejectCall", false), msgCall: keep("msgCall", ""), groupsIgnore: body.groupsIgnore, alwaysOnline: keep("alwaysOnline", false), readMessages: keep("readMessages", false), readStatus: keep("readStatus", false), syncFullHistory: keep("syncFullHistory", false) };
+      await api.request("settingsSet", instance.instance_name, settings);
+      return jsonResponse({ success: true, settings });
+    }
     if (action === "sync_webhook") {
       await syncWebhook();
       return jsonResponse({ success: true });

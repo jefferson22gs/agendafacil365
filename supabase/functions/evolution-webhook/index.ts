@@ -50,7 +50,7 @@ serve(async (req) => {
         const { error: voteError } = await db.from("whatsapp_webhook_events").upsert({
           salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
           provider_message_id: `poll:${vote.pollId}:${selection}`, sender_phone: vote.phone,
-          whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived), received_at: new Date(arrived).toISOString(),
+          whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived),
           payload: { text: vote.option, name: "Cliente", selection, pollId: vote.pollId },
         }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
         if (voteError) throw new WhatsAppError("persistence_failed", 503);
@@ -58,8 +58,7 @@ serve(async (req) => {
     }
     if (event === "messages.update") return jsonResponse({ accepted: true });
     if (event !== "messages.upsert" && event !== "send.message") return jsonResponse({ accepted: false, reason: "unsupported_event" });
-    const entries = Array.isArray(body.data) ? body.data : [body.data];
-    if (entries.length > 100) throw new WhatsAppError("invalid_request", 413);
+    const entries = envelopeEntries;
     // Caixa de entrada: recebidas, enviadas pelo celular e pela API. Duplicatas (retry/outbox) são ignoradas.
     const inbox = entries.map(parseInboxMessage).filter((m): m is NonNullable<typeof m> => !!m).map((m) => inboxRow(instance.salon_id, m));
     if (inbox.length) {
@@ -76,6 +75,7 @@ serve(async (req) => {
       const { error: insertError } = await db.from("whatsapp_webhook_events").upsert({
         salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
         provider_message_id: message.id, sender_phone: message.phone,
+        whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived),
         payload: { text: message.text, name: message.name, quotedMessageId: message.quotedMessageId, selection: message.selection ?? null, media: message.media ?? null },
       }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
       if (insertError) throw new WhatsAppError("persistence_failed", 503);

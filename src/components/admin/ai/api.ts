@@ -61,6 +61,8 @@ export interface UsageReport {
 export interface ReplyLatency {
   replies: number; p50_ms: number | null; p95_ms: number | null; max_ms: number | null;
   processing_p50_ms: number | null; processing_p95_ms: number | null; not_sent: number;
+  evolution_samples?: number; evolution_p50_ms?: number | null; evolution_p95_ms?: number | null;
+  phone_to_reply_p50_ms?: number | null; phone_to_reply_p95_ms?: number | null;
 }
 /** 1234 -> "1,2 s"; 75000 -> "1 min 15 s". */
 export const seconds = (ms: number | null | undefined) => {

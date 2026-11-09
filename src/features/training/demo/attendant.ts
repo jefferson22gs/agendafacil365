@@ -24,7 +24,19 @@ export interface AttendantBooking {
   name: string | null; phone: string | null; birthday: string | null;
   confirmed: boolean; payment: "now" | "salon" | null; proofReceived: boolean;
 }
-export interface AttendantResult { reply: string; step: AttendantStep; booking: AttendantBooking; demo: true }
+export interface AttendantResult { reply: string; step: AttendantStep; booking: AttendantBooking; demo: true; chips?: string[] }
+
+function stepChips(step: AttendantStep, services: AttendantService[], pros: AttendantProfessional[], slots?: string[]): string[] {
+  switch (step) {
+    case "service": return services.map(s => s.name).slice(0, 10);
+    case "professional": return ["Qualquer profissional", ...pros.map(p => p.name)].slice(0, 10);
+    case "date": return ["Hoje", "Amanhã"];
+    case "time": return (slots?.length ? slots : ["09:00", "10:30", "14:00", "16:00"]).slice(0, 10);
+    case "confirm": return ["CONFIRMAR", "Mudar horário", "Cancelar"];
+    case "payment": return ["Pagar agora (PIX)", "Pagar no salão"];
+    default: return [];
+  }
+}
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 const words = (s: string) => norm(s).split(/[^a-z0-9]+/).filter(w => w.length > 2);
@@ -187,5 +199,6 @@ export function simulateAttendant(messages: AttendantMessage[], services: Attend
   });
 
   if (!users.length) reply = `Olá! Aqui é a recepção do ${salon}. ${question("service")}`;
-  return { reply, step: nextStep(), booking: b, demo: true };
+  const endStep = nextStep();
+  return { reply, step: endStep, booking: b, demo: true, chips: stepChips(endStep, services, pros, opts.slots) };
 }
