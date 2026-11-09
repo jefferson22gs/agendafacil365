@@ -806,30 +806,8 @@ const PublicSalon = () => {
       setBookedToken((appointmentData as { cancellation_token?: string | null }).cancellation_token ?? null);
       setBookedStatus(String((appointmentData as { status?: string }).status ?? 'pending'));
 
-      // Enviar confirmação WhatsApp
-      try {
-        const { error: whatsappError } = await supabase.functions.invoke('auto-appointment-confirmation', {
-          body: {
-            id: appointmentData.id,
-            salon_id: salon.id,
-            client_name: clientName.trim(),
-            client_phone: clientPhone.trim(),
-            service_name: mainService.name,
-            professional_name: professionalName,
-            appointment_date: format(selectedDate, 'yyyy-MM-dd'),
-            appointment_time: selectedTime,
-            total_price: finalPrice,
-            status: 'pending'
-          }
-        });
-
-        if (whatsappError) {
-          console.error("WhatsApp confirmation error:", whatsappError);
-        }
-      } catch (whatsappError) {
-        console.error("WhatsApp confirmation error:", whatsappError);
-        // Não bloqueia o agendamento se WhatsApp falhar
-      }
+      // Mensagem de WhatsApp ao cliente: trigger whatsapp_enqueue_appointment_event no banco (texto conforme o modo
+      // de confirmação do salão). A Edge Function antiga auto-appointment-confirmation só aceita chave de worker.
 
       // Aviso ao dono: trigger no banco enfileira o push (push_outbox) e o worker do servidor envia.
       // O navegador do cliente não dispara push.
