@@ -104,6 +104,12 @@ serve(async req => {
         const report = must(await db.rpc("ai_usage_report", { p_from: from, p_to: to, p_group: group, p_salon_id: body.salonId ?? null }));
         return jsonResponse({ success: true, report });
       }
+      case "reply_latency": {
+        // Tempo de resposta do atendente WhatsApp (recebimento -> envio aceito), últimos 7 dias, todos os salões.
+        const to = new Date(), from = new Date(to.getTime() - 7 * 86_400_000);
+        const latency = must(await db.rpc("whatsapp_reply_latency", { p_from: from.toISOString(), p_to: to.toISOString() }));
+        return jsonResponse({ success: true, latency });
+      }
       case "save_limit": {
         if (!validUuid(body.salonId)) throw new WhatsAppError("invalid_request");
         const num = (v: unknown, max: number) => {

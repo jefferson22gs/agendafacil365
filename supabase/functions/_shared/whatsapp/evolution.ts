@@ -20,6 +20,9 @@ const operations = {
   list: ["POST", "/message/sendList/"],
   buttons: ["POST", "/message/sendButtons/"],
   mediaBase64: ["POST", "/chat/getBase64FromMediaMessage/"],
+  // "Digitando…": SendPresenceDto { number, presence: "composing", delay } (presenceSchema exige os três).
+  // A Evolution segura a requisição por `delay` ms e depois manda "paused"; nunca aguardar no caminho crítico.
+  presence: ["POST", "/chat/sendPresence/"],
 } as const;
 export type EvolutionOperation = keyof typeof operations;
 export type HttpTransport = typeof fetch;
@@ -56,4 +59,15 @@ export class EvolutionClient {
 }
 export function evolutionClient() {
   return new EvolutionClient(requiredEnv("EVOLUTION_API_KEY"), requiredEnv("EVOLUTION_API_URL"));
+}
+/** Número aceito para envio individual: só dígitos, 8–15 (nunca JID de grupo/canal). */
+export const privateNumber = (n: unknown): n is string => typeof n === "string" && /^[1-9]\d{7,14}$/.test(n);
+/**
+ * "Digitando…" enquanto o atendente prepara a resposta. Best effort: qualquer falha é ignorada e
+ * nunca atrasa nem bloqueia a resposta (a promessa nunca rejeita).
+ */
+export function sendTyping(api: EvolutionClient, instance: string, phone: string, delayMs = 8_000): Promise<void> {
+  const number = phone.replace(/^\+/, "");
+  if (!privateNumber(number)) return Promise.resolve();
+  return api.request("presence", instance, { number, presence: "composing", delay: delayMs }).then(() => undefined, () => undefined);
 }

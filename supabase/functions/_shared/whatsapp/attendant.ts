@@ -2,7 +2,8 @@
 // Determinístico (não chama IA): a IA só conversa livremente e chama start_booking para abrir o fluxo.
 // Identidade (salão/telefone) vem do evento autenticado; o cliente só escolhe entre opções que o servidor gerou.
 import { WhatsAppError } from "./errors.ts";
-import type { BotContext } from "./chatbot-domain.ts";
+import { automationOf, salonOf, type BotContext } from "./chatbot-domain.ts";
+import { dayChunk, firstMatches } from "./latency.ts";
 import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 import {
   brazilPhone, brl, buildMenu, dateBR, fullName, numberedText, parseBirthDate, resolveChoice, weekday, yesNo, evolutionBody,
@@ -40,23 +41,25 @@ export function menuMessage(menu: Menu, interactive: boolean): OutMessage {
   return { type: "interactive", text, payload: { op, body } };
 }
 
-async function salonRow(ctx: BotContext) {
-  const { data, error } = await ctx.db.from("salons").select("name,timezone,address,city,pix_key").eq("id", ctx.salonId).single();
-  if (error) fail();
-  return data as { name: string; timezone: string | null; address: string | null; city: string | null; pix_key: string | null };
-}
-async function settings(ctx: BotContext) {
-  const { data, error } = await ctx.db.from("whatsapp_automation_settings").select("chatbot_booking_enabled,interactive_enabled").eq("salon_id", ctx.salonId).maybeSingle();
-  if (error) fail();
-  return { booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false };
-}
+/** Uma leitura do salão por mensagem (cache em salonOf). */
+const salonRow = (ctx: BotContext) => salonOf(ctx);
+const settings = (ctx: BotContext) => automationOf(ctx);
 async function services(ctx: BotContext) {
   const { data, error } = await ctx.db.from("services").select("id,name,price,duration_minutes").eq("salon_id", ctx.salonId).eq("is_active", true).order("name").limit(60);
   if (error) fail();
   return (data ?? []) as { id: string; name: string; price: number; duration_minutes: number }[];
 }
 /** Profissionais ativos que fazem o serviço (sem vínculo cadastrado = todos, igual ao link público). */
-async function professionalsFor(ctx: BotContext, serviceId: string) {
+// Cache por mensagem: a busca de datas consulta "qualquer profissional" em até 21 dias e relia isto a cada dia.
+const prosCache = new WeakMap<BotContext, Map<string, ReturnType<typeof loadProfessionalsFor>>>();
+function professionalsFor(ctx: BotContext, serviceId: string) {
+  let m = prosCache.get(ctx);
+  if (!m) prosCache.set(ctx, m = new Map());
+  let p = m.get(serviceId);
+  if (!p) { p = loadProfessionalsFor(ctx, serviceId); p.catch(() => m!.delete(serviceId)); m.set(serviceId, p); }
+  return p;
+}
+async function loadProfessionalsFor(ctx: BotContext, serviceId: string) {
   const [{ data: pros, error: pe }, { data: links, error: le }] = await Promise.all([
     ctx.db.from("professionals").select("id,name,specialty").eq("salon_id", ctx.salonId).eq("is_active", true).order("name").limit(40),
     ctx.db.from("professional_services").select("professional_id").eq("service_id", serviceId).limit(200),
@@ -100,11 +103,14 @@ async function step(ctx: BotContext, f: Flow, interactive: boolean, page = 0, in
   if (f.step === "date") {
     const salon = await salonRow(ctx);
     const start = today(salon.timezone ?? "America/Sao_Paulo");
-    const days: Option[] = [];
-    for (let i = 0; i < DATE_DAYS && days.length < 9 * (page + 1) + 1; i++) {
+    // Antes: até 21 dias consultados em sequência. Agora em lotes paralelos; mesmo resultado e ordem.
+    const all = Array.from({ length: DATE_DAYS }, (_, i) => i);
+    const pros = f.professionalId ? 1 : Math.min(12, (await professionalsFor(ctx, f.serviceId!)).length);
+    const found = await firstMatches(all, async i => (await freeTimes(ctx, { ...f, date: start.add({ days: i }).toString() })).length > 0, 9 * (page + 1) + 1, dayChunk(pros));
+    const days: Option[] = found.map(i => {
       const d = start.add({ days: i }).toString();
-      if ((await freeTimes(ctx, { ...f, date: d })).length) days.push({ title: `${i === 0 ? "Hoje" : i === 1 ? "Amanhã" : weekday(d)} ${dateBR(d)}`, value: { date: d } });
-    }
+      return { title: `${i === 0 ? "Hoje" : i === 1 ? "Amanhã" : weekday(d)} ${dateBR(d)}`, value: { date: d } };
+    });
     if (!days.length) return say(`Não encontrei horários livres nos próximos ${DATE_DAYS} dias. Quer que eu chame alguém da equipe?`);
     return ask("Datas", "Para qual dia?", days);
   }

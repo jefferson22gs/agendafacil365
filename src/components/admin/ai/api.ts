@@ -57,6 +57,19 @@ export interface UsageReport {
   messages: { chatbot_ai: number; chatbot_plain: number; chatbot_plain_by_kind: Record<string, number>; automations_by_category: Record<string, number> };
 }
 
+/** whatsapp_reply_latency: do recebimento ao envio aceito da 1ª mensagem da resposta (ms). */
+export interface ReplyLatency {
+  replies: number; p50_ms: number | null; p95_ms: number | null; max_ms: number | null;
+  processing_p50_ms: number | null; processing_p95_ms: number | null; not_sent: number;
+}
+/** 1234 -> "1,2 s"; 75000 -> "1 min 15 s". */
+export const seconds = (ms: number | null | undefined) => {
+  if (ms == null || !Number.isFinite(Number(ms))) return "—";
+  const s = Number(ms) / 1000;
+  if (s < 60) return `${s.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} s`;
+  return `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
+};
+
 export const FEATURE_LABEL: Record<string, string> = {
   chatbot: "Chatbot WhatsApp", texto: "Melhorar texto", legenda: "Legenda de imagem", insights: "Insights", teste: "Teste do painel", simulacao: "Simulação",
 };

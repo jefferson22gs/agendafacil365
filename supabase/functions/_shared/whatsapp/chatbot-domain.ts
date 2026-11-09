@@ -2,8 +2,10 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { objectValue, WhatsAppError } from "./errors.ts";
 import { validUuid } from "./auth.ts";
 import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
+import { dayChunk, firstMatches } from "./latency.ts";
 
-export interface BotContext { db: SupabaseClient; salonId: string; phone: string; eventId?: string; preview: boolean }
+/** `typing`: chamado uma vez quando o atendente vai responder (bot ativo, sem pausa humana); best effort. */
+export interface BotContext { db: SupabaseClient; salonId: string; phone: string; eventId?: string; preview: boolean; typing?: () => void }
 export const tools = [
   { type: "function", function: { name: "salon_info", description: "Informações públicas cadastradas do salão.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "services", description: "Serviços ativos, preço e duração reais.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
@@ -20,6 +22,39 @@ export const tools = [
 
 const CHANGE_DEADLINE_HOURS = 24;
 
+// Cache por mensagem (ctx nasce a cada evento): evita reler o salão em cada ferramenta/passo do fluxo.
+export interface SalonRow { name: string; timezone: string | null; address: string | null; city: string | null; pix_key: string | null }
+const salonCache = new WeakMap<BotContext, Promise<SalonRow>>();
+export function salonOf(ctx: BotContext): Promise<SalonRow> {
+  let p = salonCache.get(ctx);
+  if (!p) {
+    p = Promise.resolve(ctx.db.from("salons").select("name,timezone,address,city,pix_key").eq("id", ctx.salonId).single()).then(({ data, error }) => {
+      if (error || !data) throw new WhatsAppError("persistence_failed", 503);
+      return data as SalonRow;
+    });
+    p.catch(() => salonCache.delete(ctx)); // falha não fica em cache
+    salonCache.set(ctx, p);
+  }
+  return p;
+}
+const autoCache = new WeakMap<BotContext, Promise<{ booking: boolean; interactive: boolean }>>();
+/** whatsapp_automation_settings do salão, lida uma vez por mensagem. */
+export function automationOf(ctx: BotContext): Promise<{ booking: boolean; interactive: boolean }> {
+  let p = autoCache.get(ctx);
+  if (!p) {
+    p = Promise.resolve(ctx.db.from("whatsapp_automation_settings").select("chatbot_booking_enabled,interactive_enabled").eq("salon_id", ctx.salonId).maybeSingle()).then(({ data, error }) => {
+      if (error) throw new WhatsAppError("persistence_failed", 503);
+      return { booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false };
+    });
+    p.catch(() => autoCache.delete(ctx));
+    autoCache.set(ctx, p);
+  }
+  return p;
+}
+const tzOf = async (ctx: BotContext) => String((await salonOf(ctx)).timezone || "America/Sao_Paulo");
+/** Ferramentas só de leitura: podem rodar em paralelo no mesmo turno. */
+export const READ_ONLY_TOOLS = new Set(["salon_info", "services", "professionals", "available_slots", "available_dates", "my_appointments", "check_coupon", "start_booking"]);
+
 // Busca só agendamento ativo do próprio telefone; nunca aceita telefone/salão do modelo.
 async function ownAppointment(ctx: BotContext, id: unknown) {
   if (!validUuid(id)) return null;
@@ -31,9 +66,7 @@ async function ownAppointment(ctx: BotContext, id: unknown) {
 }
 
 async function withinDeadline(ctx: BotContext, date: string, start: string): Promise<boolean> {
-  const { data, error } = await ctx.db.from("salons").select("timezone").eq("id", ctx.salonId).single();
-  if (error) throw new WhatsAppError("persistence_failed", 503);
-  const tz = String(data.timezone || "America/Sao_Paulo");
+  const tz = await tzOf(ctx);
   const appt = Temporal.PlainDateTime.from(`${date}T${start.slice(0, 5)}`).toZonedDateTime(tz).toInstant();
   return Temporal.Instant.compare(appt, Temporal.Now.instant().add({ hours: CHANGE_DEADLINE_HOURS })) <= 0;
 }
@@ -80,28 +113,26 @@ export async function executeBotTool(ctx: BotContext, name: string, raw: unknown
   }
   if (name === "available_dates") {
     if (!validUuid(args.serviceId) || (args.professionalId !== undefined && !validUuid(args.professionalId))) throw new WhatsAppError("invalid_request");
-    const { data: salon, error: tzError } = await ctx.db.from("salons").select("timezone").eq("id", ctx.salonId).single();
-    if (tzError) throw new WhatsAppError("persistence_failed", 503);
-    const { data: pros, error: pErr } = args.professionalId ? { data: [{ id: args.professionalId }], error: null }
-      : await ctx.db.from("professionals").select("id").eq("salon_id", ctx.salonId).eq("is_active", true).limit(12);
+    const [tz, { data: pros, error: pErr }] = await Promise.all([
+      tzOf(ctx),
+      args.professionalId ? Promise.resolve({ data: [{ id: args.professionalId }], error: null })
+        : ctx.db.from("professionals").select("id").eq("salon_id", ctx.salonId).eq("is_active", true).limit(12),
+    ]);
     if (pErr) throw new WhatsAppError("persistence_failed", 503);
-    const start = Temporal.Now.plainDateISO(String(salon.timezone || "America/Sao_Paulo"));
-    const dates: string[] = [];
-    for (let i = 0; i < 14 && dates.length < 7; i++) {
-      const d = start.add({ days: i }).toString();
-      for (const p of (pros ?? []) as { id: string }[]) {
-        const { data: slots, error } = await ctx.db.rpc("get_available_time_slots", { p_salon_id: ctx.salonId, p_service_id: args.serviceId, p_professional_id: p.id, p_date: d });
-        if (error) throw new WhatsAppError("persistence_failed", 503);
-        if (Array.isArray(slots) && slots.length) { dates.push(d); break; }
-      }
-    }
-    return { dates };
+    const list = (pros ?? []) as { id: string }[];
+    const start = Temporal.Now.plainDateISO(tz);
+    const days = Array.from({ length: 14 }, (_, i) => start.add({ days: i }).toString());
+    // Antes: até 14 × 12 RPCs em sequência. Agora: dias em lotes paralelos, mesmo resultado (7 primeiros com vaga).
+    const hasSlot = async (d: string) => (await Promise.all(list.map(async p => {
+      const { data: slots, error } = await ctx.db.rpc("get_available_time_slots", { p_salon_id: ctx.salonId, p_service_id: args.serviceId, p_professional_id: p.id, p_date: d });
+      if (error) throw new WhatsAppError("persistence_failed", 503);
+      return Array.isArray(slots) && slots.length > 0;
+    }))).some(Boolean);
+    return { dates: await firstMatches(days, hasSlot, 7, dayChunk(list.length)) };
   }
   if (name === "my_appointments") {
     if (ctx.preview) return { notice: "Teste não consulta agendamentos de clientes reais." };
-    const { data: salon, error: tzError } = await ctx.db.from("salons").select("timezone").eq("id", ctx.salonId).single();
-    if (tzError) throw new WhatsAppError("persistence_failed", 503);
-    const today = Temporal.Now.plainDateISO(String(salon.timezone || "America/Sao_Paulo")).toString();
+    const today = Temporal.Now.plainDateISO(await tzOf(ctx)).toString();
     const { data, error } = await ctx.db.from("appointments").select("id,date,start_time,status,services(name),professionals(name)").eq("salon_id", ctx.salonId).eq("client_phone", ctx.phone).in("status", ["pending", "confirmed"]).gte("date", today).order("date").order("start_time").limit(5);
     if (error) throw new WhatsAppError("persistence_failed", 503); return data;
   }

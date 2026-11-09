@@ -1,10 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { serviceClient, safeEqual } from "../_shared/whatsapp/auth.ts";
 import { readRequest, jsonResponse, errorResponse, objectValue, WhatsAppError } from "../_shared/whatsapp/errors.ts";
-import { eventName, parseInboxMessage, parseIncoming, recordOf } from "../_shared/whatsapp/inbound.ts";
+import { eventName, isPrivateChat, parseInboxMessage, parseIncoming, recordOf } from "../_shared/whatsapp/inbound.ts";
 import { inboxRow } from "../_shared/whatsapp/inbox.ts";
 
-/** Ingestão durável. IA e envio não rodam dentro da resposta do webhook. */
+/**
+ * Ingestão durável. IA e envio não rodam dentro da resposta do webhook: o INSERT do evento aciona o
+ * whatsapp-inbound-worker via trigger (pg_net, após o COMMIT), sem atrasar a resposta ao Evolution.
+ */
 serve(async (req) => {
   try {
     const supplied = req.headers.get("x-syshair-webhook-secret");
@@ -56,6 +59,8 @@ serve(async (req) => {
     if (event === "send.message") return jsonResponse({ accepted: inbox.length });
     let accepted = 0;
     for (const entry of entries) {
+      // Grupo/comunidade/canal/status nunca viram evento do atendente (parseIncoming também filtra: camada dupla).
+      if (!isPrivateChat(entry)) continue;
       const message = parseIncoming(entry);
       if (!message) continue;
       const { error: insertError } = await db.from("whatsapp_webhook_events").upsert({
