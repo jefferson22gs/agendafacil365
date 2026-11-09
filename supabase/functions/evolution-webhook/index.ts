@@ -3,6 +3,7 @@ import { serviceClient, safeEqual } from "../_shared/whatsapp/auth.ts";
 import { readRequest, jsonResponse, errorResponse, objectValue, WhatsAppError } from "../_shared/whatsapp/errors.ts";
 import { deliveryUpdates, eventName, isPrivateChat, parseInboxMessage, parseIncoming, pollVotes, pollSelection, recordOf, whatsappTimestamp } from "../_shared/whatsapp/inbound.ts";
 import { inboxRow } from "../_shared/whatsapp/inbox.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * Ingestão durável. IA e envio não rodam dentro da resposta do webhook: o INSERT do evento aciona o
@@ -41,20 +42,8 @@ serve(async (req) => {
         const { error: deliveryError } = await db.rpc("whatsapp_record_delivery", { p_salon_id: instance.salon_id, p_instance_id: instance.id, p_message_id: id, p_status: status });
         if (deliveryError) throw new WhatsAppError("persistence_failed", 503);
       }
-      for (const entry of envelopeEntries) for (const vote of pollVotes(entry)) {
-        // Mapeamento durável por mensagem enviada; a opção não é um comando nem dado de reserva do cliente.
-        const { data: sent, error: lookupError } = await db.from("whatsapp_outbox").select("payload").eq("salon_id", instance.salon_id).eq("instance_id", instance.id).eq("remote_message_id", vote.pollId).eq("recipient_phone", vote.phone).maybeSingle();
-        if (lookupError) throw new WhatsAppError("persistence_failed", 503);
-        const selection = pollSelection(sent?.payload, vote.option);
-        if (!selection) continue;
-        const { error: voteError } = await db.from("whatsapp_webhook_events").upsert({
-          salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
-          provider_message_id: `poll:${vote.pollId}:${selection}`, sender_phone: vote.phone,
-          whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived),
-          payload: { text: vote.option, name: "Cliente", selection, pollId: vote.pollId },
-        }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
-        if (voteError) throw new WhatsAppError("persistence_failed", 503);
-      }
+      // Voto de enquete (pollVotes já recusa grupo/participante): vira evento do atendente com a seleção do menu.
+      for (const entry of envelopeEntries) await storePollVotes(db, instance, entry, arrived);
     }
     if (event === "messages.update") return jsonResponse({ accepted: true });
     if (event !== "messages.upsert" && event !== "send.message") return jsonResponse({ accepted: false, reason: "unsupported_event" });
@@ -84,3 +73,24 @@ serve(async (req) => {
     return jsonResponse({ accepted });
   } catch (error) { return errorResponse(error); }
 });
+
+/**
+ * Evolution 2.3.7 entrega o voto já descriptografado (messages.upsert pollUpdateMessage.vote.selectedOptions = nomes;
+ * messages.update pollUpdates[{name,voters}]). O nome vira id de menu SÓ pelo payload da enquete que NÓS enviamos a
+ * este mesmo telefone (whatsapp_outbox.remote_message_id). Mesma opção na mesma enquete = um evento (dedupe).
+ */
+async function storePollVotes(db: SupabaseClient, instance: { id: string; salon_id: string }, entry: unknown, arrived: number) {
+  for (const vote of pollVotes(entry)) {
+    const { data: sent, error: lookupError } = await db.from("whatsapp_outbox").select("payload").eq("salon_id", instance.salon_id).eq("instance_id", instance.id).eq("remote_message_id", vote.pollId).eq("recipient_phone", vote.phone).maybeSingle();
+    if (lookupError) throw new WhatsAppError("persistence_failed", 503);
+    const selection = pollSelection(sent?.payload, vote.option);
+    if (!selection) continue;
+    const { error: voteError } = await db.from("whatsapp_webhook_events").upsert({
+      salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
+      provider_message_id: `poll_${vote.pollId}_${selection.replace(".", "_")}`.slice(0, 160), sender_phone: vote.phone,
+      whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived),
+      payload: { text: vote.option, name: "Cliente", selection, pollId: vote.pollId },
+    }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
+    if (voteError) throw new WhatsAppError("persistence_failed", 503);
+  }
+}
