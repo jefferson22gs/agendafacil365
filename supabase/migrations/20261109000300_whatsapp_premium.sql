@@ -308,8 +308,13 @@ DO $$ DECLARE f record; v_path text; BEGIN
    AND NOT EXISTS(SELECT 1 FROM unnest(coalesce(p.proconfig,'{}')) c WHERE c ILIKE 'search_path=%extensions%')
  LOOP
   SELECT substr(c,13) INTO v_path FROM unnest(coalesce(f.proconfig,'{}')) c WHERE c ILIKE 'search_path=%';
-  EXECUTE format('ALTER FUNCTION %s SET search_path = %s', f.sig, coalesce(nullif(v_path,'') || ', extensions', 'public, extensions'));
-  RAISE NOTICE 'search_path com extensions: %', f.sig;
+  BEGIN
+   EXECUTE format('ALTER FUNCTION %s SET search_path = %s', f.sig, coalesce(nullif(v_path,'') || ', extensions', 'public, extensions'));
+   RAISE NOTICE 'search_path com extensions: %', f.sig;
+  EXCEPTION WHEN insufficient_privilege THEN
+   -- Função de outro dono (ex.: supabase_admin): não bloqueia a migração; o ensaio premium.sql acusa se sobrar alguma.
+   RAISE WARNING 'sem permissão para ajustar %', f.sig;
+  END;
  END LOOP;
 END $$;
 
