@@ -184,6 +184,52 @@ export function evolutionContacts(list: unknown[], max = 10_000): { contacts: Ev
   }
   return { contacts, excluded };
 }
+export type DeliveryStatus = "sent" | "delivered" | "read";
+export function deliveryStatus(value: unknown): DeliveryStatus | null {
+  const s = String(value ?? "").toUpperCase();
+  return ["4", "5", "READ", "PLAYED"].includes(s) ? "read" : ["3", "DELIVERY_ACK"].includes(s) ? "delivered" : ["2", "SERVER_ACK"].includes(s) ? "sent" : null;
+}
+export function deliveryUpdates(value: unknown): { id: string; status: DeliveryStatus }[] {
+  return (Array.isArray(value) ? value : [value]).flatMap(v => {
+    const r = recordOf(v), key = recordOf(r?.key), u = recordOf(r?.update);
+    const id = key?.id ?? r?.keyId;
+    if (key?.fromMe === false || r?.fromMe === false || typeof id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(id)) return [];
+    const statuses = [u?.status, r?.status, ...(Array.isArray(r?.MessageUpdate) ? r.MessageUpdate.map(v => recordOf(v)?.status) : [])].map(deliveryStatus);
+    const status = statuses.includes("read") ? "read" : statuses.includes("delivered") ? "delivered" : statuses.includes("sent") ? "sent" : null;
+    return status ? [{ id, status }] : [];
+  });
+}
+export function whatsappTimestamp(value: unknown, arrived = Date.now()): string | null {
+  const raw = recordOf(value)?.low ?? value, n = Number(raw), ms = n > 1e12 ? n : n * 1000;
+  // Relógio futuro/inválido não entra nos percentis como atraso negativo.
+  return Number.isFinite(ms) && ms >= 1e12 && ms <= arrived ? new Date(ms).toISOString() : null;
+}
+export interface PollVote { pollId: string; phone: string; option: string; voteId?: string }
+/** 2.3.7: upsert descriptografado contém selectedOptions (nomes); update contém {name,voters}. Nunca interpreta bytes cifrados. */
+export function pollVotes(value: unknown): PollVote[] {
+  const r = recordOf(value), key = recordOf(r?.key), msg = recordOf(r?.message), poll = recordOf(msg?.pollUpdateMessage);
+  if (!r) return [];
+  if (poll && isPrivateChat(r) && key?.fromMe === false) {
+    const origin = recordOf(poll.pollCreationMessageKey), vote = recordOf(poll.vote);
+    const selected = vote?.selectedOptions;
+    if (origin?.fromMe === false || typeof origin?.id !== "string" || !Array.isArray(selected) || selected.length !== 1 || typeof selected[0] !== "string") return [];
+    return [{ pollId: origin.id, phone: `+${String(key?.remoteJid).split("@")[0]}`, option: selected[0], voteId: typeof key?.id === "string" ? key.id : undefined }];
+  }
+  const pollId = key?.id ?? r.keyId, remote = key?.remoteJid ?? r.remoteJid;
+  if (typeof pollId !== "string" || typeof remote !== "string" || !PRIVATE_JID.test(remote) || r.participant || key?.participant) return [];
+  const updates = recordOf(r.update)?.pollUpdates ?? r.pollUpdates;
+  if (!Array.isArray(updates)) return [];
+  const selected = updates.filter(v => typeof v?.name === "string" && Array.isArray(v.voters) && v.voters.includes(remote));
+  return selected.length === 1 ? [{ pollId, phone: `+${remote.split("@")[0]}`, option: selected[0].name }] : [];
+}
+export function pollSelection(payload: unknown, option: string): string | null {
+  const p = recordOf(payload);
+  if (p?.op !== "poll" || !Array.isArray(p.options)) return null;
+  const matches = p.options.filter(v => recordOf(v)?.title === option);
+  const id = recordOf(matches.length === 1 ? matches[0] : null)?.id;
+  return typeof id === "string" && SELECTION_ID.test(id) ? id : null;
+}
+
 export function eventName(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase().replaceAll("_", ".") : "";
 }

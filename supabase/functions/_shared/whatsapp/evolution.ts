@@ -19,6 +19,9 @@ const operations = {
   // Atendente: lista/botões (SendListDto/SendButtonsDto) e download de mídia recebida (getBase64FromMediaMessageDto), Evolution 2.3.7.
   list: ["POST", "/message/sendList/"],
   buttons: ["POST", "/message/sendButtons/"],
+  poll: ["POST", "/message/sendPoll/"],
+  settingsFind: ["GET", "/settings/find/"],
+  settingsSet: ["POST", "/settings/set/"],
   mediaBase64: ["POST", "/chat/getBase64FromMediaMessage/"],
   // "Digitando…": SendPresenceDto { number, presence: "composing", delay } (presenceSchema exige os três).
   // A Evolution segura a requisição por `delay` ms e depois manda "paused"; nunca aguardar no caminho crítico.
@@ -38,7 +41,7 @@ export class EvolutionClient {
   async request(op: EvolutionOperation, instance: string, body?: Record<string, unknown>): Promise<unknown> {
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(instance)) throw new WhatsAppError("invalid_request");
     const [method, prefix] = operations[op];
-    const sending = op === "text" || op === "media" || op === "status" || op === "list" || op === "buttons";
+    const sending = op === "text" || op === "media" || op === "status" || op === "list" || op === "buttons" || op === "poll";
     let response: Response;
     try {
       response = await this.transport(this.base + prefix + (op === "create" ? "" : encodeURIComponent(instance)), {

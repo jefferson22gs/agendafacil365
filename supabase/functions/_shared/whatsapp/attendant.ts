@@ -7,7 +7,7 @@ import { dayChunk, firstMatches } from "./latency.ts";
 import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 import {
   brazilPhone, brl, buildMenu, dateBR, fullName, numberedText, parseBirthDate, resolveChoice, weekday, yesNo, evolutionBody,
-  type Menu, type Option, type StoredMenu,
+  premiumPoll, type Menu, type Option, type StoredMenu,
 } from "./interactive.ts";
 import { bookingPix, receivePaymentProof } from "../pix/payment.ts";
 
@@ -33,9 +33,13 @@ const nonce = () => Math.random().toString(36).slice(2, 8).padEnd(6, "0");
 const fail = () => { throw new WhatsAppError("persistence_failed", 503); };
 
 /** Menu + texto: interativo quando ligado (fallback numerado vai no text_content do outbox); senão só texto. */
-export function menuMessage(menu: Menu, interactive: boolean): OutMessage {
+export function menuMessage(menu: Menu, interactive: boolean, salon?: string): OutMessage {
   const text = numberedText(menu);
   if (!interactive) return { type: "text", text };
+  if (salon !== undefined) {
+    const payload = premiumPoll(menu, salon);
+    return payload ? { type: "interactive", text, payload } : { type: "text", text };
+  }
   const { op, body } = evolutionBody(menu, "");
   delete (body as Record<string, unknown>).number;
   return { type: "interactive", text, payload: { op, body } };
@@ -84,10 +88,10 @@ async function freeTimes(ctx: BotContext, f: Flow): Promise<string[]> {
 function today(tz: string) { return Temporal.Now.plainDateISO(tz); }
 
 async function step(ctx: BotContext, f: Flow, interactive: boolean, page = 0, intro = ""): Promise<FlowReply> {
-  const n = nonce(), pre = intro ? `${intro}\n\n` : "";
+  const n = nonce(), pre = intro ? `${intro}\n\n` : "", salonName = (await salonRow(ctx)).name;
   const ask = (title: string, body: string, opts: Option[]): FlowReply => {
     const { menu, stored } = buildMenu(n, f.step, title, pre + body, opts, page);
-    return { messages: [menuMessage(menu, interactive)], state: { ...f, menu: stored }, model: `flow_${f.step}` };
+    return { messages: [menuMessage(menu, interactive, salonName)], state: { ...f, menu: stored }, model: `flow_${f.step}` };
   };
   const say = (text: string): FlowReply => ({ messages: [{ type: "text", text: pre + text }], state: { ...f, menu: null }, model: `flow_${f.step}` });
   if (f.step === "service") {
@@ -145,7 +149,7 @@ async function reviewStep(ctx: BotContext, f: Flow, interactive: boolean, pre: s
   }
   const summary = `Confere os dados:\n${service.name} — ${brl(service.price)}\nProfissional: ${pros.data?.name ?? "qualquer profissional disponível"}\nData: ${weekday(f.date!)} ${dateBR(f.date!)} às ${f.start}\nNome: ${f.name}\nTelefone: ${f.phone}${f.birth ? `\nNascimento: ${f.birth.startsWith("1904-") ? dateBR(f.birth) : `${dateBR(f.birth)}/${f.birth.slice(0, 4)}`}` : ""}${discountLine}`;
   const { menu, stored } = buildMenu(n, "review", "Confirmar", pre + summary, [{ title: "Confirmar", value: { ok: true } }, { title: "Mudar horário", value: { ok: "time" } }, { title: "Cancelar", value: { ok: false } }]);
-  const msg = menuMessage(menu, interactive);
+  const msg = menuMessage(menu, interactive, (await salonRow(ctx)).name);
   if (msg.type === "text") msg.text += "\n\nVocê também pode responder CONFIRMAR.";
   return { messages: [msg], state: { ...f, menu: stored }, model: "flow_review" };
 }
@@ -214,7 +218,7 @@ export async function continueFlow(ctx: BotContext, f: Flow, input: Input, inter
       return null;
     }
     case "review": {
-      const ok = picked ? picked.ok : /^confirm(ar|o)$/i.test(input.text.trim()) ? true : null;
+      const ok = picked ? picked.ok : /^(confirmar|confirmo|sim|1)$/i.test(input.text.trim()) ? true : null;
       if (ok === "time") return step(ctx, { ...f, step: "date", start: undefined }, interactive);
       if (ok === false) return { messages: [{ type: "text", text: "Tudo bem, não agendei nada. Se quiser, é só chamar de novo." }], state: null, model: "flow_cancelled" };
       return ok === true ? book(ctx, f, interactive, salon) : null;
@@ -240,13 +244,19 @@ async function book(ctx: BotContext, f: Flow, interactive: boolean, salon: Await
   });
   if (error) {
     const msg = String(error.message ?? "");
+    const reason = ["invalid_coupon", "slot_unavailable", "slot_conflict"].find(c => msg.includes(c));
+    const code = `booking_rpc_${reason ?? (/^[A-Z0-9]{5}$/.test(String(error.code)) ? error.code : "unknown")}`;
+    // Sem conteúdo da conversa/PII nos logs. Erro tratado também fica no evento completed.
+    console.warn("whatsapp_booking_failed", { eventId: ctx.eventId, code });
+    const { error: logError } = await ctx.db.from("whatsapp_webhook_events").update({ error_code: code }).eq("id", ctx.eventId).eq("salon_id", ctx.salonId);
+    if (logError) fail();
     if (msg.includes("invalid_coupon")) return step(ctx, { ...f, coupon: null, step: "coupon" }, interactive, 0, "Esse cupom não pôde ser aplicado.");
     if (msg.includes("slot_unavailable") || msg.includes("slot_conflict")) return step(ctx, { ...f, step: "time", start: undefined, requestKey: crypto.randomUUID() }, interactive, 0, "Esse horário acabou de ser ocupado. Escolha outro:");
-    return { messages: [{ type: "text", text: "Não consegui concluir o agendamento agora. Vou pedir para a equipe verificar." }], state: null, model: "booking_failed" };
+    return { messages: [{ type: "text", text: "Não consegui concluir o agendamento agora. Tente CONFIRMAR novamente ou peça para falar com a equipe." }], state: f, model: "booking_failed" };
   }
-  const r = data as { id: string; final_price: number };
+  const r = data as { id: string; final_price: number; status?: string };
   const where = [salon.address, salon.city].filter(Boolean).join(", ");
-  const done = `Pronto, ${f.name!.split(" ")[0]}! Sua solicitação para ${weekday(f.date)} ${dateBR(f.date)} às ${f.start} foi registrada e aguarda a confirmação do ${salon.name}.${where ? `\nEndereço: ${where}` : ""}\nValor: ${brl(r.final_price)}`;
+  const done = `Pronto, ${f.name!.split(" ")[0]}! Sua solicitação para ${weekday(f.date)} ${dateBR(f.date)} às ${f.start} ${r.status === "confirmed" ? `está confirmado no ${salon.name}` : `foi registrada e aguarda a confirmação do ${salon.name}`}.${where ? `\nEndereço: ${where}` : ""}\nValor: ${brl(r.final_price)}`;
   const g: Flow = { ...f, appointmentId: r.id, menu: null };
   if (!salon.pix_key || !(Number(r.final_price) > 0)) return { messages: [{ type: "text", text: done }], state: null, model: "booking" };
   const pay = await step(ctx, { ...g, step: "payment" }, interactive);
@@ -259,7 +269,9 @@ async function pixMessages(ctx: BotContext, f: Flow): Promise<FlowReply> {
   return {
     messages: [
       { type: "image", text: pix.media.caption, media_path: pix.media.path, media_mime: pix.media.mime, media_filename: pix.media.filename },
-      { type: "text", text: pix.payload },
+      (await settings(ctx)).interactive
+        ? { type: "interactive", text: pix.payload, payload: { op: "buttons", body: { title: "PIX", description: pix.payload, footer: (await salonRow(ctx)).name, buttons: [{ type: "copy", displayText: "Copiar código PIX", copyCode: pix.payload }] } } }
+        : { type: "text", text: pix.payload },
       { type: "text", text: "Depois de pagar, envie o comprovante aqui (foto ou PDF). A equipe do salão confere e confirma." },
     ],
     state: { ...f, step: "proof", menu: null }, model: "pix",

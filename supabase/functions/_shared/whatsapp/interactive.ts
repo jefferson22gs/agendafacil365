@@ -8,7 +8,7 @@ export interface Option { title: string; description?: string; value: Record<str
 export interface MenuRow { id: string; title: string; description?: string }
 export interface Menu { kind: "list" | "buttons"; title: string; body: string; button: string; rows: MenuRow[] }
 /** O que fica salvo no servidor: o id da linha só aponta para cá (não carrega valores do cliente). */
-export interface StoredMenu { nonce: string; step: string; options: Record<string, unknown>[]; page: number; hasMore: boolean }
+export interface StoredMenu { nonce: string; step: string; options: Record<string, unknown>[]; page: number; hasMore: boolean; labels?: string[] }
 
 const oneLine = (s: unknown) => String(s ?? "").replace(/\s+/g, " ").trim();
 /** Corta em n caracteres com reticências (contagem por code point para não quebrar acento/emoji). */
@@ -32,7 +32,7 @@ export function buildMenu(nonce: string, step: string, title: string, body: stri
   const buttons = rows.length <= BUTTONS_MAX && rows.every(r => !r.description && Array.from(r.title).length <= BUTTON_TEXT_MAX);
   return {
     menu: { kind: buttons ? "buttons" : "list", title: clip(title, 60), body: oneLine(body).slice(0, 1000), button: "Ver opções", rows },
-    stored: { nonce, step, options: slice.map(o => o.value), page, hasMore },
+    stored: { nonce, step, options: slice.map(o => o.value), labels: slice.map(o => oneLine(o.title)), page, hasMore },
   };
 }
 
@@ -70,7 +70,18 @@ export function resolveChoice(stored: StoredMenu | null | undefined, text: strin
   const num = t.match(/^(?:op(?:cao|ção)?\s*|n[ºo°]?\s*)?(\d{1,2})[.)]?$/);
   if (num) return pick(Number(num[1]));
   if (/^(ver mais|mais|mais opcoes|mais horarios|proxim[ao]s?)$/.test(t)) return stored.hasMore ? "more" : null;
-  return null;
+  const matches = (stored.labels ?? []).map((label, i) => fold(label) === t ? i : -1).filter(i => i >= 0);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/** Evolution 2.3.7 message.schema.ts: 2–10 opções (não 12), únicas. Uma opção usa texto. */
+export function premiumPoll(menu: Menu, salon = ""): Record<string, unknown> | null {
+  if (menu.rows.length < 2 || menu.rows.length > 10) return null;
+  const values = menu.rows.map((r, i) => clip(`${i + 1}. ${r.id.endsWith(".more") && /horários/i.test(menu.title) ? "Ver mais horários" : r.title}${r.description ? ` · ${r.description}` : ""}`, 100));
+  const footer = salon ? `\n${clip(salon, 50)}` : "";
+  const heading = clip(menu.title, 40);
+  const name = `${heading}\n${clip(menu.body, 255 - heading.length - footer.length - 1)}${footer}`;
+  return { op: "poll", body: { name, selectableCount: 1, values }, options: menu.rows.map((r, i) => ({ id: r.id, title: values[i] })) };
 }
 
 /** Nome completo: ao menos nome + sobrenome, só letras/espaço/apóstrofo/hífen, 5–120 caracteres. */

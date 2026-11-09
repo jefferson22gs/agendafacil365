@@ -49,7 +49,7 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
     if (item.content_type === "interactive") {
       // Lista/botões: instáveis em alguns aparelhos. Se a Evolution recusar ANTES do envio, manda o texto numerado.
       const p = item.payload && typeof item.payload === "object" ? item.payload as Record<string, unknown> : null;
-      const op = p?.op === "buttons" ? "buttons" : p?.op === "list" ? "list" : null;
+      const op = p?.op === "poll" ? "poll" : p?.op === "buttons" ? "buttons" : p?.op === "list" ? "list" : null;
       const number = item.recipient_phone.replace(/^\+/, "");
       const { data: started, error: beginError } = await db.rpc("whatsapp_begin_send", { p_id: item.id, p_claim: item.claim_token });
       if (beginError || !started) throw new WhatsAppError("persistence_failed", 503);

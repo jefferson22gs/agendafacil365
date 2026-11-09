@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { serviceClient, safeEqual } from "../_shared/whatsapp/auth.ts";
 import { readRequest, jsonResponse, errorResponse, objectValue, WhatsAppError } from "../_shared/whatsapp/errors.ts";
-import { eventName, isPrivateChat, parseInboxMessage, parseIncoming, recordOf } from "../_shared/whatsapp/inbound.ts";
+import { deliveryUpdates, eventName, isPrivateChat, parseInboxMessage, parseIncoming, pollVotes, pollSelection, recordOf, whatsappTimestamp } from "../_shared/whatsapp/inbound.ts";
 import { inboxRow } from "../_shared/whatsapp/inbox.ts";
 
 /**
@@ -9,6 +9,7 @@ import { inboxRow } from "../_shared/whatsapp/inbox.ts";
  * whatsapp-inbound-worker via trigger (pg_net, após o COMMIT), sem atrasar a resposta ao Evolution.
  */
 serve(async (req) => {
+  const arrived = Date.now();
   try {
     const supplied = req.headers.get("x-syshair-webhook-secret");
     if (!supplied || supplied.length > 128) throw new WhatsAppError("unauthorized", 401);
@@ -33,20 +34,29 @@ serve(async (req) => {
       return jsonResponse({ accepted: true });
     }
     if (event === "qrcode.updated") return jsonResponse({ accepted: true, reason: "qr_transient_only" });
-    if (event === "messages.update") {
-      // Somente IDs e status permitidos; conteúdo/segredos do envelope são descartados.
-      const entries = Array.isArray(body.data) ? body.data : [body.data];
-      for (const value of entries.slice(0, 100)) {
-        const item = recordOf(value), key = recordOf(item?.key), update = recordOf(item?.update);
-        const id = key?.id ?? item?.keyId;
-        const rawStatus = update?.status ?? item?.status;
-        const status = rawStatus === 3 || rawStatus === "DELIVERY_ACK" ? "delivered" : rawStatus === 4 || rawStatus === "READ" ? "read" : null;
-        if (typeof id !== "string" || !status) continue;
+    const envelopeEntries = Array.isArray(body.data) ? body.data : [body.data];
+    if (envelopeEntries.length > 100) throw new WhatsAppError("invalid_request", 413);
+    if (["messages.update", "messages.upsert", "send.message"].includes(event)) {
+      for (const { id, status } of deliveryUpdates(envelopeEntries)) {
         const { error: deliveryError } = await db.rpc("whatsapp_record_delivery", { p_salon_id: instance.salon_id, p_instance_id: instance.id, p_message_id: id, p_status: status });
         if (deliveryError) throw new WhatsAppError("persistence_failed", 503);
       }
-      return jsonResponse({ accepted: true });
+      for (const entry of envelopeEntries) for (const vote of pollVotes(entry)) {
+        // Mapeamento durável por mensagem enviada; a opção não é um comando nem dado de reserva do cliente.
+        const { data: sent, error: lookupError } = await db.from("whatsapp_outbox").select("payload").eq("salon_id", instance.salon_id).eq("instance_id", instance.id).eq("remote_message_id", vote.pollId).eq("recipient_phone", vote.phone).maybeSingle();
+        if (lookupError) throw new WhatsAppError("persistence_failed", 503);
+        const selection = pollSelection(sent?.payload, vote.option);
+        if (!selection) continue;
+        const { error: voteError } = await db.from("whatsapp_webhook_events").upsert({
+          salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
+          provider_message_id: `poll:${vote.pollId}:${selection}`, sender_phone: vote.phone,
+          whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived), received_at: new Date(arrived).toISOString(),
+          payload: { text: vote.option, name: "Cliente", selection, pollId: vote.pollId },
+        }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
+        if (voteError) throw new WhatsAppError("persistence_failed", 503);
+      }
     }
+    if (event === "messages.update") return jsonResponse({ accepted: true });
     if (event !== "messages.upsert" && event !== "send.message") return jsonResponse({ accepted: false, reason: "unsupported_event" });
     const entries = Array.isArray(body.data) ? body.data : [body.data];
     if (entries.length > 100) throw new WhatsAppError("invalid_request", 413);
