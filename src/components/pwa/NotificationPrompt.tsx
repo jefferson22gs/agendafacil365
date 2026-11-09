@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTenantApp } from '@/hooks/usePWA';
 import { PUSH_NOT_CONFIGURED_MESSAGE, sendPush, usePushNotificationsFCM } from '@/hooks/usePushNotificationsFCM';
+import { PushCenter } from './PushCenter';
 
 const DISMISS_KEY = 'notification-prompt-dismissed';
 
@@ -111,7 +112,8 @@ export const NotificationSettings = ({ salonId }: { salonId?: string }) => {
   const test = async () => {
     if (!salonId) return;
     setTesting(true);
-    const r = await sendPush({ salon_id: salonId, audience: 'owner', type: 'test', title: 'Notificação de teste', body: 'Tudo certo! Você receberá os avisos de novos agendamentos aqui.', url: '/admin/appointments' });
+    // Envia só para os aparelhos do usuário logado (público "test" decidido no servidor).
+    const r = await sendPush({ salon_id: salonId, type: 'test' });
     setTesting(false);
     setNotConfigured(r.code === 'push_not_configured');
     if (r.ok && r.sent > 0) toast.success('Teste enviado. Confira a notificação no seu aparelho.');
@@ -119,30 +121,41 @@ export const NotificationSettings = ({ salonId }: { salonId?: string }) => {
     else toast.error(r.message);
   };
 
+  const center = salonId ? <PushCenter salonId={salonId} /> : null;
+
   if (support === 'ios-needs-install') {
     return (
-      <div className="flex items-start gap-3 text-sm text-muted-foreground">
-        <AlertCircle size={20} className="shrink-0" aria-hidden />
-        <p>No iPhone e iPad (iOS 16.4+), adicione o painel à Tela de Início pelo Safari (Compartilhar &gt; Adicionar à Tela de Início) e ative os avisos pelo app instalado.</p>
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 text-sm text-muted-foreground">
+          <AlertCircle size={20} className="shrink-0" aria-hidden />
+          <p>No iPhone e iPad (iOS 16.4+), adicione o painel à Tela de Início pelo Safari (Compartilhar &gt; Adicionar à Tela de Início) e ative os avisos pelo app instalado.</p>
+        </div>
+        {center}
       </div>
     );
   }
   if (support === 'unsupported') {
     return (
-      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <AlertCircle size={20} className="shrink-0" aria-hidden />
-        <p>Notificações push não são suportadas neste navegador.</p>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <AlertCircle size={20} className="shrink-0" aria-hidden />
+          <p>Este navegador não recebe notificações push. Use Chrome, Edge, Firefox ou Safari atualizados.</p>
+        </div>
+        {center}
       </div>
     );
   }
   if (permission === 'denied') {
     return (
-      <div className="flex items-start gap-3">
-        <BellOff size={20} className="text-destructive flex-shrink-0 mt-0.5" aria-hidden />
-        <div>
-          <p className="font-medium text-foreground mb-1">Notificações bloqueadas</p>
-          <p className="text-sm text-muted-foreground">Libere as notificações nas permissões do site (ícone ao lado do endereço) e recarregue a página.</p>
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <BellOff size={20} className="text-destructive flex-shrink-0 mt-0.5" aria-hidden />
+          <div>
+            <p className="font-medium text-foreground mb-1">Notificações bloqueadas</p>
+            <p className="text-sm text-muted-foreground">Libere as notificações nas permissões do site (ícone ao lado do endereço) e recarregue a página.</p>
+          </div>
         </div>
+        {center}
       </div>
     );
   }
@@ -156,7 +169,7 @@ export const NotificationSettings = ({ salonId }: { salonId?: string }) => {
           </div>
           <div className="min-w-0">
             <p className="font-medium text-foreground">Avisos neste aparelho</p>
-            <p className="text-sm text-muted-foreground">{isSubscribed ? 'Ativados: você recebe os novos agendamentos aqui' : 'Desativados'}</p>
+            <p className="text-sm text-muted-foreground">{isSubscribed ? 'Ativados: os avisos do salão chegam aqui' : 'Desativados'}</p>
           </div>
         </div>
         <Button variant={isSubscribed ? 'outline' : 'brand'} className="h-11" onClick={toggle} disabled={loading} data-tour="settings-notifications-toggle">
@@ -166,7 +179,7 @@ export const NotificationSettings = ({ salonId }: { salonId?: string }) => {
       {isSubscribed && (
         <Button variant="ghost" className="h-11 w-full" onClick={test} disabled={testing || !salonId} data-tour="settings-notifications-test">
           <Send size={16} className="mr-2" aria-hidden />
-          {testing ? 'Enviando…' : 'Enviar notificação de teste'}
+          {testing ? 'Enviando…' : 'Enviar teste para meu celular'}
         </Button>
       )}
       {notConfigured && (
@@ -175,6 +188,7 @@ export const NotificationSettings = ({ salonId }: { salonId?: string }) => {
           {PUSH_NOT_CONFIGURED_MESSAGE} Sua inscrição fica salva e passa a funcionar quando o envio for liberado.
         </p>
       )}
+      {center}
     </div>
   );
 };

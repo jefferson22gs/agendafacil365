@@ -67,12 +67,12 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         // Workers próprios de push/FCM e o legado sw.js não entram no precache; /api/* nunca cai no fallback SPA.
-        globIgnores: ["**/firebase-messaging-sw.js", "**/sw-push.js", "**/brand/*.png"],
+        globIgnores: ["**/firebase-messaging-sw.js", "**/push-sw.js", "**/sw-push.js", "**/brand/*.png"],
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
-        // Worker único no scope "/": os handlers FCM (push/notificationclick) entram no SW gerado,
+        // Worker único no scope "/": os handlers de Web Push (push/notificationclick, sem Firebase) entram no SW gerado,
         // em vez de outro arquivo registrado no mesmo scope substituir o precache. Ver src/lib/serviceWorker.ts.
-        importScripts: ["firebase-messaging-sw.js"],
+        importScripts: ["push-sw.js"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

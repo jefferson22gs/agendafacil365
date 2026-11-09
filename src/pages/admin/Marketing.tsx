@@ -1,7 +1,6 @@
 import { normalizePhone } from "@/features/whatsapp/contacts/phone";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { sendPush } from "@/hooks/usePushNotificationsFCM";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -157,16 +156,10 @@ const Marketing = () => {
             setClients(clientsData || []);
 
             // Get push subscriptions count
-            // Aparelhos que ativaram os avisos do salão (sem contar os do próprio dono). O token nunca é lido.
-            const { count, error: pushError } = await (supabase as any)
-                .from('push_subscriptions')
-                .select('id', { count: 'exact', head: true })
-                .eq('salon_id', salonData.id)
-                .eq('is_active', true)
-                .or(`user_id.is.null,user_id.neq.${user?.id}`);
-
+            // Aparelhos de clientes que aceitam promoções (sem dono/equipe). Endpoint e chaves nunca são lidos.
+            const { data: pushInfo, error: pushError } = await (supabase as any).rpc('push_overview', { p_salon_id: salonData.id });
             if (!pushError) {
-                setPushSubscriptionsCount(count || 0);
+                setPushSubscriptionsCount(Number(pushInfo?.marketing_devices) || 0);
             }
 
         } catch (error: any) {
@@ -235,18 +228,16 @@ const Marketing = () => {
             }
 
             if (sendVia.push && salon?.id) {
-                // Push vai para os aparelhos inscritos no app do salão (a inscrição é anônima: não há vínculo com a lista de clientes).
-                // O servidor confere o dono pelo login e nunca envia para outro salão.
-                const r = await sendPush({
-                    salon_id: salon.id,
-                    audience: 'subscribers',
-                    type: 'marketing',
-                    title: title || salon.name || 'Novidade',
-                    body: message.replace(/\{nome\}/g, 'cliente').trim(),
+                // Push vai para os aparelhos inscritos no app do salão que não desativaram promoções (a inscrição é anônima:
+                // não há vínculo com a lista de clientes). O banco confere o dono, limita 3 campanhas/24 h e o worker envia em lote.
+                const { data, error } = await (supabase as any).rpc('push_enqueue_campaign', {
+                    p_salon_id: salon.id,
+                    p_title: title || salon.name || 'Novidade',
+                    p_body: message.replace(/\{nome\}/g, 'cliente').trim(),
                 });
-                if (r.ok && r.sent > 0) toast.success(`${r.sent} notificações push enviadas!`, { description: 'Para aparelhos que ativaram as notificações do salão.' });
-                else if (r.ok) toast.info('Nenhum aparelho recebeu o push.', { description: 'Os clientes precisam ativar as notificações no link do salão.' });
-                else toast.error(r.message);
+                if (error) toast.error(/rate_limited/.test(error.message ?? '') ? 'Limite de 3 campanhas push por dia atingido.' : 'Não foi possível registrar a campanha push.');
+                else if (data?.queued) toast.success(`Campanha push na fila para ${data.recipients} aparelhos.`, { description: 'O envio começa em instantes. Acompanhe em Configurações > Notificações.' });
+                else toast.info('Nenhum aparelho recebeu o push.', { description: 'Os clientes precisam ativar as notificações no link do salão.' });
             }
 
         } catch (error: any) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, BellOff, Check, Download, Share, SquarePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { isIOSDevice, isIOSSafari, setTenantApp, usePWA } from '@/hooks/usePWA';
 import { usePushNotificationsFCM } from '@/hooks/usePushNotificationsFCM';
 import { textOnColor } from '../../../api/_pwa';
@@ -50,8 +51,9 @@ export function SalonAppCard({ salonName, salonSlug, logoUrl, color, enabled = t
     : push.isSubscribed ? 'subscribed'
     : push.permission === 'denied' ? 'denied' : 'available';
   // Nada útil a oferecer: não ocupa espaço.
-  if (!canInstall && (notifState === 'subscribed' || notifState === 'unsupported') && !isInstalled) return null;
-  if (isInstalled && (notifState === 'subscribed' || notifState === 'unsupported')) return null;
+  // Inscrito continua vendo o card (fechável) para poder desligar as promoções.
+  if (!canInstall && notifState === 'unsupported' && !isInstalled) return null;
+  if (isInstalled && notifState === 'unsupported') return null;
 
   const dismiss = () => {
     try { localStorage.setItem(dismissKey(salonSlug), String(Date.now())); } catch { /* modo privado */ }
@@ -132,6 +134,16 @@ export function SalonAppCard({ salonName, salonSlug, logoUrl, color, enabled = t
             <p className="flex h-11 flex-1 items-center gap-2 text-sm text-muted-foreground"><Bell size={16} aria-hidden /> Notificações ativadas</p>
           )}
         </div>
+
+        {notifState === 'subscribed' && (
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <label htmlFor="salon-app-marketing" className="text-sm text-foreground">Receber novidades e promoções</label>
+            <Switch id="salon-app-marketing" checked={push.marketing} onCheckedChange={async (v) => {
+              if (await push.setMarketingEnabled(v)) toast.success(v ? 'Você voltará a receber novidades.' : 'Pronto. Você só receberá avisos dos seus horários.');
+              else toast.error('Não foi possível alterar agora.');
+            }} />
+          </div>
+        )}
 
         {showIOS && !isInstallable && (
           <ol id="salon-app-ios-steps" className="list-decimal space-y-1 rounded-xl bg-secondary/50 p-3 pl-8 text-sm text-foreground">
