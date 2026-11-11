@@ -31,6 +31,7 @@ Deno.serve(async (req: Request) => {
     if (!origin) throw new WhatsAppError("configuration_missing", 503);
     const resendKey = Deno.env.get("RESEND_API_KEY")?.trim();
     const from = Deno.env.get("RESEND_FROM")?.trim() || "Agenda Fácil 365 <lembretes@agendafacil365.com.br>";
+    const replyTo = Deno.env.get("RESEND_REPLY_TO")?.trim();
 
     const started = Date.now();
     let processed = 0, emails = 0;
@@ -55,7 +56,7 @@ Deno.serve(async (req: Request) => {
           const res = await fetch("https://api.resend.com/emails", {
             method: "POST", signal: AbortSignal.timeout(15_000),
             headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json", "Idempotency-Key": `return-alert/${row.id}` },
-            body: JSON.stringify(prepared.email),
+            body: JSON.stringify(replyTo ? { ...prepared.email, reply_to: replyTo } : prepared.email),
           });
           const out = await res.json().catch(() => null);
           status = resendOutcome(res.status, out);

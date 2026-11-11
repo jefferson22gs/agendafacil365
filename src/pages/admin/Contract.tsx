@@ -149,6 +149,14 @@ const Contract = () => {
     return data;
   };
 
+  const refreshStatus = async () => {
+    setBusy("preview");
+    const { data } = await supabase.functions.invoke("autentique-contract", { body: { action: "sync" } });
+    setBusy(null);
+    if (data?.error) toast.error("Não foi possível consultar a Autentique agora.");
+    if (salonId) await loadContract(salonId);
+  };
+
   const openPreview = async () => { const d = await call("preview"); if (d) { setPreview({ text: d.text, hash: d.hash }); setAccepted(false); } };
   const send = async () => {
     const d = await call("create");
@@ -186,6 +194,11 @@ const Contract = () => {
               <div className="flex flex-wrap gap-2">
                 {!contract.contratante_signed_at && signer?.short_link && ["sent", "partially_signed"].includes(contract.status) && (
                   <Button asChild className="h-11"><a href={signer.short_link} target="_blank" rel="noopener noreferrer"><FileSignature size={16} className="mr-2" aria-hidden />Assinar agora<span className="sr-only"> (abre a Autentique em nova aba)</span></a></Button>
+                )}
+                {contract.status !== "signed" && contract.autentique_document_id && (
+                  <Button variant="outline" className="h-11" onClick={() => void refreshStatus()} disabled={!!busy}>
+                    {busy ? <Loader2 size={16} className="mr-2 animate-spin" aria-hidden /> : <Clock size={16} className="mr-2" aria-hidden />}Atualizar status
+                  </Button>
                 )}
                 {contract.signed_file_url && (
                   <Button asChild variant="outline" className="h-11"><a href={contract.signed_file_url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} className="mr-2" aria-hidden />Baixar contrato assinado</a></Button>

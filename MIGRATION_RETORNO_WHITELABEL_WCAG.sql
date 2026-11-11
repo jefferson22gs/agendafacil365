@@ -365,6 +365,9 @@ CREATE TABLE IF NOT EXISTS public.platform_contract_settings (
   updated_at timestamptz NOT NULL DEFAULT now(), updated_by uuid
 );
 INSERT INTO public.platform_contract_settings (id) VALUES (true) ON CONFLICT (id) DO NOTHING;
+-- Qualificação própria da CONTRATADA (ex.: MEI) e e-mail que recebe o convite de assinatura.
+ALTER TABLE public.platform_contract_settings ADD COLUMN IF NOT EXISTS preamble text CHECK (length(preamble) <= 2000);
+ALTER TABLE public.platform_contract_settings ADD COLUMN IF NOT EXISTS signer_email text;
 ALTER TABLE public.platform_contract_settings ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.platform_contract_settings FROM anon, authenticated;
 GRANT SELECT, UPDATE ON public.platform_contract_settings TO authenticated;
@@ -486,6 +489,14 @@ END $$;
 REVOKE ALL ON FUNCTION public.saas_contract_apply_event(text, text, jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.saas_contract_apply_event(text, text, jsonb, jsonb) TO service_role;
 
+-- Rede de segurança do webhook: a cada 10 min consulta na Autentique os contratos ainda em andamento.
+DO $$ BEGIN
+  PERFORM cron.unschedule(jobid) FROM cron.job WHERE jobname = 'autentique-contract-sync';
+  PERFORM cron.schedule('autentique-contract-sync', '*/10 * * * *',
+    $c$SELECT public.invoke_edge_function('autentique-contract', '{"worker":"sync"}'::jsonb)
+       WHERE EXISTS (SELECT 1 FROM public.saas_contracts WHERE status IN ('sent', 'partially_signed', 'uncertain'))$c$);
+END $$;
+
 -- Tempo real no painel (status do contrato muda sozinho quando o webhook chega).
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
@@ -497,7 +508,7 @@ END $$;
 COMMIT;
 
 -- ============================ ROLLBACK (manual) ============================
--- SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'process-return-alerts';
+-- SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname IN ('process-return-alerts', 'autentique-contract-sync');
 -- DROP TRIGGER IF EXISTS procedure_return_sync ON public.appointments;
 -- DROP TABLE IF EXISTS public.procedure_return_alerts, public.saas_contract_events, public.saas_contract_signers,
 --   public.saas_contracts, public.platform_contract_settings;

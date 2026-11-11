@@ -5,6 +5,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CONTRACT_PLANS, CONTRACT_VERSION, missingContratada, renderContract, sha256Hex, validateContratante, type ContratadaInfo } from "../_shared/contract/core.ts";
 import { contractPdf } from "../_shared/contract/pdf.ts";
+import { signatureLink, syncContract } from "../_shared/contract/sync.ts";
+import { authorizeWorker } from "../_shared/whatsapp/auth.ts";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -22,17 +24,39 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL"), key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!url || !key) return json({ error: "configuration_missing" }, 503);
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    const apiKeyEnv = Deno.env.get("AUTENTIQUE_API_KEY")?.trim();
+
+    const body = await req.json().catch(() => ({})) as { action?: string; worker?: string; data?: Record<string, unknown> };
+
+    // Cron (invoke_edge_function, chave secreta do Vault): reconcilia contratos em andamento com a Autentique.
+    if (body.worker === "sync") {
+      try { authorizeWorker(req); } catch { return json({ error: "forbidden" }, 403); }
+      if (!apiKeyEnv) return json({ error: "autentique_not_configured" }, 503);
+      const { data: open } = await db.from("saas_contracts").select("id, autentique_document_id")
+        .in("status", ["sent", "partially_signed", "uncertain"]).not("autentique_document_id", "is", null).limit(50);
+      let synced = 0;
+      for (const c of open ?? []) { try { await syncContract(db, apiKeyEnv, c); synced++; } catch { /* próximo ciclo */ } }
+      return json({ success: true, synced });
+    }
+
     const token = req.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
     const { data: auth } = token ? await db.auth.getUser(token) : { data: { user: null } };
     const user = auth.user;
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    const body = await req.json().catch(() => ({})) as { action?: string; data?: Record<string, unknown> };
-    if (body.action !== "preview" && body.action !== "create") return json({ error: "invalid_request" }, 400);
+    if (!["preview", "create", "sync"].includes(body.action ?? "")) return json({ error: "invalid_request" }, 400);
 
     const { data: salon } = await db.from("salons").select("id, slug, owner_id, created_at").eq("owner_id", user.id)
       .order("created_at").limit(1).maybeSingle();
     if (!salon) return json({ error: "salon_missing" }, 409);
+
+    if (body.action === "sync") {
+      if (!apiKeyEnv) return json({ error: "autentique_not_configured" }, 503);
+      const { data: c } = await db.from("saas_contracts").select("id, autentique_document_id").eq("salon_id", salon.id)
+        .not("autentique_document_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!c) return json({ status: "none" });
+      try { return json({ status: await syncContract(db, apiKeyEnv, c) }); } catch { return json({ error: "provider_unavailable" }, 502); }
+    }
 
     const { value, errors } = validateContratante(body.data ?? {});
     if (Object.keys(errors).length) return json({ error: "invalid_fields", fields: errors }, 422);
@@ -53,7 +77,7 @@ Deno.serve(async (req) => {
       return json({ text: rendered.text, hash: rendered.hash, version: CONTRACT_VERSION, plan: { ...CONTRACT_PLANS[value.plan] } });
     }
 
-    const apiKey = Deno.env.get("AUTENTIQUE_API_KEY")?.trim();
+    const apiKey = apiKeyEnv;
     if (!apiKey) return json({ error: "autentique_not_configured" }, 503);
     const sandbox = Deno.env.get("AUTENTIQUE_SANDBOX") === "true";
 
@@ -64,11 +88,13 @@ Deno.serve(async (req) => {
     }).select("id").single();
     if (insertError) return json({ error: insertError.code === "23505" ? "contract_in_progress" : "persistence_failed" }, insertError.code === "23505" ? 409 : 503);
 
+    // Convite da CONTRATADA vai para a caixa que realmente recebe e-mail (o e-mail oficial do contrato pode não ter MX).
+    const contratadaSigner = String(settings!.signer_email || settings!.email).trim().toLowerCase();
     const pdf = contractPdf(rendered.text, `Contrato SaaS v${CONTRACT_VERSION} · SHA-256 ${rendered.hash.slice(0, 16)}… · Agenda Fácil 365`);
     const pdfHash = await sha256Hex(pdf);
     const signers = [
       // Ordem de assinatura não é exigida (sortable=false): cada parte recebe o próprio link por e-mail.
-      { email: settings!.email, name: settings!.representative_name, action: "SIGN" },
+      { email: contratadaSigner, name: settings!.representative_name, action: "SIGN" },
       { email: value.responsavel_email, name: value.responsavel_nome, action: "SIGN" },
     ];
     const form = new FormData();
@@ -106,14 +132,17 @@ Deno.serve(async (req) => {
     const lower = (s: string) => s.trim().toLowerCase();
     const find = (email: string) => doc.signatures.find((s) => lower(s.email ?? "") === lower(email));
     const rows = [
-      { role: "contratada", name: settings!.representative_name, email: settings!.email, sig: find(settings!.email) },
+      { role: "contratada", name: settings!.representative_name, email: contratadaSigner, sig: find(contratadaSigner) },
       { role: "contratante", name: value.responsavel_nome, email: value.responsavel_email, sig: find(value.responsavel_email) },
     ];
-    await db.from("saas_contract_signers").insert(rows.map((r) => ({
-      contract_id: contract.id, role: r.role, name: r.name, email: r.email, public_id: r.sig?.public_id ?? null, short_link: r.sig?.link?.short_link ?? null,
-    })));
+    // Grava o documento antes de qualquer outra chamada: se algo falhar daqui em diante, o vínculo não se perde.
     await db.from("saas_contracts").update({ status: "sent", autentique_document_id: doc.id, pdf_sha256: pdfHash, updated_at: new Date().toISOString() }).eq("id", contract.id);
-    return json({ contract_id: contract.id, document_id: doc.id, status: "sent", sign_url: rows[1].sig?.link?.short_link ?? null, sandbox, hash: rendered.hash });
+    // Quem recebe por e-mail não vem com link; gera o link para o botão "Assinar agora" (o e-mail continua sendo enviado).
+    const links = await Promise.all(rows.map((r) => r.sig?.link?.short_link ?? (r.sig?.public_id ? signatureLink(apiKey, r.sig.public_id).catch(() => null) : null)));
+    await db.from("saas_contract_signers").insert(rows.map((r, i) => ({
+      contract_id: contract.id, role: r.role, name: r.name, email: r.email, public_id: r.sig?.public_id ?? null, short_link: links[i],
+    })));
+    return json({ contract_id: contract.id, document_id: doc.id, status: "sent", sign_url: links[1], sandbox, hash: rendered.hash });
   } catch (e) {
     console.warn("autentique_contract_error", e instanceof Error ? e.name : "unknown");
     return json({ error: "internal_error" }, 500);

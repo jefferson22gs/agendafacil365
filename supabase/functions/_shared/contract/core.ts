@@ -21,8 +21,12 @@ export interface ContratanteInput {
   plan: ContractPlan;
 }
 export interface ContratadaInfo {
-  company_name: string; cnpj: string; address: string; representative_name: string; representative_cpf: string; email: string;
+  company_name: string; cnpj: string; address: string; representative_name: string; representative_cpf?: string | null; email: string;
   platform_url: string; city: string; forum: string;
+  /** Parágrafo próprio de qualificação da CONTRATADA (ex.: MEI). Aceita as mesmas variáveis {{...}}. */
+  preamble?: string | null;
+  /** E-mail que recebe o convite de assinatura da Autentique (padrão: email). */
+  signer_email?: string | null;
 }
 export interface ContractContext { slug: string; trialDays: number; trialStart: Date; trialEnd: Date; now: Date }
 
@@ -80,7 +84,7 @@ export function validateContratante(raw: Record<string, unknown>): { value: Cont
 }
 
 export function missingContratada(c: Partial<ContratadaInfo> | null | undefined): string[] {
-  const req: (keyof ContratadaInfo)[] = ["company_name", "cnpj", "address", "representative_name", "representative_cpf", "email"];
+  const req: (keyof ContratadaInfo)[] = ["company_name", "cnpj", "address", "representative_name", "email"];
   return req.filter((k) => !String(c?.[k] ?? "").trim());
 }
 
@@ -128,7 +132,7 @@ export function contractVariables(c: ContratanteInput, k: ContratadaInfo, ctx: C
   const address = `${c.endereco_logradouro}, ${c.endereco_numero} – ${c.endereco_bairro}, ${c.endereco_cidade}/${c.endereco_uf}, CEP ${c.endereco_cep.replace(/^(\d{5})(\d{3})$/, "$1-$2")}`;
   return {
     CONTRATADA_RAZAO_SOCIAL: k.company_name, CONTRATADA_CNPJ: formatDoc(k.cnpj), CONTRATADA_ENDERECO: k.address, PLATAFORMA_URL: k.platform_url,
-    CONTRATADA_REPRESENTANTE_NOME: k.representative_name, CONTRATADA_REPRESENTANTE_CPF: formatCpf(k.representative_cpf), CONTRATADA_EMAIL: k.email,
+    CONTRATADA_REPRESENTANTE_NOME: k.representative_name, CONTRATADA_REPRESENTANTE_CPF: k.representative_cpf ? formatCpf(k.representative_cpf) : "", CONTRATADA_EMAIL: k.email,
     ESTABELECIMENTO_NOME: c.estabelecimento_nome, ESTABELECIMENTO_CNPJ: formatDoc(c.estabelecimento_cnpj), ESTABELECIMENTO_SEGMENTO: c.estabelecimento_segmento,
     ESTABELECIMENTO_ENDERECO: address, ESTABELECIMENTO_SLUG: ctx.slug || "não definido",
     RESPONSAVEL_NOME: c.responsavel_nome, RESPONSAVEL_CPF: formatCpf(c.responsavel_cpf), RESPONSAVEL_EMAIL: c.responsavel_email,
@@ -155,12 +159,27 @@ export async function sha256Hex(data: string | Uint8Array): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Modelo ajustado à CONTRATADA: parágrafo de qualificação próprio e, sem CPF do representante, sem as menções a ele. */
+export function contractTemplate(k: ContratadaInfo, template = CONTRACT_TEMPLATE): string {
+  let t = template;
+  const preamble = (k.preamble ?? "").replace(/\s+/g, " ").trim();
+  if (preamble) {
+    const line = preamble.startsWith("CONTRATADA:") ? preamble : `CONTRATADA: ${preamble}`;
+    t = t.split("\n").map((l) => (l.startsWith("CONTRATADA: {{") ? line : l)).join("\n");
+  }
+  if (!digits(k.representative_cpf ?? "")) {
+    t = t.replace(", CPF nº {{CONTRATADA_REPRESENTANTE_CPF}}", "")
+      .replace("Representante: {{CONTRATADA_REPRESENTANTE_NOME}}\nCPF: {{CONTRATADA_REPRESENTANTE_CPF}}\n", "Representante: {{CONTRATADA_REPRESENTANTE_NOME}}\n");
+  }
+  return t;
+}
+
 /**
  * Texto final + hash. O hash é o SHA-256 do texto com o marcador no lugar do próprio hash; quem quiser conferir
  * troca o hash impresso pelo marcador e recalcula (o PDF assinado também tem seu hash próprio na Autentique).
  */
 export async function renderContract(c: ContratanteInput, k: ContratadaInfo, ctx: ContractContext) {
-  const draft = fillTemplate(contractVariables(c, k, ctx));
+  const draft = fillTemplate(contractVariables(c, k, ctx), contractTemplate(k));
   const hash = await sha256Hex(draft);
   return { text: draft.split(HASH_MARKER).join(hash), hash, version: CONTRACT_VERSION };
 }

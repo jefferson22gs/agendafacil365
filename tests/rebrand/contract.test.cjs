@@ -78,3 +78,21 @@ test('PDF: estrutura válida (xref, páginas), acentos em WinAnsi, conteúdo int
   assert.ok(s.includes('CL' + String.fromCharCode(92) + '301USULA'), 'Á em WinAnsi octal'); assert.ok(!/[\u0080-\u00ff]/.test(s.slice(20)), 'corpo ASCII');
   fs.writeFileSync(path.join(require('node:os').tmpdir(), 'af365-contrato-teste.pdf'), bytes);
 });
+
+test('CONTRATADA MEI: qualificação própria, sem CPF do representante, convite para outro e-mail', async () => {
+  const { value } = core.validateContratante(contratante);
+  const mei = { ...contratada, company_name: 'MARCO ANTONIO BOGGIAN', cnpj: '59760458000191', representative_name: 'Marco Antonio Boggian', representative_cpf: null,
+    email: 'avisos@agendafacil365.com.br', address: 'Rua Jacques Pilon, nº 189, Vila Piauí, São Paulo/SP, CEP 05109-160',
+    preamble: 'MARCO ANTONIO BOGGIAN, empresário individual enquadrado como Microempreendedor Individual – MEI, inscrito no CNPJ sob nº {{CONTRATADA_CNPJ}}, com endereço comercial na {{CONTRATADA_ENDERECO}}, titular e licenciante da plataforma eletrônica AGENDA FACIL 365 ({{PLATAFORMA_URL}}), neste ato representado por seu titular, {{CONTRATADA_REPRESENTANTE_NOME}}, e-mail oficial {{CONTRATADA_EMAIL}}, doravante denominada simplesmente CONTRATADA; e, de outro lado:' };
+  assert.deepEqual([...core.missingContratada(mei)], []);
+  const r = await core.renderContract(value, mei, ctx);
+  const lines = r.text.split('\n');
+  const p = lines.find((l) => l.startsWith('CONTRATADA: MARCO'));
+  assert.ok(p && p.includes('Microempreendedor Individual – MEI, inscrito no CNPJ sob nº 59.760.458/0001-91'), p);
+  assert.ok(p.includes('Rua Jacques Pilon, nº 189, Vila Piauí, São Paulo/SP, CEP 05109-160') && p.includes('e-mail oficial avisos@agendafacil365.com.br'));
+  assert.ok(!lines.some((l) => l.startsWith('CONTRATADA: {{')) && !r.text.includes('{{'));
+  const sig = lines.indexOf('CONTRATADA (DONO DO SISTEMA):');
+  assert.equal(lines[sig + 3], 'Representante: Marco Antonio Boggian'); assert.equal(lines[sig + 4], 'E-mail: avisos@agendafacil365.com.br', 'sem linha de CPF vazia');
+  assert.ok(!/CPF nº ,|CPF: \n/.test(r.text));
+  assert.ok(await core.verifyContractHash(r.text, r.hash));
+});
