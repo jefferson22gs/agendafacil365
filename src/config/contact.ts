@@ -8,7 +8,7 @@ export const DEVELOPER_INFO = {
     whatsappLink: "https://wa.me/5511986262240",
     instagram: "@codigo.base",
     instagramLink: "https://instagram.com/codigo.base",
-    website: "https://w.app/codigobase",
+    website: "https://www.codigobase.com.br/",
     slogan: "Escale seu negócio com tecnologia. Sites, Apps e Automação que geram lucro.",
 };
 

@@ -102,37 +102,40 @@ export const Footer = () => {
             <p>© {year} {BRAND.name}. Todos os direitos reservados.</p>
             <WcagBadge />
           </div>
-          <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
-            <p>
-              Desenvolvido por{" "}
-              <a
-                href={DEVELOPER_INFO.instagramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-primary hover:underline"
-              >
-                {DEVELOPER_INFO.company}
-              </a>
-            </p>
+          <p className="flex flex-wrap items-center justify-center gap-x-2 md:justify-end">
+            <span>Desenvolvido por</span>
+            <a
+              href={DEVELOPER_INFO.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${DEVELOPER_INFO.company} (site, abre em nova aba)`}
+              className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              {DEVELOPER_INFO.company}
+            </a>
+            <span aria-hidden="true">·</span>
             <a
               href={DEVELOPER_INFO.whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 hover:text-foreground sm:min-h-0"
+              aria-label={`WhatsApp ${DEVELOPER_INFO.whatsappFormatted} (abre em nova aba)`}
+              className="inline-flex min-h-11 items-center gap-1.5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
               <MessageCircle size={14} aria-hidden />
               {DEVELOPER_INFO.whatsappFormatted}
             </a>
+            <span aria-hidden="true">·</span>
             <a
               href={DEVELOPER_INFO.instagramLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 hover:text-foreground sm:min-h-0"
+              aria-label={`Instagram ${DEVELOPER_INFO.instagram} (abre em nova aba)`}
+              className="inline-flex min-h-11 items-center gap-1.5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
               <Instagram size={14} aria-hidden />
               {DEVELOPER_INFO.instagram}
             </a>
-          </div>
+          </p>
         </div>
       </div>
     </footer>
