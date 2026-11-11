@@ -680,6 +680,7 @@ export type Database = {
           notes: string | null
           price: number
           professional_id: string | null
+          return_days: number | null
           salon_id: string
           service_id: string | null
           start_time: string
@@ -709,6 +710,7 @@ export type Database = {
           notes?: string | null
           price: number
           professional_id?: string | null
+          return_days?: number | null
           salon_id: string
           service_id?: string | null
           start_time: string
@@ -738,6 +740,7 @@ export type Database = {
           notes?: string | null
           price?: number
           professional_id?: string | null
+          return_days?: number | null
           salon_id?: string
           service_id?: string | null
           start_time?: string
@@ -3629,6 +3632,208 @@ export type Database = {
           },
         ]
       }
+      platform_contract_settings: {
+        Row: {
+          address: string | null
+          city: string
+          cnpj: string | null
+          company_name: string | null
+          email: string | null
+          forum: string
+          id: boolean
+          platform_url: string
+          preamble: string | null
+          representative_cpf: string | null
+          representative_name: string | null
+          signer_email: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string
+          cnpj?: string | null
+          company_name?: string | null
+          email?: string | null
+          forum?: string
+          id?: boolean
+          platform_url?: string
+          preamble?: string | null
+          representative_cpf?: string | null
+          representative_name?: string | null
+          signer_email?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string
+          cnpj?: string | null
+          company_name?: string | null
+          email?: string | null
+          forum?: string
+          id?: boolean
+          platform_url?: string
+          preamble?: string | null
+          representative_cpf?: string | null
+          representative_name?: string | null
+          signer_email?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      procedure_return_alerts: {
+        Row: {
+          alert_date: string
+          appointment_id: string
+          channels_sent: Json
+          claim_token: string | null
+          client_email: string | null
+          client_id: string | null
+          client_name: string | null
+          client_phone: string | null
+          created_at: string
+          email_attempts: number
+          email_first_attempt_at: string | null
+          email_payload: Json | null
+          id: string
+          lease_until: string | null
+          next_attempt_at: string
+          notified_at: string | null
+          notify_email: boolean
+          notify_push: boolean
+          notify_whatsapp: boolean
+          performed_at: string
+          procedure_name: string
+          return_days: number
+          salon_id: string
+          service_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          alert_date: string
+          appointment_id: string
+          channels_sent?: Json
+          claim_token?: string | null
+          client_email?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          email_attempts?: number
+          email_first_attempt_at?: string | null
+          email_payload?: Json | null
+          id?: string
+          lease_until?: string | null
+          next_attempt_at?: string
+          notified_at?: string | null
+          notify_email?: boolean
+          notify_push?: boolean
+          notify_whatsapp?: boolean
+          performed_at: string
+          procedure_name: string
+          return_days: number
+          salon_id: string
+          service_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          alert_date?: string
+          appointment_id?: string
+          channels_sent?: Json
+          claim_token?: string | null
+          client_email?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          email_attempts?: number
+          email_first_attempt_at?: string | null
+          email_payload?: Json | null
+          id?: string
+          lease_until?: string | null
+          next_attempt_at?: string
+          notified_at?: string | null
+          notify_email?: boolean
+          notify_push?: boolean
+          notify_whatsapp?: boolean
+          performed_at?: string
+          procedure_name?: string
+          return_days?: number
+          salon_id?: string
+          service_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedure_return_alerts_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "client_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "auto_post_stats"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "google_calendar_sync_status"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "pwa_stats"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_schedule"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "procedure_return_alerts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_sales: {
         Row: {
           appointment_id: string | null
@@ -4787,6 +4992,196 @@ export type Database = {
           },
         ]
       }
+      saas_contract_events: {
+        Row: {
+          contract_id: string | null
+          event_id: string
+          payload: Json
+          received_at: string
+          type: string
+        }
+        Insert: {
+          contract_id?: string | null
+          event_id: string
+          payload: Json
+          received_at?: string
+          type: string
+        }
+        Update: {
+          contract_id?: string | null
+          event_id?: string
+          payload?: Json
+          received_at?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_contract_events_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "saas_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_contract_signers: {
+        Row: {
+          contract_id: string
+          email: string
+          id: string
+          name: string
+          public_id: string | null
+          rejected_at: string | null
+          role: string
+          short_link: string | null
+          signed_at: string | null
+          signer_ip: string | null
+          status: string
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          contract_id: string
+          email: string
+          id?: string
+          name: string
+          public_id?: string | null
+          rejected_at?: string | null
+          role: string
+          short_link?: string | null
+          signed_at?: string | null
+          signer_ip?: string | null
+          status?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          contract_id?: string
+          email?: string
+          id?: string
+          name?: string
+          public_id?: string | null
+          rejected_at?: string | null
+          role?: string
+          short_link?: string | null
+          signed_at?: string | null
+          signer_ip?: string | null
+          status?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_contract_signers_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "saas_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_contracts: {
+        Row: {
+          autentique_document_id: string | null
+          content_sha256: string
+          content_text: string
+          contract_data: Json
+          contratada_signed_at: string | null
+          contratante_signed_at: string | null
+          created_at: string
+          created_by: string
+          error_code: string | null
+          id: string
+          pdf_sha256: string | null
+          plan: string
+          salon_id: string
+          sandbox: boolean
+          signed_at: string | null
+          signed_file_url: string | null
+          status: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          autentique_document_id?: string | null
+          content_sha256: string
+          content_text: string
+          contract_data: Json
+          contratada_signed_at?: string | null
+          contratante_signed_at?: string | null
+          created_at?: string
+          created_by: string
+          error_code?: string | null
+          id?: string
+          pdf_sha256?: string | null
+          plan: string
+          salon_id: string
+          sandbox?: boolean
+          signed_at?: string | null
+          signed_file_url?: string | null
+          status?: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          autentique_document_id?: string | null
+          content_sha256?: string
+          content_text?: string
+          contract_data?: Json
+          contratada_signed_at?: string | null
+          contratante_signed_at?: string | null
+          created_at?: string
+          created_by?: string
+          error_code?: string | null
+          id?: string
+          pdf_sha256?: string | null
+          plan?: string
+          salon_id?: string
+          sandbox?: boolean
+          signed_at?: string | null
+          signed_file_url?: string | null
+          status?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_contracts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "auto_post_stats"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "saas_contracts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "google_calendar_sync_status"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "saas_contracts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "pwa_stats"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "saas_contracts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saas_contracts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_schedule"
+            referencedColumns: ["salon_id"]
+          },
+        ]
+      }
       salon_ai_configs: {
         Row: {
           api_key_id: string | null
@@ -5643,7 +6038,9 @@ export type Database = {
       }
       services: {
         Row: {
+          auto_return_alert: boolean
           created_at: string
+          default_return_days: number | null
           description: string | null
           duration_minutes: number
           icon: string | null
@@ -5651,12 +6048,18 @@ export type Database = {
           insights_category: string | null
           is_active: boolean | null
           name: string
+          notify_email: boolean
+          notify_push: boolean
+          notify_whatsapp: boolean
           price: number
+          return_message_template: string | null
           salon_id: string
           updated_at: string
         }
         Insert: {
+          auto_return_alert?: boolean
           created_at?: string
+          default_return_days?: number | null
           description?: string | null
           duration_minutes?: number
           icon?: string | null
@@ -5664,12 +6067,18 @@ export type Database = {
           insights_category?: string | null
           is_active?: boolean | null
           name: string
+          notify_email?: boolean
+          notify_push?: boolean
+          notify_whatsapp?: boolean
           price: number
+          return_message_template?: string | null
           salon_id: string
           updated_at?: string
         }
         Update: {
+          auto_return_alert?: boolean
           created_at?: string
+          default_return_days?: number | null
           description?: string | null
           duration_minutes?: number
           icon?: string | null
@@ -5677,7 +6086,11 @@ export type Database = {
           insights_category?: string | null
           is_active?: boolean | null
           name?: string
+          notify_email?: boolean
+          notify_push?: boolean
+          notify_whatsapp?: boolean
           price?: number
+          return_message_template?: string | null
           salon_id?: string
           updated_at?: string
         }
@@ -6293,6 +6706,12 @@ export type Database = {
           cancellation_enabled: boolean
           chatbot_booking_enabled: boolean
           confirmation_enabled: boolean
+          guided_confirmation_message: string | null
+          guided_flow_enabled: boolean
+          guided_handoff_hours: number
+          guided_info_text: string | null
+          guided_render_mode: string
+          guided_welcome_message: string | null
           interactive_enabled: boolean
           reminder_minutes: number[]
           reminders_enabled: boolean
@@ -6308,6 +6727,12 @@ export type Database = {
           cancellation_enabled?: boolean
           chatbot_booking_enabled?: boolean
           confirmation_enabled?: boolean
+          guided_confirmation_message?: string | null
+          guided_flow_enabled?: boolean
+          guided_handoff_hours?: number
+          guided_info_text?: string | null
+          guided_render_mode?: string
+          guided_welcome_message?: string | null
           interactive_enabled?: boolean
           reminder_minutes?: number[]
           reminders_enabled?: boolean
@@ -6323,6 +6748,12 @@ export type Database = {
           cancellation_enabled?: boolean
           chatbot_booking_enabled?: boolean
           confirmation_enabled?: boolean
+          guided_confirmation_message?: string | null
+          guided_flow_enabled?: boolean
+          guided_handoff_hours?: number
+          guided_info_text?: string | null
+          guided_render_mode?: string
+          guided_welcome_message?: string | null
           interactive_enabled?: boolean
           reminder_minutes?: number[]
           reminders_enabled?: boolean
@@ -6364,6 +6795,81 @@ export type Database = {
             foreignKeyName: "whatsapp_automation_settings_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: true
+            referencedRelation: "weekly_schedule"
+            referencedColumns: ["salon_id"]
+          },
+        ]
+      }
+      whatsapp_chatbot_sessions: {
+        Row: {
+          client_name: string | null
+          client_phone: string
+          created_at: string
+          current_step: string
+          human_takeover_until: string | null
+          id: string
+          last_interaction_at: string
+          salon_id: string
+          session_data: Json
+          updated_at: string
+        }
+        Insert: {
+          client_name?: string | null
+          client_phone: string
+          created_at?: string
+          current_step?: string
+          human_takeover_until?: string | null
+          id?: string
+          last_interaction_at?: string
+          salon_id: string
+          session_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string | null
+          client_phone?: string
+          created_at?: string
+          current_step?: string
+          human_takeover_until?: string | null
+          id?: string
+          last_interaction_at?: string
+          salon_id?: string
+          session_data?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_chatbot_sessions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "auto_post_stats"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_chatbot_sessions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "google_calendar_sync_status"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_chatbot_sessions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "pwa_stats"
+            referencedColumns: ["salon_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_chatbot_sessions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_chatbot_sessions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
             referencedRelation: "weekly_schedule"
             referencedColumns: ["salon_id"]
           },
@@ -6517,7 +7023,12 @@ export type Database = {
           id: string
           instance_name: string
           instance_token: string | null
+          meta_display_name: string | null
+          meta_phone_number_id: string | null
+          meta_quality: string | null
+          meta_waba_id: string | null
           phone_number: string | null
+          provider: string
           qrcode: string | null
           salon_id: string
           status: string | null
@@ -6530,7 +7041,12 @@ export type Database = {
           id?: string
           instance_name: string
           instance_token?: string | null
+          meta_display_name?: string | null
+          meta_phone_number_id?: string | null
+          meta_quality?: string | null
+          meta_waba_id?: string | null
           phone_number?: string | null
+          provider?: string
           qrcode?: string | null
           salon_id: string
           status?: string | null
@@ -6543,7 +7059,12 @@ export type Database = {
           id?: string
           instance_name?: string
           instance_token?: string | null
+          meta_display_name?: string | null
+          meta_phone_number_id?: string | null
+          meta_quality?: string | null
+          meta_waba_id?: string | null
           phone_number?: string | null
+          provider?: string
           qrcode?: string | null
           salon_id?: string
           status?: string | null
@@ -7918,6 +8439,60 @@ export type Database = {
       }
       mark_status_posted: { Args: { p_salon_id: string }; Returns: undefined }
       post_salon_status_auto: { Args: never; Returns: Json }
+      procedure_return_claim: { Args: { p_id?: string }; Returns: Json }
+      procedure_return_digits: { Args: { p: string }; Returns: string }
+      procedure_return_finish: {
+        Args: {
+          p_claim: string
+          p_email_id?: string
+          p_email_status?: string
+          p_id: string
+        }
+        Returns: boolean
+      }
+      procedure_return_owner_digest: { Args: never; Returns: number }
+      procedure_return_prepare: {
+        Args: {
+          p_claim: string
+          p_email?: Json
+          p_id: string
+          p_message: string
+          p_url: string
+        }
+        Returns: Json
+      }
+      procedure_return_update: {
+        Args: { p_alert_date?: string; p_id: string; p_status?: string }
+        Returns: undefined
+      }
+      procedure_returns_kpis: { Args: { p_salon: string }; Returns: Json }
+      procedure_returns_list: {
+        Args: {
+          p_client?: string
+          p_from?: string
+          p_salon: string
+          p_status?: string
+          p_to?: string
+        }
+        Returns: {
+          alert_date: string
+          appointment_id: string
+          channels_sent: Json
+          client_email: string
+          client_id: string
+          client_name: string
+          client_phone: string
+          id: string
+          notified_at: string
+          performed_at: string
+          procedure_name: string
+          push_status: string
+          return_days: number
+          service_id: string
+          status: string
+          whatsapp_status: string
+        }[]
+      }
       process_auto_status_posts: {
         Args: never
         Returns: {
@@ -8105,6 +8680,15 @@ export type Database = {
         Args: { p_new_date: string; p_new_time: string; p_token: string }
         Returns: Json
       }
+      saas_contract_apply_event: {
+        Args: {
+          p_event_id: string
+          p_object: Json
+          p_payload: Json
+          p_type: string
+        }
+        Returns: boolean
+      }
       save_chatbot_message: {
         Args: {
           p_ai_provider?: string
@@ -8157,6 +8741,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      submit_public_review: {
+        Args: { p_appointment_id: string; p_comment?: string; p_rating: number }
+        Returns: Json
       }
       suggest_next_available_slot: {
         Args: {
@@ -8509,6 +9097,10 @@ export type Database = {
       whatsapp_save_chatbot_secret: {
         Args: { p_api_key: string; p_salon_id: string }
         Returns: undefined
+      }
+      whatsapp_service_window_open: {
+        Args: { p_phone: string; p_salon_id: string }
+        Returns: boolean
       }
       whatsapp_set_marketing_opt_out: {
         Args: { p_event_id: string }

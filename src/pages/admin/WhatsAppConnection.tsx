@@ -11,6 +11,7 @@ import { AutomationSettings } from "@/features/whatsapp/AutomationSettings";
 import { InsightsSettings } from "@/features/whatsapp/InsightsSettings";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { OfficialConnectCard } from "@/components/whatsapp/OfficialConnectCard";
 
 interface WhatsAppInstance {
   id: string;
@@ -18,6 +19,7 @@ interface WhatsAppInstance {
   instance_name: string;
   status: "disconnected" | "connecting" | "connected" | "qrcode";
   phone_number: string | null;
+  provider?: "evolution" | "meta";
 }
 interface ConnectionResult {
   success: boolean;
@@ -26,7 +28,7 @@ interface ConnectionResult {
   phoneNumber?: string | null;
   qrcode?: string | null;
 }
-const columns = "id,salon_id,instance_name,status,phone_number";
+const columns = "id,salon_id,instance_name,status,phone_number,provider";
 const friendlyError = "Não foi possível concluir. Confira a conexão e tente novamente.";
 
 export default function WhatsAppConnection() {
@@ -124,6 +126,13 @@ export default function WhatsAppConnection() {
   if (loading) return <AdminLayout><div className="flex flex-col items-center justify-center h-96 gap-3" role="status"><Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden /><p className="text-sm text-muted-foreground">Carregando WhatsApp…</p></div></AdminLayout>;
   const connected = instance?.status === "connected";
   const waiting = instance?.status === "connecting" || instance?.status === "qrcode";
+  const official = instance?.provider === "meta";
+  // Depois do cadastro oficial, relê a conexão (o servidor trocou o provedor do salão).
+  const reload = async () => {
+    if (!salonId) return;
+    const { data } = await supabase.from("whatsapp_instances").select(columns).eq("salon_id", salonId).maybeSingle();
+    setInstance(data as WhatsAppInstance | null); setQrCode(null);
+  };
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-4xl mx-auto min-w-0">
@@ -131,13 +140,15 @@ export default function WhatsAppConnection() {
           <PageHeader className="mb-0" title={<span className="flex items-center gap-2"><Smartphone className="w-6 h-6 text-primary" aria-hidden />Conexão WhatsApp</span>} description="Conecte o WhatsApp do estabelecimento para mensagens, campanhas e atendimento automático." />
         </div>
         {error && <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-foreground" role="alert"><AlertCircle size={18} className="text-destructive shrink-0" aria-hidden />{error}</div>}
+        {/* Oficial: oferecido a quem ainda não conectou ou está no QR code. */}
+        {salonId && !official && <OfficialConnectCard salonId={salonId} onConnected={() => void reload()} />}
         {!instance ? (
           <div data-tour="whatsapp-empty">
             <EmptyState
               icon={MessageSquare}
-              title="Conecte o WhatsApp do estabelecimento"
-              description="Use o número do estabelecimento. Cada estabelecimento possui sua própria conexão, sem compartilhar mensagens com outros."
-              action={<Button variant="brand" disabled={!salonId} onClick={() => setShowCreateModal(true)} data-tour="whatsapp-create-button">Conectar WhatsApp</Button>}
+              title="Ou conecte por QR Code"
+              description="Alternativa temporária: conecta como WhatsApp Web. Mensagens com opções numeradas (sem botões) e risco de bloqueio do número pelo WhatsApp."
+              action={<Button variant="outline" disabled={!salonId} onClick={() => setShowCreateModal(true)} data-tour="whatsapp-create-button">Conectar por QR Code</Button>}
             />
           </div>
         ) : (
@@ -152,13 +163,14 @@ export default function WhatsAppConnection() {
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     {/* Status com texto, ícone e cor semântica: conectado = sucesso, aguardando = aviso, desconectado = erro */}
                     <Badge variant={connected ? "success" : waiting ? "warning" : "danger"}>{connected ? "Conectado" : waiting ? "Aguardando leitura do QR Code" : "Desconectado"}</Badge>
+                    <Badge variant={official ? "info" : "secondary"}>{official ? "Oficial (Meta)" : "QR Code"}</Badge>
                     {instance.phone_number && <span className="text-sm text-muted-foreground">+{instance.phone_number}</span>}
                   </div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="icon" disabled={!!busy} onClick={() => void refreshStatus(salonId!)} aria-label="Atualizar conexão"><RefreshCw size={18} aria-hidden /></Button>
-                {connected ? <Button variant="destructive" disabled={!!busy} onClick={() => void run("disconnect")} data-tour="whatsapp-disconnect"><WifiOff size={16} className="mr-2" aria-hidden />Desconectar</Button>
+                {official ? null : connected ? <Button variant="destructive" disabled={!!busy} onClick={() => void run("disconnect")} data-tour="whatsapp-disconnect"><WifiOff size={16} className="mr-2" aria-hidden />Desconectar</Button>
                 : <Button variant="brand" disabled={!!busy} onClick={() => void run("connect")} data-tour="whatsapp-connect-button">{busy === "connect" ? <Loader2 size={16} className="animate-spin mr-2" aria-hidden /> : <Wifi size={16} className="mr-2" aria-hidden />}Reconectar</Button>}
               </div>
             </CardContent></Card>
@@ -167,8 +179,8 @@ export default function WhatsAppConnection() {
             </Card>}
             {salonId && <AutomationSettings salonId={salonId} />}
             {salonId && <InsightsSettings salonId={salonId} />}
-            <Card data-tour="whatsapp-tips"><CardContent className="p-6 flex gap-3"><AlertCircle className="text-primary flex-shrink-0" aria-hidden /><div><h3 className="font-semibold">Mantenha sua conexão funcionando</h3><p className="text-sm text-muted-foreground mt-2">Confira o status antes de usar automações. Se desconectar, escaneie um novo código. O chatbot responde apenas quando você o habilita.</p></div></CardContent></Card>
-            <div className="flex justify-end"><Button variant="ghost" className="text-destructive" disabled={!!busy} onClick={() => void run("delete")} data-tour="whatsapp-delete"><Trash2 size={16} className="mr-2" aria-hidden />Excluir conexão</Button></div>
+            {!official && <Card data-tour="whatsapp-tips"><CardContent className="p-6 flex gap-3"><AlertCircle className="text-primary flex-shrink-0" aria-hidden /><div><h3 className="font-semibold">Mantenha sua conexão funcionando</h3><p className="text-sm text-muted-foreground mt-2">Confira o status antes de usar automações. Se desconectar, escaneie um novo código. O chatbot responde apenas quando você o habilita.</p></div></CardContent></Card>}
+            {!official && <div className="flex justify-end"><Button variant="ghost" className="text-destructive" disabled={!!busy} onClick={() => void run("delete")} data-tour="whatsapp-delete"><Trash2 size={16} className="mr-2" aria-hidden />Excluir conexão</Button></div>}
           </>
         )}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}><DialogContent><DialogHeader><DialogTitle>Configurar conexão do estabelecimento</DialogTitle><DialogDescription>O sistema cria uma conexão exclusiva. Depois você escaneia o código pelo celular. Nenhuma mensagem será enviada neste cadastro.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setShowCreateModal(false)}>Voltar</Button><Button variant="brand" disabled={!!busy} onClick={() => void run("create")} data-tour="whatsapp-create-save">{busy === "create" && <Loader2 className="animate-spin mr-2" size={16} />}Criar conexão</Button></DialogFooter></DialogContent></Dialog>
