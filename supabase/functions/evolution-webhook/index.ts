@@ -18,7 +18,7 @@ serve(async (req) => {
     const name = body.instance;
     if (typeof name !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(name)) throw new WhatsAppError("invalid_request");
     const db = serviceClient();
-    const { data: instance, error } = await db.from("whatsapp_instances").select("id,salon_id,instance_name").eq("instance_name", name).maybeSingle();
+    const { data: instance, error } = await db.from("whatsapp_instances").select("id,salon_id,instance_name,phone_number").eq("instance_name", name).maybeSingle();
     if (error) throw new WhatsAppError("persistence_failed", 503);
     if (!instance) throw new WhatsAppError("unauthorized", 401);
     const { data: secrets, error: secretError } = await db.rpc("whatsapp_instance_secret", { p_instance_id: instance.id });
@@ -43,7 +43,8 @@ serve(async (req) => {
         if (deliveryError) throw new WhatsAppError("persistence_failed", 503);
       }
       // Voto de enquete (pollVotes já recusa grupo/participante): vira evento do atendente com a seleção do menu.
-      for (const entry of envelopeEntries) await storePollVotes(db, instance, entry, arrived);
+      // Vem ANTES de qualquer filtro fromMe: a enquete foi criada por nós (fromMe), o voto é do cliente.
+      for (const entry of envelopeEntries) await storePollVotes(db, instance, entry, arrived, ownNumber(instance.phone_number, body.sender));
     }
     if (event === "messages.update") return jsonResponse({ accepted: true });
     if (event !== "messages.upsert" && event !== "send.message") return jsonResponse({ accepted: false, reason: "unsupported_event" });
@@ -56,11 +57,13 @@ serve(async (req) => {
     }
     if (event === "send.message") return jsonResponse({ accepted: inbox.length });
     let accepted = 0;
+    // Anti-loop: o próprio número do salão (dono da instância) nunca vira conversa do robô.
+    const own = ownNumber(instance.phone_number, body.sender);
     for (const entry of entries) {
       // Grupo/comunidade/canal/status nunca viram evento do atendente (parseIncoming também filtra: camada dupla).
       if (!isPrivateChat(entry)) continue;
       const message = parseIncoming(entry);
-      if (!message) continue;
+      if (!message || (own && message.phone === own)) continue;
       const { error: insertError } = await db.from("whatsapp_webhook_events").upsert({
         salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
         provider_message_id: message.id, sender_phone: message.phone,
@@ -74,22 +77,32 @@ serve(async (req) => {
   } catch (error) { return errorResponse(error); }
 });
 
+/** +E.164 do número do salão (instância conectada; `sender` do envelope como reserva), ou null. */
+function ownNumber(phone: unknown, sender: unknown): string | null {
+  const digits = String(phone ?? "").replace(/\D/g, "") || String(sender ?? "").split("@")[0].replace(/\D/g, "");
+  return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : null;
+}
+const pollTitle = (payload: unknown, id: string) =>
+  String((recordOf(payload)?.options as { id?: string; title?: string }[] | undefined)?.find(o => o?.id === id)?.title ?? "Opção escolhida").slice(0, 200);
+
 /**
  * Evolution 2.3.7 entrega o voto já descriptografado (messages.upsert pollUpdateMessage.vote.selectedOptions = nomes;
  * messages.update pollUpdates[{name,voters}]). O nome vira id de menu SÓ pelo payload da enquete que NÓS enviamos a
  * este mesmo telefone (whatsapp_outbox.remote_message_id). Mesma opção na mesma enquete = um evento (dedupe).
  */
-async function storePollVotes(db: SupabaseClient, instance: { id: string; salon_id: string }, entry: unknown, arrived: number) {
+async function storePollVotes(db: SupabaseClient, instance: { id: string; salon_id: string }, entry: unknown, arrived: number, own: string | null) {
   for (const vote of pollVotes(entry)) {
+    if (own && vote.phone === own) continue;
     const { data: sent, error: lookupError } = await db.from("whatsapp_outbox").select("payload").eq("salon_id", instance.salon_id).eq("instance_id", instance.id).eq("remote_message_id", vote.pollId).eq("recipient_phone", vote.phone).maybeSingle();
     if (lookupError) throw new WhatsAppError("persistence_failed", 503);
-    const selection = pollSelection(sent?.payload, vote.option);
+    const selection = await pollSelection(sent?.payload, vote.option, vote.hash);
     if (!selection) continue;
     const { error: voteError } = await db.from("whatsapp_webhook_events").upsert({
       salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
       provider_message_id: `poll_${vote.pollId}_${selection.replace(".", "_")}`.slice(0, 160), sender_phone: vote.phone,
       whatsapp_at: whatsappTimestamp(recordOf(entry)?.messageTimestamp, arrived),
-      payload: { text: vote.option, name: "Cliente", selection, pollId: vote.pollId },
+      // Texto legível do voto (hash não serve para histórico/IA): título da opção enviada.
+      payload: { text: vote.hash ? pollTitle(sent?.payload, selection) : vote.option, name: "Cliente", selection, pollId: vote.pollId },
     }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
     if (voteError) throw new WhatsAppError("persistence_failed", 503);
   }

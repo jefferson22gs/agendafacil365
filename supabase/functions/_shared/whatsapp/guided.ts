@@ -9,7 +9,7 @@ import { dayChunk, firstMatches } from "./latency.ts";
 import { brl, buildMenu, clip, dateBR, fullName, resolveChoice, weekday, type Option, type StoredMenu } from "./interactive.ts";
 import { freeTimes, paymentStep, professionalsFor, services, type Flow, type Input, type OutMessage } from "./attendant.ts";
 import { renderMenu } from "./evolutionSender.ts";
-import { BUTTON_TEXT, MAX_BUTTONS, buttonPage, renderButtons } from "./evolutionButtons.ts";
+import { BUTTON_TEXT, MAX_BUTTONS, POLL_MAX, buttonPage, prependIntro, renderButtons, renderPoll } from "./evolutionButtons.ts";
 
 export type Step = "IDLE" | "MAIN_MENU" | "SELECT_SERVICE" | "SELECT_PROFESSIONAL" | "SELECT_DATE" | "SELECT_TIME" | "CONFIRM_NAME" | "CONFIRM_BOOKING"
   | "MY_APPOINTMENTS" | "APPOINTMENT_ACTIONS" | "CONFIRM_CANCEL_APPOINTMENT" | "RESCHEDULE_SELECT_DATE" | "RESCHEDULE_SELECT_TIME" | "HUMAN_HANDOFF";
@@ -109,26 +109,33 @@ interface Ctx { ctx: BotContext; cfg: AutomationRow; salon: SalonRow; s: GuidedS
 type Out = { messages: OutMessage[]; model: string; handoff?: boolean; flowState?: Flow | null };
 
 function menu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page = 0, footer = FOOTER): Out {
-  if (c.cfg.renderMode === "buttons") return buttonsMenu(c, step, title, body, opts, page);
+  if (buttonsMode(c)) return buttonsMenu(c, step, title, body, opts, page);
   const { menu, stored } = buildMenu(nonce(), step, title, body, opts, page);
   menu.footer = footer;
   c.s.step = step; c.s.data.menu = stored;
   return { messages: [renderMenu(menu, c.cfg.renderMode)], model: `guided_${step.toLowerCase()}` };
 }
-const buttonsFooter = (c: Ctx) => `${clip(c.salon.name, 30)} • Toque em um botão abaixo`;
-/** Modo 100% botões: até 3 por mensagem; sobra vira "➡️ Ver mais" e a última página oferece "🔁 Do início". */
+const buttonsFooter = (c: Ctx) => pollMode(c) ? `${clip(c.salon.name, 30)} • Toque em uma opção ou responda o número` : `${clip(c.salon.name, 30)} • Toque em um botão abaixo`;
+const MENU_HOME: Option = { id: "menu_main", title: "🏠 Menu inicial", value: { go: "menu" } };
+/**
+ * Modos clicáveis. poll: enquete de escolha única (até 9 opções; chega em qualquer celular). buttons: até 3 botões.
+ * Sobra vira "➡️ Ver mais" e a última página oferece "🔁 Do início".
+ */
 function buttonsMenu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page: number): Out {
-  const n = nonce(), pg = buttonPage(opts.length, page);
-  const slice = opts.slice(pg.start, pg.end);
-  // Botão tem 20 caracteres: preço, duração e nome completo vão no texto do card.
-  const details = slice.filter(o => o.description || Array.from(o.title).length > BUTTON_TEXT).map(o => `• *${o.title}*${o.description ? ` — ${o.description}` : ""}`);
+  const poll = pollMode(c), max = poll ? POLL_MAX : MAX_BUTTONS;
+  // Enquete exige ao menos 2 opções: menu com uma só ganha "Menu inicial".
+  const all = poll && opts.length === 1 ? [...opts, MENU_HOME] : opts;
+  const n = nonce(), pg = buttonPage(all.length, page, max);
+  const slice = all.slice(pg.start, pg.end);
+  // Botão tem 20 caracteres: preço, duração e nome completo vão no texto do card. Na enquete cabem na própria opção.
+  const details = poll ? [] : slice.filter(o => o.description || Array.from(o.title).length > BUTTON_TEXT).map(o => `• *${o.title}*${o.description ? ` — ${o.description}` : ""}`);
   const { menu, stored } = buildMenu(n, step, pg.pages > 1 ? `${title} (${pg.page + 1}/${pg.pages})` : title, details.length ? `${body}\n\n${details.join("\n")}` : body,
-    slice.map(o => ({ ...o, description: undefined })), 0, MAX_BUTTONS);
-  if (pg.more || pg.wrap) { menu.rows.push({ id: `${n}.more`, title: pg.more ? "➡️ Ver mais" : "🔁 Do início" }); stored.hasMore = true; }
+    poll ? slice : slice.map(o => ({ ...o, description: undefined })), 0, max);
+  if (pg.more || pg.wrap) { menu.rows.push({ id: `${n}.more`, title: pg.more ? (poll ? "➡️ Ver mais opções" : "➡️ Ver mais") : "🔁 Do início" }); stored.hasMore = true; }
   stored.page = pg.page;
   menu.footer = buttonsFooter(c);
   c.s.step = step; c.s.data.menu = stored;
-  return { messages: [renderButtons(menu)], model: `guided_${step.toLowerCase()}` };
+  return { messages: poll ? renderPoll(menu) : [renderButtons(menu)], model: `guided_${step.toLowerCase()}` };
 }
 /** Tira do texto as instruções de digitação ("Digite *0*…") quando a resposta é por botão. */
 export function stripTypingHints(text: string): string {
@@ -136,25 +143,21 @@ export function stripTypingHints(text: string): string {
     .join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 /** Texto final com botões de saída (menu, atendente quando o texto oferece). */
-function quickButtons(c: Ctx, text: string, rows: { id: string; title: string }[] = []): OutMessage {
-  const out = [...rows, ...(rows.length ? [] : [{ id: "menu_main", title: "🏠 Menu inicial" }]), ...(/\*5\*/.test(text) && !rows.length ? [{ id: "menu_human", title: "💬 Atendente" }] : [])];
-  return renderButtons({ kind: "buttons", title: clip(c.salon.name, 60), body: stripTypingHints(text) || "Como posso ajudar?", button: "", rows: out.slice(0, MAX_BUTTONS), footer: buttonsFooter(c) });
+function quickButtons(c: Ctx, text: string, rows: { id: string; title: string }[] = []): OutMessage[] {
+  const out = [...rows, ...(rows.length ? [] : [{ id: "menu_main", title: "🏠 Menu inicial" }]), ...(!rows.length && (/\*5\*/.test(text) || pollMode(c)) ? [{ id: "menu_human", title: "💬 Falar com atendente" }] : [])];
+  const card = { kind: "buttons" as const, title: clip(c.salon.name, 60), body: stripTypingHints(text) || "Como posso ajudar?", button: "", rows: out.slice(0, MAX_BUTTONS), footer: buttonsFooter(c) };
+  // Enquete: as opções saem por id fixo; o voto chega como seleção pelo payload.options.
+  return pollMode(c) ? renderPoll(card) : [renderButtons(card)];
 }
 const say = (c: Ctx, step: Step, text: string, model = `guided_${step.toLowerCase()}`): Out => {
   c.s.step = step; c.s.data.menu = null;
-  return { messages: [c.cfg.renderMode === "buttons" ? quickButtons(c, text) : { type: "text", text }], model };
+  return { messages: buttonsMode(c) ? quickButtons(c, text) : [{ type: "text", text }], model };
 };
 const push = (c: Ctx, from: Step) => { if (from !== "IDLE" && from !== "MAIN_MENU") c.s.data.stack = [...(c.s.data.stack ?? []).slice(-8), from]; };
-const prefix = (o: Out, intro: string): Out => {
-  const m = o.messages[0];
-  if (!intro || !m) return o;
-  m.text = `${intro}\n\n${m.text}`;
-  // Card de botões: o texto visível é a description do payload.
-  const body = m.type === "interactive" ? m.payload.body as Record<string, unknown> | undefined : undefined;
-  if (body && typeof body.description === "string") body.description = `${intro}\n\n${body.description}`;
-  return o;
-};
-const buttonsMode = (c: Ctx) => c.cfg.renderMode === "buttons";
+const prefix = (o: Out, intro: string): Out => { if (intro) o.messages = prependIntro(o.messages, intro); return o; };
+/** Modos só de clique (sem lista nem digitação): enquete (padrão) ou botões. */
+const buttonsMode = (c: Ctx) => c.cfg.renderMode === "buttons" || c.cfg.renderMode === "poll";
+const pollMode = (c: Ctx) => c.cfg.renderMode === "poll";
 
 async function knownClient(c: Ctx): Promise<string | null> {
   const { data, error } = await c.ctx.db.from("clients").select("name").eq("salon_id", c.ctx.salonId).eq("phone_normalized", c.ctx.phone).order("created_at").limit(1).maybeSingle();
@@ -168,6 +171,13 @@ async function mainMenu(c: Ctx, greet = true, page = 0): Promise<Out> {
   const vars = { salao: c.salon.name, nome: name ?? "", primeiro_nome: firstName(name) };
   const hello = c.cfg.welcome ? fillTemplate(c.cfg.welcome, vars) : `Olá${name ? `, ${firstName(name)}` : ""}! 👋 Bem-vindo(a) ao *${c.salon.name}*.`;
   const body = greet ? `${hello}\nComo posso ajudar?` : "O que você quer fazer?";
+  if (pollMode(c)) return menu(c, "MAIN_MENU", "Menu principal", body, [
+    { id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } },
+    { id: "menu_my_appointments", title: "📋 Meus agendamentos", value: { go: "mine" } },
+    { id: "menu_services", title: "💈 Serviços e valores", value: { go: "prices" } },
+    { id: "menu_info", title: "📍 Endereço e horários", value: { go: "info" } },
+    { id: "menu_human", title: "💬 Falar com atendente", value: { go: "human" } },
+  ], page);
   // Botões: 2 por card + "Ver mais" (Serviços e Atendente na 2ª página, Endereço na 3ª). Títulos cabem em 20 caracteres.
   if (buttonsMode(c)) return menu(c, "MAIN_MENU", "Menu principal", body, [
     { id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } },
@@ -232,6 +242,8 @@ async function selectTime(c: Ctx, intro = "", page = 0): Promise<Out> {
   if (!buttonsMode(c)) return prefix(menu(c, step, "Horários", `${head}:`, times.map(t => ({ title: t, description: period(t), value: { start: t } })), page, `${FOOTER}\nVocê também pode digitar o horário (ex.: 14:00).`), intro);
   // Botões: primeiro o turno (só os que têm vaga; um só = pula), depois os horários dele, 2 por card + "Ver mais".
   const groups = PERIODS.filter(p => times.some(t => period(t) === p.key));
+  // Enquete: até 9 horários cabem num card; o filtro por turno só entra quando passa disso.
+  if (pollMode(c) && times.length <= POLL_MAX) return prefix(menu(c, step, "Horários", `${head}:`, times.map(t => ({ title: `🕒 ${t}`, description: period(t), value: { start: t } })), page), intro);
   if (!c.s.data.period || !groups.some(g => g.key === c.s.data.period)) {
     if (groups.length > 1) return prefix(menu(c, step, "Turno", `${head}.\nQual turno você prefere?`, groups.map(g => ({ id: `period_${fold(g.key)}`, title: `${g.icon} ${g.key} (${times.filter(t => period(t) === g.key).length})`, value: { period: g.key } }))), intro);
     c.s.data.period = groups[0].key;
@@ -307,14 +319,14 @@ async function book(c: Ctx): Promise<Out> {
   const where = [c.salon.address, c.salon.city].filter(Boolean).join(", ");
   const done = `${head}\n\n${summary}\n💰 *Valor:* ${brl(r.final_price)}${where ? `\n📍 ${where}` : ""}${link ? `\n\n📲 Acompanhe ou altere pelo app: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
   c.s.step = "IDLE"; c.s.data = {};
-  const out: Out = { messages: [buttonsMode(c) ? quickButtons(c, done, [{ id: "menu_my_appointments", title: "📋 Meus horários" }, { id: "menu_main", title: "🏠 Menu inicial" }]) : { type: "text", text: done }], model: "guided_booking" };
+  const out: Out = { messages: buttonsMode(c) ? quickButtons(c, done, [{ id: "menu_my_appointments", title: "📋 Meus horários" }, { id: "menu_main", title: "🏠 Menu inicial" }]) : [{ type: "text", text: done }], model: "guided_booking" };
   // PIX cadastrado: o passo de pagamento do atendente assume (QR, copia e cola, comprovante).
   if (c.salon.pix_key && Number(r.final_price) > 0) {
     if (buttonsMode(c)) {
       // Mesmo passo "payment" do atendente (continueFlow resolve pelo id `<nonce>.<n>`), só que em botões.
       const { menu: m, stored } = buildMenu(nonce(), "payment", "Pagamento", "Como prefere pagar?", [{ title: "💳 Pagar agora (PIX)", value: { pay: "pix" } }, { title: "🏪 Pagar no salão", value: { pay: "salon" } }]);
       m.footer = buttonsFooter(c);
-      out.messages.push(renderButtons(m)); out.flowState = { ...f, appointmentId: r.id, step: "payment", menu: stored };
+      out.messages.push(...(pollMode(c) ? renderPoll(m) : [renderButtons(m)])); out.flowState = { ...f, appointmentId: r.id, step: "payment", menu: stored };
       return out;
     }
     const pay = await paymentStep(ctx, { ...f, appointmentId: r.id, menu: null }, c.cfg.interactive);
@@ -416,7 +428,9 @@ async function handoff(c: Ctx): Promise<Out> {
     await ctx.db.from("admin_notifications").insert({ salon_id: ctx.salonId, type: "whatsapp_handoff", title: "💬 Cliente pediu atendente", message: `${who} (${ctx.phone}) quer falar com uma pessoa no WhatsApp. O assistente ficará pausado por ${c.cfg.handoffHours}h.`, client_name: who, client_phone: ctx.phone, metadata: { phone: ctx.phone, until } });
   }
   const text = `Certo! Um atendente da equipe do *${c.salon.name}* vai assumir esta conversa em instantes. 🙋\n\nO assistente automático fica pausado por ${c.cfg.handoffHours}h. Se preferir voltar ao atendimento automático antes, digite *0*.`;
-  return { messages: [buttonsMode(c) ? quickButtons(c, text.replace(", digite *0*.", ", toque no botão abaixo."), [{ id: "menu_main", title: "🤖 Voltar ao robô" }]) : { type: "text", text }], model: "guided_handoff", handoff: true };
+  // Enquete precisa de 2 opções e, pausado, o robô só aceita "voltar": em modo enquete vai texto.
+  const messages: OutMessage[] = c.cfg.renderMode === "buttons" ? quickButtons(c, text.replace(", digite *0*.", ", toque no botão abaixo."), [{ id: "menu_main", title: "🤖 Voltar ao robô" }]) : [{ type: "text", text }];
+  return { messages, model: "guided_handoff", handoff: true };
 }
 
 // ----------------------------------------------------------------------------------------------- transições
@@ -463,6 +477,8 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
   const page = s.data.menu?.page ?? 0;
   const f = s.data.flow;
   const unknown = () => unknownInput(c, text, deps);
+  // "Menu inicial" acrescentado a cards de uma opção (enquete) ou escolhido pelo número.
+  if (picked?.go === "menu") return mainMenu(c, false);
   switch (step) {
     case "MAIN_MENU": {
       if (choice === "more") return mainMenu(c, false, page + 1);

@@ -14,6 +14,10 @@ const media: Record<string, string> = { image: "Imagem", video: "Vídeo", audio:
 const typeLabel = (kind: string, type: string) => media[type] ?? (kind === "interactive" ? "Mensagem interativa" : kind === "media" ? "Mídia" : "");
 /** Opções de lista/botões gravadas em payload.options (strings ou { title }). */
 const options = (p: Record<string, unknown> | null) => (Array.isArray(p?.options) ? p!.options : []).map(o => typeof o === "string" ? o : String((o as { title?: unknown })?.title ?? "")).filter(Boolean).slice(0, 20);
+/** Texto de mensagem com opções: o corpo traz o fallback numerado ("1. …", "Responda…"); as opções já aparecem na lista. */
+const bodyWithoutOptions = (body: string, hasOptions: boolean) => hasOptions
+  ? body.split("\n").filter(l => !/^\s*(\d{1,2}[.)]\s|\[\d{1,2}]\s|Responda (com o número|\d)|Digite \*V\*)/.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim()
+  : body;
 const safeLink = (url: string | null) => { try { return url && new URL(url).protocol === "https:" ? url : null; } catch { return null; } };
 
 export default function Inbox() {
@@ -110,7 +114,7 @@ export default function Inbox() {
               <article key={m.id} className={`max-w-[95%] w-fit rounded-lg p-3 ${m.direction === "out" ? "ml-auto bg-primary/10" : "bg-muted"}`}>
                 <p className="text-xs font-medium">{authors[m.author] || m.author}</p>
                 {m.kind !== "text" && <p className="text-sm font-medium">{typeLabel(m.kind, m.message_type)}</p>}
-                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{m.body}</p>
+                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{bodyWithoutOptions(m.body, options(m.payload).length > 0)}</p>
                 {options(m.payload).length > 0 && <ol className="mt-1 list-decimal pl-5 text-sm">{options(m.payload).map((o, i) => <li key={i} className="break-words">{o}</li>)}</ol>}
                 {safeLink(m.media_url) && <a className="inline-flex min-h-11 items-center underline" href={safeLink(m.media_url)!} target="_blank" rel="noopener noreferrer">Abrir mídia</a>}
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">

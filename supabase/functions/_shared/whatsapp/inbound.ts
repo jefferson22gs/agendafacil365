@@ -205,8 +205,30 @@ export function whatsappTimestamp(value: unknown, arrived = Date.now()): string 
   // Relógio futuro/inválido não entra nos percentis como atraso negativo.
   return Number.isFinite(ms) && ms >= 1e12 && ms <= arrived ? new Date(ms).toISOString() : null;
 }
-export interface PollVote { pollId: string; phone: string; option: string; voteId?: string }
-/** 2.3.7: upsert descriptografado contém selectedOptions (nomes); update contém {name,voters}. Nunca interpreta bytes cifrados. */
+/** `option`: texto da opção ou, quando a Evolution não decifra o nome, o SHA-256 dela (hex). */
+export interface PollVote { pollId: string; phone: string; option: string; voteId?: string; hash?: boolean }
+/** Opção votada como texto, ou SHA-256 em hex quando chega como bytes/base64/{data:[...]}/{type:"Buffer"}. */
+function voteOption(v: unknown): { option: string; hash: boolean } | null {
+  const toHex = (bytes: ArrayLike<number>) => Array.from(bytes, b => (b & 255).toString(16).padStart(2, "0")).join("");
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (/^[0-9a-f]{64}$/i.test(t)) return { option: t.toLowerCase(), hash: true };
+    // SHA-256 em base64 (44 caracteres terminando em "="): decodifica para hex.
+    if (/^[A-Za-z0-9+/]{43}=$/.test(t)) { try { return { option: toHex(Uint8Array.from(atob(t), ch => ch.charCodeAt(0))), hash: true }; } catch { /* texto comum */ } }
+    return t ? { option: t, hash: false } : null;
+  }
+  const r = recordOf(v);
+  if (typeof r?.name === "string") return voteOption(r.name);
+  const bytes = Array.isArray(v) ? v : Array.isArray(r?.data) ? r!.data as unknown[] : r && Object.keys(r).every(k => /^\d+$/.test(k)) ? Object.values(r) : null;
+  return bytes && bytes.length === 32 && bytes.every(b => Number.isInteger(b)) ? { option: toHex(bytes as number[]), hash: true } : null;
+}
+/**
+ * Voto em enquete enviada por nós. 2.3.7 manda em formatos diferentes conforme a versão/config:
+ *  1) messages.upsert com pollUpdateMessage.vote.selectedOptions (nome ou SHA-256 da opção);
+ *  2) messages.update com pollUpdates [{name, voters}] (já decifrado pela Evolution).
+ * O voto vem do CLIENTE (key.fromMe false) sobre uma enquete criada por nós (pollCreationMessageKey.fromMe true):
+ * por isso o filtro fromMe olha a chave do voto, nunca a da enquete. Voto cifrado (encPayload) sem decifrar é ignorado.
+ */
 export function pollVotes(value: unknown): PollVote[] {
   const r = recordOf(value), key = recordOf(r?.key), msg = recordOf(r?.message), poll = recordOf(msg?.pollUpdateMessage);
   if (!r) return [];
@@ -214,20 +236,33 @@ export function pollVotes(value: unknown): PollVote[] {
     const origin = recordOf(poll.pollCreationMessageKey), vote = recordOf(poll.vote);
     const selected = vote?.selectedOptions;
     // A enquete é validada depois pelo id enviado por NÓS para este mesmo telefone (whatsapp_outbox).
-    if (typeof origin?.id !== "string" || !Array.isArray(selected) || selected.length !== 1 || typeof selected[0] !== "string") return [];
-    return [{ pollId: origin.id, phone: `+${String(key?.remoteJid).split("@")[0]}`, option: selected[0], voteId: typeof key?.id === "string" ? key.id : undefined }];
+    if (typeof origin?.id !== "string" || !Array.isArray(selected) || selected.length !== 1) return [];
+    const choice = voteOption(selected[0]);
+    return choice ? [{ pollId: origin.id, phone: `+${String(key?.remoteJid).split("@")[0]}`, ...choice, voteId: typeof key?.id === "string" ? key.id : undefined }] : [];
   }
+  const update = recordOf(r.update);
   const pollId = key?.id ?? r.keyId, remote = key?.remoteJid ?? r.remoteJid;
   if (typeof pollId !== "string" || typeof remote !== "string" || !PRIVATE_JID.test(remote) || r.participant || key?.participant) return [];
-  const updates = recordOf(r.update)?.pollUpdates ?? r.pollUpdates;
+  const updates = update?.pollUpdates ?? r.pollUpdates;
   if (!Array.isArray(updates)) return [];
-  const selected = updates.filter(v => typeof v?.name === "string" && Array.isArray(v.voters) && v.voters.includes(remote));
-  return selected.length === 1 ? [{ pollId, phone: `+${remote.split("@")[0]}`, option: selected[0].name }] : [];
+  // Agregado: quem votou aparece em voters (com ou sem @s.whatsapp.net).
+  const number = remote.split("@")[0];
+  const selected = updates.filter(v => Array.isArray(v?.voters) && v.voters.some((x: unknown) => typeof x === "string" && x.split("@")[0] === number));
+  const choice = selected.length === 1 ? voteOption(selected[0]) : null;
+  return choice ? [{ pollId, phone: `+${number}`, ...choice }] : [];
 }
-export function pollSelection(payload: unknown, option: string): string | null {
+/** SHA-256 hex de um texto (forma como o WhatsApp identifica a opção de enquete). */
+export async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+}
+/** Id do menu a partir do texto (ou hash) da opção votada, só entre as opções que nós enviamos nessa enquete. */
+export async function pollSelection(payload: unknown, option: string, hash = false): Promise<string | null> {
   const p = recordOf(payload);
   if (p?.op !== "poll" || !Array.isArray(p.options)) return null;
-  const matches = p.options.filter(v => recordOf(v)?.title === option);
+  const titles = p.options.map(v => String(recordOf(v)?.title ?? ""));
+  const keys = hash ? await Promise.all(titles.map(sha256Hex)) : titles;
+  const matches = p.options.filter((_, i) => keys[i] === option);
   const id = recordOf(matches.length === 1 ? matches[0] : null)?.id;
   return typeof id === "string" && SELECTION_ID.test(id) ? id : null;
 }

@@ -89,20 +89,20 @@ test('enquete premium: 2–10 opções (schema 2.3.7), opção ≤ 100, nome ≤
   assert.equal(p.options.at(-1).id, 'ab12cd.more');
   assert.equal(ui.premiumPoll(ui.buildMenu('ab12cd', 's', 'S', 'x', [{ title: 'Só um', value: {} }]).menu, 'S'), null, '1 opção = texto');
 });
-test('voto da enquete: upsert descriptografado e update agregado viram o id do menu; grupo, voto múltiplo e opção desconhecida não', () => {
+test('voto da enquete: upsert descriptografado e update agregado viram o id do menu; grupo, voto múltiplo e opção desconhecida não', async () => {
   const { menu } = ui.buildMenu('ab12cd', 'service', 'Serviços', 'Qual?', [{ title: 'Corte', description: 'R$ 45,00 · 15 min', value: { id: 's1' } }, { title: 'Barba', value: { id: 's2' } }]);
   const payload = plain(ui.premiumPoll(menu, 'Studio'));
   const option = payload.body.values[1];
   const upsert = { key: { remoteJid: '5511912345678@s.whatsapp.net', fromMe: false, id: 'VOTE1' }, message: { pollUpdateMessage: { pollCreationMessageKey: { id: 'POLL1', fromMe: true }, vote: { selectedOptions: [option] } } }, messageTimestamp: 1762700000 };
   const [v] = plain(inbound.pollVotes(upsert));
   assert.deepEqual([v.pollId, v.phone, v.option], ['POLL1', '+5511912345678', option]);
-  assert.equal(inbound.pollSelection(payload, v.option), 'ab12cd.2');
+  assert.equal(await inbound.pollSelection(payload, v.option), 'ab12cd.2');
   const update = { keyId: 'POLL1', remoteJid: '5511912345678@s.whatsapp.net', fromMe: true, pollUpdates: [{ name: payload.body.values[0], voters: ['5511912345678@s.whatsapp.net'] }, { name: option, voters: [] }] };
-  assert.equal(inbound.pollSelection(payload, inbound.pollVotes(update)[0].option), 'ab12cd.1');
+  assert.equal(await inbound.pollSelection(payload, inbound.pollVotes(update)[0].option), 'ab12cd.1');
   assert.deepEqual(plain(inbound.pollVotes({ ...upsert, key: { ...upsert.key, remoteJid: '120363000000000000@g.us' } })), [], 'grupo');
   assert.deepEqual(plain(inbound.pollVotes({ ...upsert, message: { pollUpdateMessage: { ...upsert.message.pollUpdateMessage, vote: { selectedOptions: [option, payload.body.values[0]] } } } })), [], 'voto múltiplo');
-  assert.equal(inbound.pollSelection(payload, 'opção inventada'), null);
-  assert.equal(inbound.pollSelection({ op: 'list' }, option), null);
+  assert.equal(await inbound.pollSelection(payload, 'opção inventada'), null);
+  assert.equal(await inbound.pollSelection({ op: 'list' }, option), null);
   assert.equal(inbound.whatsappTimestamp(1762700000, 1762700005000), '2025-11-09T14:53:20.000Z');
   assert.equal(inbound.whatsappTimestamp({ low: 1762700000 }, 1762700005000), '2025-11-09T14:53:20.000Z');
   assert.equal(inbound.whatsappTimestamp(1762700010, 1762700005000), null, 'relógio no futuro não vira atraso negativo');

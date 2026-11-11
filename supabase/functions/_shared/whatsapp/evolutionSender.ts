@@ -26,14 +26,17 @@ export function renderMenu(menu: Menu, mode: GuidedRenderMode): OutMessage {
 }
 
 /**
- * Envia o interativo; se a Evolution responder 4xx (nada enviado), manda o texto numerado. Nunca falha o fluxo
- * por causa de botão/lista. 5xx/timeout continuam incertos (podem ter saído) e sobem para o outbox decidir.
+ * Envia o interativo; se a Evolution responder com erro HTTP (4xx ou 5xx), manda o card em texto numerado para o
+ * cliente nunca ficar sem resposta. Só timeout/queda de rede (a Evolution não respondeu) sobe como incerto.
  */
 export async function sendWithFallback(api: EvolutionClient, instance: string, number: string, payload: Record<string, unknown> | null, text: string): Promise<{ response: unknown; fallback: boolean }> {
   const op = payload?.op === "poll" ? "poll" : payload?.op === "buttons" ? "buttons" : payload?.op === "list" ? "list" : null;
   if (op && payload?.body && typeof payload.body === "object") {
     try { return { response: await api.request(op, instance, { ...(payload.body as Record<string, unknown>), number }), fallback: false }; }
-    catch (e) { if (!(e instanceof WhatsAppError) || e.code !== "provider_rejected") throw e; }
+    catch (e) {
+      const httpError = e instanceof WhatsAppError && (e.code === "provider_rejected" || (e.code === "send_uncertain" && Number((e as { http?: number }).http) >= 500));
+      if (!httpError) throw e;
+    }
   }
   return { response: await api.request("text", instance, { number, text }), fallback: true };
 }

@@ -12,13 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useWhatsAppSalon, whatsappDb } from "@/pages/admin/whatsapp/api";
 import { GuidedFlowSimulator } from "./GuidedFlowSimulator";
 
-export type RenderMode = "buttons" | "hybrid" | "numbered" | "native";
+export type RenderMode = "poll" | "buttons" | "hybrid" | "numbered" | "native";
 interface Settings { guided_flow_enabled: boolean; guided_render_mode: RenderMode; guided_welcome_message: string; guided_confirmation_message: string; guided_info_text: string; guided_handoff_hours: number }
 const COLUMNS = "guided_flow_enabled,guided_render_mode,guided_welcome_message,guided_confirmation_message,guided_info_text,guided_handoff_hours";
 // Iguais aos defaults de MIGRATION_TYPEBOT_EVOLUTION_237.sql.
-const DEFAULTS: Settings = { guided_flow_enabled: false, guided_render_mode: "buttons", guided_welcome_message: "", guided_confirmation_message: "", guided_info_text: "", guided_handoff_hours: 2 };
+const DEFAULTS: Settings = { guided_flow_enabled: false, guided_render_mode: "poll", guided_welcome_message: "", guided_confirmation_message: "", guided_info_text: "", guided_handoff_hours: 2 };
 const MODES: { value: RenderMode; label: string; hint: string }[] = [
-  { value: "buttons", label: "100% botões clicáveis (recomendado)", hint: "Só botões, até 3 por mensagem. Mais opções aparecem em ➡️ Ver mais e os horários são filtrados por turno (☀️ Manhã, 🌤️ Tarde, 🌙 Noite). O cliente não precisa digitar números." },
+  { value: "poll", label: "Opções clicáveis (recomendado)", hint: "Cada etapa chega como uma enquete de toque único, com até 9 opções (1️⃣ 2️⃣ 3️⃣…). É o formato que chega em qualquer celular (Android, iPhone e WhatsApp Web). O cliente também pode responder com o número." },
+  { value: "buttons", label: "Botões (até 3 por mensagem)", hint: "Atenção: com a conexão atual (WhatsApp Web), o WhatsApp pode não mostrar estes botões ao cliente. Só botões, até 3 por mensagem. Mais opções aparecem em ➡️ Ver mais e os horários são filtrados por turno (☀️ Manhã, 🌤️ Tarde, 🌙 Noite). O cliente não precisa digitar números." },
   { value: "hybrid", label: "Híbrido inteligente", hint: "Botões e listas da Evolution 2.3.7 com os números no texto. Se o aparelho não mostrar o botão, o cliente responde com o número." },
   { value: "numbered", label: "Apenas menus numerados", hint: "Só texto numerado (1, 2, 3…). 100% compatível com iOS e Android." },
   { value: "native", label: "Botões e listas nativas", hint: "Botões e listas sem os números no texto. O fallback numerado continua automático se a API recusar." },
@@ -42,7 +43,7 @@ export function GuidedFlowCard() {
       const row = (data ?? {}) as Partial<Record<keyof Settings, unknown>>;
       const str = (v: unknown) => (typeof v === "string" ? v : "");
       return { migrated: true, settings: {
-        guided_flow_enabled: row.guided_flow_enabled === true, guided_render_mode: (["buttons", "hybrid", "numbered", "native"].includes(String(row.guided_render_mode)) ? row.guided_render_mode : "buttons") as RenderMode,
+        guided_flow_enabled: row.guided_flow_enabled === true, guided_render_mode: (["poll", "buttons", "hybrid", "numbered", "native"].includes(String(row.guided_render_mode)) ? row.guided_render_mode : "poll") as RenderMode,
         guided_welcome_message: str(row.guided_welcome_message), guided_confirmation_message: str(row.guided_confirmation_message), guided_info_text: str(row.guided_info_text),
         guided_handoff_hours: Number(row.guided_handoff_hours) || 2,
       } };

@@ -52,7 +52,8 @@ export class EvolutionClient {
     } catch { throw new WhatsAppError(sending ? "send_uncertain" : "provider_unavailable", 503); }
     if (!response.ok) {
       // Erro de servidor após receber a requisição também pode ter ocorrido depois do envio.
-      if (sending && response.status >= 500) throw new WhatsAppError("send_uncertain", 503);
+      // `http` distingue resposta 5xx (a Evolution respondeu) de timeout/rede (não respondeu).
+      if (sending && response.status >= 500) throw Object.assign(new WhatsAppError("send_uncertain", 503), { http: response.status });
       if (response.status === 429) throw new WhatsAppError("provider_rate_limited", 429);
       throw new WhatsAppError("provider_rejected", response.status === 404 ? 404 : 502);
     }

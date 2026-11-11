@@ -251,12 +251,85 @@ test('100% botões: textos finais ganham botão de saída; atendente com "Voltar
   assert.equal(guided.stripTypingHints('Não deu certo. Digite *5* para falar com a equipe.\nAté logo!'), 'Não deu certo.\nAté logo!');
 });
 
+// Modo enquete (sendPoll, escolha única): chega em qualquer celular; até 9 opções por card.
+const onlyPolls = r => r.messages.filter(m => m.type === 'interactive').every(m => m.payload.op === 'poll' && m.payload.body.selectableCount === 1 && m.payload.body.values.length >= 2 && m.payload.body.values.length <= 10 && m.payload.body.values.every(v => Array.from(v).length <= 100) && Array.from(m.payload.body.name).length <= 255 && new Set(m.payload.body.values).size === m.payload.body.values.length)
+  && r.messages.some(m => m.type === 'interactive');
+const poll = r => r.messages.find(m => m.payload?.op === 'poll').payload;
+const vote = (d, r, re) => { const o = poll(r).options.find(x => re.test(x.title)); assert.ok(o, `opção ${re}`); return send(d, o.title, o.id); };
+
+test('enquete: menu de 5 em um card, serviços com preço na opção, horários direto (≤ 9), confirmação; tudo por voto', async () => {
+  const d = db({ mode: 'poll', pros: 2 });
+  let r = await send(d, 'oi');
+  assert.ok(onlyPolls(r)); assert.equal(r.messages.length, 1);
+  assert.deepEqual(plain(poll(r).body.values), ['1️⃣ 📅 Agendar horário', '2️⃣ 📋 Meus agendamentos', '3️⃣ 💈 Serviços e valores', '4️⃣ 📍 Endereço e horários', '5️⃣ 💬 Falar com atendente']);
+  assert.match(poll(r).body.name, /Bem-vindo\(a\) ao \*Studio X\*/);
+  assert.deepEqual(plain(poll(r).options.map(o => o.id)), ['menu_book', 'menu_my_appointments', 'menu_services', 'menu_info', 'menu_human']);
+  r = await vote(d, r, /Agendar/); assert.equal(r.session.step, 'SELECT_SERVICE'); assert.ok(onlyPolls(r));
+  assert.match(poll(r).body.values[1], /^2️⃣ Barba · R\$ 30,00 \(20 min\)$/);
+  r = await vote(d, r, /Corte/); assert.equal(r.session.step, 'SELECT_PROFESSIONAL');
+  r = await vote(d, r, /Ana/); assert.equal(r.session.step, 'SELECT_DATE'); assert.ok(onlyPolls(r));
+  r = await send(d, '2'); assert.equal(r.session.step, 'SELECT_TIME', 'número digitado também vale');
+  assert.deepEqual(plain(poll(r).body.values), ['1️⃣ 🕒 09:00 · Manhã', '2️⃣ 🕒 14:00 · Tarde', '3️⃣ 🕒 19:00 · Noite'], '≤ 9 horários: sem etapa de turno');
+  r = await vote(d, r, /14:00/); assert.equal(r.session.step, 'CONFIRM_NAME');
+  r = await vote(d, r, /Sim, esse nome/); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyPolls(r));
+  // Resumo cabe no título da enquete (≤ 255) ou vai em texto antes dela; nunca se perde.
+  assert.match(r.messages[0].type === 'text' ? r.messages[0].text : poll(r).body.name, /Procedimento:\* Corte Degradê/);
+  assert.deepEqual(plain(poll(r).options.map(o => o.id)), ['confirm_yes', 'confirm_change_date', 'confirm_cancel']);
+  r = await vote(d, r, /Confirmar/);
+  assert.ok(d.calls.some(c => c.name === 'whatsapp_book_appointment_v2')); assert.ok(onlyPolls(r));
+});
+
+test('enquete: mais de 9 opções pagina com "Ver mais opções"; texto fora das opções repete o card', async () => {
+  const d = db({ mode: 'poll' });
+  const many = Array.from({ length: 12 }, (_, i) => ({ id: `s${i}`, name: `Serviço ${String(i).padStart(2, '0')}`, price: 10 + i, duration_minutes: 30 }));
+  const base = d.from; d.from = t => { const q = base.call(d, t); if (t === 'services') q.limit = () => Promise.resolve({ data: many, error: null }); return q; };
+  await send(d, 'oi');
+  let r = await send(d, '1');
+  assert.equal(poll(r).body.values.length, 9); assert.match(poll(r).body.values[8], /Ver mais opções/);
+  r = await vote(d, r, /Ver mais/); assert.match(poll(r).body.values[0], /Serviço 08/); assert.match(poll(r).body.values.at(-1), /Do início/);
+  r = await send(d, 'blablabla'); assert.ok(onlyPolls(r)); assert.match(r.text, /Não entendi/);
+});
+
+test('voto: texto da opção, SHA-256 (hex/base64/bytes) e agregado com voters viram a seleção', async () => {
+  const { menu } = ui.buildMenu('ab12cd', 'MAIN_MENU', 'Menu', 'Oi', [{ id: 'menu_book', title: 'Agendar', value: {} }, { id: 'menu_human', title: 'Atendente', value: {} }]);
+  const [p] = plain(buttons.renderPoll(menu));
+  const opt = p.payload.body.values[1];
+  const hex = require('node:crypto').createHash('sha256').update(opt).digest();
+  const key = { remoteJid: '5511912345678@s.whatsapp.net', fromMe: false, id: 'V1' };
+  const msg = sel => ({ key, message: { pollUpdateMessage: { pollCreationMessageKey: { id: 'P1', fromMe: true }, vote: { selectedOptions: [sel] } } } });
+  for (const sel of [opt, hex.toString('hex'), hex.toString('base64'), [...hex], { type: 'Buffer', data: [...hex] }]) {
+    const [v] = plain(inbound.pollVotes(msg(sel)));
+    assert.equal(await inbound.pollSelection(p.payload, v.option, v.hash), 'menu_human', JSON.stringify(sel).slice(0, 30));
+  }
+  const agg = { key: { id: 'P1', remoteJid: '5511912345678@s.whatsapp.net', fromMe: true }, update: { pollUpdates: [{ name: p.payload.body.values[0], voters: [] }, { name: opt, voters: ['5511912345678'] }] } };
+  const [a] = plain(inbound.pollVotes(agg));
+  assert.equal(await inbound.pollSelection(p.payload, a.option, a.hash), 'menu_human', 'voters sem @s.whatsapp.net');
+  assert.deepEqual(plain(inbound.pollVotes({ key, message: { pollUpdateMessage: { pollCreationMessageKey: { id: 'P1' }, vote: { encPayload: 'xx', encIv: 'yy' } } } })), [], 'voto cifrado sem decifrar é ignorado');
+});
+
+test('webhook: número do próprio salão nunca vira conversa (anti-loop); voto vem antes do filtro fromMe', () => {
+  const src = fs.readFileSync(path.join(root, 'supabase/functions/evolution-webhook/index.ts'), 'utf8');
+  assert.match(src, /if \(!message \|\| \(own && message\.phone === own\)\) continue;/);
+  assert.match(src, /if \(own && vote\.phone === own\) continue;/);
+  assert.ok(src.indexOf('storePollVotes(db') < src.indexOf('parseIncoming(entry)'), 'votos tratados antes das mensagens comuns');
+});
+
+test('fallback: erro HTTP 5xx no interativo também cai para texto; timeout continua incerto', async () => {
+  const E = load(path.join(sh, 'whatsapp/errors.ts')).WhatsAppError;
+  const seen = [];
+  const api = { request: async (op, inst, body) => { seen.push(op); if (op === 'poll') throw Object.assign(new E('send_uncertain', 503), { http: 502 }); return { key: { id: 'T1' } }; } };
+  const r = await sender.sendWithFallback(api, 'i', '5511912345678', { op: 'poll', body: { name: 'x', values: ['a', 'b'] } }, 'card');
+  assert.equal(r.fallback, true); assert.deepEqual(seen, ['poll', 'text']);
+  const timeout = { request: async () => { throw new E('send_uncertain', 503); } };
+  await assert.rejects(() => sender.sendWithFallback(timeout, 'i', '5511912345678', { op: 'poll', body: {} }, 't'));
+});
+
 test('migração: aditiva, idempotente, RLS e índice por salão+telefone', () => {
   const sql = fs.readFileSync(path.join(root, 'MIGRATION_TYPEBOT_EVOLUTION_237.sql'), 'utf8');
   assert.match(sql, /^BEGIN;/m); assert.match(sql, /^COMMIT;/m);
   assert.doesNotMatch(sql, /^\s*(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)/m);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.whatsapp_chatbot_sessions/);
   assert.match(sql, /ON public\.whatsapp_chatbot_sessions \(salon_id, client_phone\)/);
-  assert.match(sql, /ENABLE ROW LEVEL SECURITY/); assert.match(sql, /guided_render_mode IN \('buttons', 'hybrid', 'numbered', 'native'\)/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/); assert.match(sql, /guided_render_mode IN \('poll', 'buttons', 'hybrid', 'numbered', 'native'\)/);
   for (const s of guided.STEPS) assert.ok(sql.includes(`'${s}'`), s);
 });

@@ -6,13 +6,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 /** Resposta de whatsapp-chatbot (action=test): mensagens com payload interativo e a sessão do fluxo guiado. */
 interface Row { id: string; title: string; description?: string }
-interface Payload { op?: string; body?: { title?: string; description?: string; footer?: string; footerText?: string; buttons?: { displayText: string; id: string }[]; sections?: { rows: Row[] }[]; buttonText?: string } }
+interface Payload { op?: string; options?: { id: string; title: string }[]; body?: { title?: string; description?: string; name?: string; footer?: string; footerText?: string; buttons?: { displayText: string; id: string }[]; sections?: { rows: Row[] }[]; buttonText?: string } }
 interface OutMessage { type: string; text: string; payload?: Payload }
 interface Bubble { id: string; role: "user" | "bot"; text: string; options?: { id: string; label: string; description?: string }[]; title?: string; footer?: string; list?: boolean }
 
 const optionsOf = (m: OutMessage) => {
   const b = m.payload?.body;
   if (!b) return undefined;
+  // Enquete: opções clicáveis (id ↔ texto) vêm em payload.options.
+  if (m.payload?.op === "poll" && m.payload.options?.length) return m.payload.options.map(o => ({ id: o.id, label: o.title }));
   if (b.buttons?.length) return b.buttons.map(x => ({ id: x.id, label: x.displayText }));
   const rows = b.sections?.flatMap(s => s.rows) ?? [];
   return rows.length ? rows.map(r => ({ id: r.id, label: r.title, description: r.description?.trim() || undefined })) : undefined;
@@ -44,7 +46,8 @@ export function GuidedFlowSimulator({ salonId, enabled, dirty }: { salonId: stri
       setBubbles(b => [...b, ...msgs.filter(m => m.text).map(m => {
         const body = m.payload?.body;
         const options = optionsOf(m);
-        return { id: crypto.randomUUID(), role: "bot" as const, text: options ? (body?.description ?? m.text) : m.text, options, title: options ? body?.title : undefined, footer: body?.footer || body?.footerText || undefined, list: !!body?.sections };
+        const poll = m.payload?.op === "poll";
+        return { id: crypto.randomUUID(), role: "bot" as const, text: options ? (poll ? body?.name ?? m.text : body?.description ?? m.text) : m.text, options, title: options && !poll ? body?.title : undefined, footer: poll ? undefined : body?.footer || body?.footerText || undefined, list: !!body?.sections || poll };
       })]);
     } catch (e) { setError(e instanceof Error ? e.message : "Erro no simulador."); }
     finally { setBusy(false); }

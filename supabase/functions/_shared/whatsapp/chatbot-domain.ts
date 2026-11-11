@@ -36,7 +36,7 @@ export function salonOf(ctx: BotContext): Promise<SalonRow> {
   }
   return p;
 }
-export type GuidedRenderMode = "hybrid" | "numbered" | "native" | "buttons";
+export type GuidedRenderMode = "poll" | "hybrid" | "numbered" | "native" | "buttons";
 export interface AutomationRow {
   booking: boolean; interactive: boolean;
   /** Fluxo guiado (Typebot). Colunas da MIGRATION_TYPEBOT_EVOLUTION_237.sql; ausentes = desligado. */
@@ -60,7 +60,7 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
       const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
       return {
         booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false,
-        guided: !!data?.guided_flow_enabled, renderMode: (["numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
+        guided: !!data?.guided_flow_enabled, renderMode: (["poll", "numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
         welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
         handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
       };

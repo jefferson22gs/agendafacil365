@@ -9,7 +9,7 @@ BEGIN;
 
 ALTER TABLE public.whatsapp_automation_settings
   ADD COLUMN IF NOT EXISTS guided_flow_enabled boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS guided_render_mode text NOT NULL DEFAULT 'buttons',
+  ADD COLUMN IF NOT EXISTS guided_render_mode text NOT NULL DEFAULT 'poll',
   ADD COLUMN IF NOT EXISTS guided_welcome_message text,
   ADD COLUMN IF NOT EXISTS guided_confirmation_message text,
   ADD COLUMN IF NOT EXISTS guided_info_text text,
@@ -17,9 +17,9 @@ ALTER TABLE public.whatsapp_automation_settings
 
 ALTER TABLE public.whatsapp_automation_settings DROP CONSTRAINT IF EXISTS whatsapp_automation_settings_guided_render_mode_check;
 ALTER TABLE public.whatsapp_automation_settings ADD CONSTRAINT whatsapp_automation_settings_guided_render_mode_check
-  CHECK (guided_render_mode IN ('buttons', 'hybrid', 'numbered', 'native'));
--- Padrão: 100% botões clicáveis (até 3 por mensagem, "Ver mais" e filtro por turno).
-ALTER TABLE public.whatsapp_automation_settings ALTER COLUMN guided_render_mode SET DEFAULT 'buttons';
+  CHECK (guided_render_mode IN ('poll', 'buttons', 'hybrid', 'numbered', 'native'));
+-- Padrão: enquete de escolha única (sendPoll): chega em qualquer celular, até 9 opções por card.
+ALTER TABLE public.whatsapp_automation_settings ALTER COLUMN guided_render_mode SET DEFAULT 'poll';
 ALTER TABLE public.whatsapp_automation_settings DROP CONSTRAINT IF EXISTS whatsapp_automation_settings_guided_handoff_hours_check;
 ALTER TABLE public.whatsapp_automation_settings ADD CONSTRAINT whatsapp_automation_settings_guided_handoff_hours_check
   CHECK (guided_handoff_hours BETWEEN 1 AND 72);
@@ -28,7 +28,7 @@ ALTER TABLE public.whatsapp_automation_settings ADD CONSTRAINT whatsapp_automati
   CHECK (length(coalesce(guided_welcome_message, '')) <= 1000 AND length(coalesce(guided_confirmation_message, '')) <= 1000 AND length(coalesce(guided_info_text, '')) <= 1500);
 
 COMMENT ON COLUMN public.whatsapp_automation_settings.guided_flow_enabled IS 'Fluxo guiado por menus (Typebot): menu principal, agendamento passo a passo, meus agendamentos, transbordo.';
-COMMENT ON COLUMN public.whatsapp_automation_settings.guided_render_mode IS 'buttons = só botões (3 por card, Ver mais, turnos); hybrid = botões/listas + números no texto; numbered = só texto numerado; native = botões/listas sem números no texto.';
+COMMENT ON COLUMN public.whatsapp_automation_settings.guided_render_mode IS 'poll = enquete de escolha única (até 9 opções, Ver mais); buttons = só botões (3 por card, Ver mais, turnos); hybrid = botões/listas + números no texto; numbered = só texto numerado; native = botões/listas sem números no texto.';
 COMMENT ON COLUMN public.whatsapp_automation_settings.guided_handoff_hours IS 'Horas que o atendente fica pausado quando o cliente pede uma pessoa.';
 
 -- Sessão da conversa (uma por salão + telefone). session_data guarda o fluxo de reserva (serviço, profissional,
