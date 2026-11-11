@@ -31,14 +31,43 @@ function onColor(hex: string): string {
   return ratio(l, 1) >= ratio(l, lum("#0F172A")) ? "#FFFFFF" : "#0F172A";
 }
 
-export interface EmailInput { from: string; to: string; salon: string; color?: string | null; logo?: string | null; message: string; url: string; procedure: string }
+/**
+ * Remetente com a identidade do salão no domínio já verificado: "Nome do Salão" <slug@agendafacil365.com.br>.
+ * Endereço por salão (parte local = slug) não exige DNS novo; subdomínio por salão exigiria verificar cada um no Resend.
+ */
+export function salonSender(salonName: string, slug: string | null | undefined, platformFrom: string): string {
+  const domain = platformFrom.match(/@([a-z0-9.-]+\.[a-z]{2,})>?\s*$/i)?.[1]?.toLowerCase() ?? "agendafacil365.com.br";
+  const local = String(slug ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "").slice(0, 64) || "lembretes";
+  const name = String(salonName ?? "").replace(/[\r\n"<>\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Agenda Fácil 365";
+  return `"${name}" <${local}@${domain}>`;
+}
+
+/** Respostas do cliente vão para o e-mail do salão (se válido); senão, para o padrão da plataforma. */
+export function salonReplyTo(salonEmail: string | null | undefined, fallback?: string | null): string | undefined {
+  const e = String(salonEmail ?? "").trim().toLowerCase();
+  return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]{2,}$/.test(e) ? e : (fallback?.trim() || undefined);
+}
+
+/** Logo do Storage em versão leve (o original pode ter megabytes); outras URLs HTTPS seguem como estão. */
+export function emailLogo(url: string | null | undefined): string {
+  const safe = safeHttps(url);
+  if (!safe) return "";
+  const u = new URL(safe);
+  if (u.hostname.endsWith(".supabase.co") && u.pathname.startsWith("/storage/v1/object/public/")) {
+    u.pathname = u.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+    u.search = "?width=160&height=160&resize=contain";
+  }
+  return u.href;
+}
+
+export interface EmailInput { from: string; to: string; salon: string; color?: string | null; logo?: string | null; message: string; url: string; procedure: string; replyTo?: string }
 /** Payload do Resend com logo/cores do salão. Null quando faltam dados (nunca envia link/e-mail inválido). */
 export function emailPayload(i: EmailInput) {
   const link = safeHttps(i.url);
   if (!i.from || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(i.to) || !link) return null;
   const color = HEX.test(i.color ?? "") ? i.color! : "#2563EB", fg = onColor(color);
-  const logo = safeHttps(i.logo);
-  const subject = `Hora do seu retorno: ${i.procedure} — ${i.salon}`.replace(/[\r\n]+/g, " ").slice(0, 180);
+  const logo = emailLogo(i.logo);
+  const subject = `${i.salon}: hora do seu retorno (${i.procedure})`.replace(/[\r\n]+/g, " ").slice(0, 180);
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
 <body style="margin:0;background:#F4F8FF;font-family:Arial,Helvetica,sans-serif;color:#0F172A">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
@@ -50,7 +79,7 @@ ${logo ? `<img src="${esc(logo)}" alt="Logo de ${esc(i.salon)}" width="72" heigh
 <p style="margin:0 0 24px;text-align:center"><a href="${esc(link)}" style="display:inline-block;background:${color};color:${fg};padding:14px 28px;border-radius:10px;font-weight:bold;text-decoration:none;min-height:24px">Agendar meu retorno</a></p>
 <p style="margin:0;font-size:13px;color:#475569">Recebeu por engano ou não quer mais lembretes? Responda a este e-mail ou avise ${esc(i.salon)}.</p></td></tr>
 </table></td></tr></table></body></html>`;
-  return { from: i.from, to: [i.to], subject, html, text: `${i.message}\n\nAgendar: ${link}` };
+  return { from: i.from, to: [i.to], subject, html, text: `${i.message}\n\nAgendar: ${link}`, ...(i.replyTo ? { reply_to: i.replyTo } : {}) };
 }
 
 /** accepted = Resend aceitou (não é entrega). retry só com a mesma Idempotency-Key, dentro da janela. */

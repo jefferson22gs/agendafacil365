@@ -168,7 +168,7 @@ BEGIN
     'notify_email', r.notify_email, 'opt_out', v_opt, 'email_payload', r.email_payload, 'channels', r.channels_sent,
     'template', sv.return_message_template,
     'salon', jsonb_build_object('name', s.name, 'slug', s.slug, 'logo_url', s.logo_url, 'primary_color', s.primary_color,
-      'pwa_icon_url', s.pwa_icon_url, 'phone', coalesce(s.whatsapp, s.phone)));
+      'pwa_icon_url', s.pwa_icon_url, 'phone', coalesce(s.whatsapp, s.phone), 'email', s.email));
 END $$;
 
 -- Enfileira WhatsApp (fila do salão, categoria marketing → opt-out revalidado no envio), Push no aparelho que agendou,

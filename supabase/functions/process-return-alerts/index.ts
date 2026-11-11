@@ -3,7 +3,7 @@
 // do salão, um alerta por vez, validado contra o tenant. Chave do Resend SÓ em secret (RESEND_API_KEY), nunca no código.
 import { authorizeSalon, authorizeWorker, serviceClient, validUuid } from "../_shared/whatsapp/auth.ts";
 import { corsHeaders, errorResponse, jsonResponse, WhatsAppError } from "../_shared/whatsapp/errors.ts";
-import { emailPayload, renderTemplate, resendOutcome, safeHttps } from "./core.ts";
+import { emailPayload, renderTemplate, resendOutcome, safeHttps, salonReplyTo, salonSender } from "./core.ts";
 
 const BATCH = 40, BUDGET_MS = 45_000;
 
@@ -44,9 +44,11 @@ Deno.serve(async (req: Request) => {
         cliente: row.client_name ?? "", procedimento: row.procedure_name, salao: row.salon.name,
         dias: row.return_days, data_procedimento: row.performed_at, link_agendamento: link,
       });
+      // Remetente e respostas com a identidade do salão: "Nome do Salão" <slug@agendafacil365.com.br>, reply-to = e-mail do salão.
       const email = resendKey && row.client_email && !row.opt_out ? emailPayload({
-        from, to: row.client_email, salon: row.salon.name, color: row.salon.primary_color,
+        from: salonSender(row.salon.name, row.salon.slug, from), to: row.client_email, salon: row.salon.name, color: row.salon.primary_color,
         logo: row.salon.logo_url || row.salon.pwa_icon_url, message, url: link, procedure: row.procedure_name,
+        replyTo: salonReplyTo(row.salon.email, replyTo),
       }) : null;
       const prepared = await rpc("procedure_return_prepare", { p_id: row.id, p_claim: row.claim, p_message: message, p_url: path, p_email: email });
       if (!prepared) continue;
@@ -56,7 +58,7 @@ Deno.serve(async (req: Request) => {
           const res = await fetch("https://api.resend.com/emails", {
             method: "POST", signal: AbortSignal.timeout(15_000),
             headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json", "Idempotency-Key": `return-alert/${row.id}` },
-            body: JSON.stringify(replyTo ? { ...prepared.email, reply_to: replyTo } : prepared.email),
+            body: JSON.stringify(prepared.email),
           });
           const out = await res.json().catch(() => null);
           status = resendOutcome(res.status, out);

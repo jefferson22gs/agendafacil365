@@ -58,3 +58,19 @@ test('segurança: chave do Resend nunca no código; worker autentica; migration 
   assert.match(sql, /extract\(hour FROM now\(\) AT TIME ZONE coalesce\(sl\.timezone/, '09h no fuso do salão');
   assert.match(sql, /status = 'scheduled'/, 'reagendamento converte alertas');
 });
+
+test('remetente do salão: nome e endereço por slug no domínio verificado; reply-to do salão', () => {
+  const platform = 'Agenda Fácil 365 <lembretes@agendafacil365.com.br>';
+  assert.equal(core.salonSender('Estética Paula Satoo', 'drapaulasatoo', platform), '"Estética Paula Satoo" <drapaulasatoo@agendafacil365.com.br>');
+  assert.equal(core.salonSender('Ana "VIP" <x>\r\nBcc: a@b.c', 'Ana_Bela!', platform), '"Ana VIP x Bcc: a@b.c" <anabela@agendafacil365.com.br>', 'sem injeção de cabeçalho');
+  assert.equal(core.salonSender('', null, platform), '"Agenda Fácil 365" <lembretes@agendafacil365.com.br>');
+  assert.equal(core.salonReplyTo(' Salao@Gmail.com ', 'p@x.com'), 'salao@gmail.com');
+  assert.equal(core.salonReplyTo('invalido', 'p@x.com'), 'p@x.com');
+  const p = core.emailPayload({ from: core.salonSender('Código Base', 'codigobase', platform), to: 'c@d.com', salon: 'Código Base', message: 'm',
+    url: 'https://agendafacil365.com.br/s/codigobase', procedure: 'Corte', replyTo: 'codigobase.jgs@gmail.com',
+    logo: 'https://ocbwsaydgkiseeardjga.supabase.co/storage/v1/object/public/gallery/x/logo.png' });
+  assert.equal(p.reply_to, 'codigobase.jgs@gmail.com'); assert.match(p.subject, /^Código Base: hora do seu retorno \(Corte\)$/);
+  assert.match(p.html, /src="https:\/\/ocbwsaydgkiseeardjga\.supabase\.co\/storage\/v1\/render\/image\/public\/gallery\/x\/logo\.png\?width=160&amp;height=160&amp;resize=contain"/, 'logo leve do Storage');
+  assert.equal(core.emailLogo('https://cdn.salao.com/logo.png'), 'https://cdn.salao.com/logo.png');
+  assert.equal(core.emailLogo('http://inseguro/logo.png'), '');
+});
