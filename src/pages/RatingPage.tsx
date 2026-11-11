@@ -61,20 +61,22 @@ const RatingPage = () => {
 
         setSubmitting(true);
         try {
-            // Salvar avaliação na tabela reviews
-            const { error } = await (supabase as any)
-                .from('reviews')
-                .insert({
-                    salon_id: appointment.salon_id,
-                    client_id: appointment.client_id || null,
-                    appointment_id: appointmentId,
-                    professional_id: appointment.professional_id,
-                    rating: rating,
-                    comment: comment || null,
-                    is_public: true,
-                });
+            // Link público (sem login): o servidor valida o agendamento e grava uma avaliação por atendimento.
+            const { error } = await (supabase as any).rpc('submit_public_review', {
+                p_appointment_id: appointmentId,
+                p_rating: rating,
+                p_comment: comment || null,
+            });
 
-            if (error) throw error;
+            if (error) {
+                const reason = String(error.message ?? '');
+                throw new Error(
+                    reason.includes('appointment_not_completed') ? 'A avaliação fica disponível depois que o atendimento é concluído.'
+                    : reason.includes('review_expired') ? 'O prazo para avaliar este atendimento terminou.'
+                    : reason.includes('appointment_not_found') ? 'Agendamento não encontrado.'
+                    : 'Não foi possível enviar sua avaliação. Tente novamente.'
+                );
+            }
 
             setSubmitted(true);
             toast.success('Avaliação enviada com sucesso!');
