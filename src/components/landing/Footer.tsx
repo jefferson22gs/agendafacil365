@@ -4,7 +4,7 @@ import { BRAND } from "@/config/brand";
 import { DEVELOPER_INFO, getSupportWhatsAppLink } from "@/config/contact";
 import { WcagBadge } from "@/components/a11y/WcagBadge";
 
-// ponytail: Blog, Termos de uso, Privacidade e Cookies apontavam para "#" (sem rota). Removidos até existirem páginas.
+// Páginas legais são HTML estático em public/ (legíveis por robôs da Meta sem JavaScript).
 const footerColumns = [
   {
     title: "Produto",
@@ -20,6 +20,14 @@ const footerColumns = [
     links: [
       { label: "Sobre", href: "#about" },
       { label: "Contato", href: getSupportWhatsAppLink('support') },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacidade", href: "/privacidade" },
+      { label: "Termos de uso", href: "/termos" },
+      { label: "Exclusão de dados", href: "/exclusao-de-dados" },
     ],
   },
   {
@@ -52,7 +60,7 @@ export const Footer = () => {
   return (
     <footer className="border-t border-border bg-card pt-12 pb-8 md:pt-16">
       <div className="container px-4">
-        <div className="mb-10 grid grid-cols-2 gap-8 md:grid-cols-6">
+        <div className="mb-10 grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-7">
           <div className="col-span-2">
             <Logo className="mb-4" />
             <p className="mb-6 max-w-xs text-sm text-muted-foreground">{BRAND.description}</p>
