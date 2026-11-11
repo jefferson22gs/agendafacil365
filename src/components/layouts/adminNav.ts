@@ -37,6 +37,7 @@ export const WHATSAPP_TABS: NavSub[] = [
   { label: "Disparador", aba: "disparador", keywords: "disparo envio em massa broadcast campanha" },
   { label: "Agendador de status", aba: "status", keywords: "stories postagem" },
   { label: "Chatbot IA", aba: "chatbot", keywords: "robo assistente inteligencia artificial" },
+  { label: "Fluxo de agendamento", aba: "fluxo", keywords: "typebot botoes lista menu numerado simulador evolution" },
   { label: "Contatos", aba: "contatos", keywords: "importar exportar vcf csv" },
   { label: "Conexão", aba: "conexao", keywords: "qr code numero conectar" },
 ];

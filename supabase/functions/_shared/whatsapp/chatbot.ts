@@ -9,6 +9,7 @@ import { assistantTurn, composeSystemPrompt, supportsTools, type AIMessage } fro
 import { continueFlow, flowExpired, flowExpiry, handleProof, menuMessage, startFlow, type Flow, type FlowReply, type Input, type OutMessage } from "./attendant.ts";
 import { buildMenu, resolveChoice } from "./interactive.ts";
 import { receivePaymentProof } from "../pix/payment.ts";
+import { guidedReply, type GuidedSession } from "./guided.ts";
 
 async function sha256(v: string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)))).map(b => b.toString(16).padStart(2, "0")).join("");
@@ -41,7 +42,7 @@ async function adminReply(ctx: BotContext, text: string, rec: Recipient): Promis
 
 type Message = AIMessage;
 /** `messages` (atendente): várias mensagens em ordem (menu, QR do PIX, copia e cola). Sem `messages`, só `text`. */
-export interface ChatbotReply { text: string; provider: string; model: string; handoff?: boolean; messages?: OutMessage[] }
+export interface ChatbotReply { text: string; provider: string; model: string; handoff?: boolean; messages?: OutMessage[]; session?: GuidedSession }
 
 /**
  * Ponto único da contagem "respostas sem IA": tudo que sai daqui tem provider "deterministic", e o
@@ -124,6 +125,21 @@ export async function chatbotReply(ctx: BotContext, text: string, input: Omit<In
   const intent = deterministicIntent(text);
   // "Digitando…" só quando o atendente vai mesmo responder (ligado, sem equipe no controle, sem rajada).
   if (!paused && !ctx.preview && pre.cfg?.enabled && !pre.flooded) ctx.typing?.();
+  // Fluxo guiado (Typebot): assume a conversa quando ligado no salão. PIX/comprovante em andamento, opt-out,
+  // comandos do dono (Insights) e rajadas seguem o caminho clássico. Pausa humana: o próprio fluxo decide (prazo).
+  const legacyBusy = !!flow && (flow.step === "payment" || flow.step === "proof");
+  if ((ctx.preview || !!pre.cfg?.enabled) && !pre.flooded && intent !== "opt_out" && !legacyBusy && !input.media) {
+    if (!ctx.preview) { const admin = await adminReply(ctx, text, pre.recipient); if (admin) return admin; }
+    const ai = async (t: string) => {
+      const r = await baseReply(ctx, t, pre);
+      return r.provider === "deterministic" && r.startBooking === undefined ? null : { text: r.text, startBooking: r.startBooking };
+    };
+    const g = await guidedReply(ctx, { text, selection: input.selection ?? null }, { ai, session: (input.session as GuidedSession | null | undefined) ?? null }, !!st?.human_takeover && !ctx.preview);
+    if (g) {
+      if (g.flowState !== undefined) await saveFlow(ctx, g.flowState);
+      return { text: g.text, provider: g.provider, model: g.model, messages: g.messages, handoff: g.handoff, session: g.session };
+    }
+  }
   // CONFIRMAR dentro do fluxo de menus é a confirmação do resumo; fora dele segue a regra antiga (pending_action v1).
   if (!paused && (intent === "none" || (intent === "confirm" && flow)) && (ctx.preview || !!pre.cfg?.enabled)) {
     if (!ctx.preview && pre.flooded) return { text: "", provider: "deterministic", model: "rate_limited" };

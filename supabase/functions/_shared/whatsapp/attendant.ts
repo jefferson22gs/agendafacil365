@@ -24,8 +24,11 @@ export interface Flow {
   known?: { name: boolean; birth: boolean };
   appointmentId?: string; requestKey?: string;
   menu?: StoredMenu | null;
+  /** Remarcação (fluxo guiado): o próprio agendamento não conta como ocupado. */
+  excludeAppointmentId?: string;
 }
-export interface Input { text: string; selection?: string | null; media?: unknown }
+/** `session`: só no simulador do painel (fluxo guiado sem persistência). */
+export interface Input { text: string; selection?: string | null; media?: unknown; session?: unknown }
 export interface FlowReply { messages: OutMessage[]; state: Flow | null; model: string }
 
 const FLOW_TTL_MS = 30 * 60_000, DATE_DAYS = 21;
@@ -72,18 +75,19 @@ async function loadProfessionalsFor(ctx: BotContext, serviceId: string) {
   const ids = new Set((links ?? []).map((l: { professional_id: string }) => l.professional_id));
   return ((pros ?? []) as { id: string; name: string; specialty: string | null }[]).filter(p => !ids.size || ids.has(p.id));
 }
-async function slots(ctx: BotContext, serviceId: string, professionalId: string, date: string): Promise<string[]> {
-  const { data, error } = await ctx.db.rpc("get_available_time_slots", { p_salon_id: ctx.salonId, p_service_id: serviceId, p_professional_id: professionalId, p_date: date });
+async function slots(ctx: BotContext, serviceId: string, professionalId: string, date: string, exclude?: string): Promise<string[]> {
+  const { data, error } = await ctx.db.rpc("get_available_time_slots", { p_salon_id: ctx.salonId, p_service_id: serviceId, p_professional_id: professionalId, p_date: date, ...(exclude ? { p_exclude_appointment_id: exclude } : {}) });
   if (error) fail();
   return Array.isArray(data) ? data as string[] : [];
 }
 /** Horários livres: um profissional ou união de "qualquer um" (mesma regra da RPC v2). */
-async function freeTimes(ctx: BotContext, f: Flow): Promise<string[]> {
-  if (f.professionalId) return slots(ctx, f.serviceId!, f.professionalId, f.date!);
+export async function freeTimes(ctx: BotContext, f: Flow): Promise<string[]> {
+  if (f.professionalId) return slots(ctx, f.serviceId!, f.professionalId, f.date!, f.excludeAppointmentId);
   const pros = await professionalsFor(ctx, f.serviceId!);
-  const all = await Promise.all(pros.slice(0, 12).map(p => slots(ctx, f.serviceId!, p.id, f.date!)));
+  const all = await Promise.all(pros.slice(0, 12).map(p => slots(ctx, f.serviceId!, p.id, f.date!, f.excludeAppointmentId)));
   return [...new Set(all.flat())].sort();
 }
+export { professionalsFor, services };
 
 function today(tz: string) { return Temporal.Now.plainDateISO(tz); }
 
@@ -261,6 +265,11 @@ async function book(ctx: BotContext, f: Flow, interactive: boolean, salon: Await
   if (!salon.pix_key || !(Number(r.final_price) > 0)) return { messages: [{ type: "text", text: done }], state: null, model: "booking" };
   const pay = await step(ctx, { ...g, step: "payment" }, interactive);
   return { messages: [{ type: "text", text: done }, ...pay.messages], state: pay.state, model: "booking" };
+}
+
+/** Fluxo guiado: após reservar, entra no mesmo passo de pagamento (PIX ou no salão) do atendente clássico. */
+export function paymentStep(ctx: BotContext, f: Flow, interactive: boolean): Promise<FlowReply> {
+  return step(ctx, { ...f, step: "payment" }, interactive);
 }
 
 async function pixMessages(ctx: BotContext, f: Flow): Promise<FlowReply> {

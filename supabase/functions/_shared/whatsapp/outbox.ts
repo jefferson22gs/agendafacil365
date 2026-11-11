@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { evolutionClient, privateNumber } from "./evolution.ts";
 import { objectValue, WhatsAppError } from "./errors.ts";
+import { providerMessageId, sendWithFallback, typingPulse } from "./evolutionSender.ts";
 
 /**
  * Sem opções: fila geral (whatsapp_claim_outbox, conversa primeiro). `sourceEvent`: só a resposta deste evento
@@ -46,23 +47,19 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
     const inner = remote.instance && typeof remote.instance === "object" ? objectValue(remote.instance) : remote;
     if ((inner.state ?? remote.state) !== "open") { await finish("pending", "disconnected"); return true; }
     let media: string | undefined;
+    // Conversa: "digitando…" curto antes da resposta (experiência Typebot). Best effort, nunca bloqueia.
+    if (item.category === "chatbot" && (item.content_type === "interactive" || item.content_type === "text")) await typingPulse(api, instance.instance_name, String(item.recipient_phone));
     if (item.content_type === "interactive") {
       // Lista/botões: instáveis em alguns aparelhos. Se a Evolution recusar ANTES do envio, manda o texto numerado.
       const p = item.payload && typeof item.payload === "object" ? item.payload as Record<string, unknown> : null;
-      const op = p?.op === "poll" ? "poll" : p?.op === "buttons" ? "buttons" : p?.op === "list" ? "list" : null;
       const number = item.recipient_phone.replace(/^\+/, "");
       const { data: started, error: beginError } = await db.rpc("whatsapp_begin_send", { p_id: item.id, p_claim: item.claim_token });
       if (beginError || !started) throw new WhatsAppError("persistence_failed", 503);
       sendStarted = true;
-      let response: unknown = null;
-      if (op && p?.body && typeof p.body === "object") {
-        try { response = await api.request(op, instance.instance_name, { ...(p.body as Record<string, unknown>), number }); }
-        catch (e) { if (!(e instanceof WhatsAppError) || e.code !== "provider_rejected") throw e; } // 4xx: nada foi enviado
-      }
-      if (!response) response = await api.request("text", instance.instance_name, { number, text: item.text_content });
-      const r = objectValue(response), k = r.key && typeof r.key === "object" ? objectValue(r.key) : null;
-      if (typeof k?.id !== "string" || !k.id) { await finish("uncertain", "provider_missing_message_id"); return true; }
-      await finish("accepted", undefined, k.id);
+      const { response } = await sendWithFallback(api, instance.instance_name, number, p, item.text_content);
+      const id = providerMessageId(response);
+      if (!id) { await finish("uncertain", "provider_missing_message_id"); return true; }
+      await finish("accepted", undefined, id);
       return true;
     }
     if (item.content_type !== "text" && item.content_type !== "status_text") {

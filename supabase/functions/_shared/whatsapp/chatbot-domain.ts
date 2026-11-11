@@ -4,8 +4,8 @@ import { validUuid } from "./auth.ts";
 import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 import { dayChunk, firstMatches } from "./latency.ts";
 
-/** `typing`: chamado uma vez quando o atendente vai responder (bot ativo, sem pausa humana); best effort. */
-export interface BotContext { db: SupabaseClient; salonId: string; phone: string; eventId?: string; preview: boolean; typing?: () => void }
+/** `typing`: chamado uma vez quando o atendente vai responder (bot ativo, sem pausa humana); best effort. `name`: pushName do WhatsApp. */
+export interface BotContext { db: SupabaseClient; salonId: string; phone: string; eventId?: string; preview: boolean; typing?: () => void; name?: string }
 export const tools = [
   { type: "function", function: { name: "salon_info", description: "Informações públicas cadastradas do salão.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "services", description: "Serviços ativos, preço e duração reais.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
@@ -22,12 +22,12 @@ export const tools = [
 const CHANGE_DEADLINE_HOURS = 24;
 
 // Cache por mensagem (ctx nasce a cada evento): evita reler o salão em cada ferramenta/passo do fluxo.
-export interface SalonRow { name: string; timezone: string | null; address: string | null; city: string | null; pix_key: string | null }
+export interface SalonRow { name: string; timezone: string | null; address: string | null; city: string | null; pix_key: string | null; slug?: string | null; phone?: string | null; working_hours?: unknown; opening_time?: string | null; closing_time?: string | null }
 const salonCache = new WeakMap<BotContext, Promise<SalonRow>>();
 export function salonOf(ctx: BotContext): Promise<SalonRow> {
   let p = salonCache.get(ctx);
   if (!p) {
-    p = Promise.resolve(ctx.db.from("salons").select("name,timezone,address,city,pix_key").eq("id", ctx.salonId).single()).then(({ data, error }) => {
+    p = Promise.resolve(ctx.db.from("salons").select("name,timezone,address,city,pix_key,slug,phone,working_hours,opening_time,closing_time").eq("id", ctx.salonId).single()).then(({ data, error }) => {
       if (error || !data) throw new WhatsAppError("persistence_failed", 503);
       return data as SalonRow;
     });
@@ -36,14 +36,34 @@ export function salonOf(ctx: BotContext): Promise<SalonRow> {
   }
   return p;
 }
-const autoCache = new WeakMap<BotContext, Promise<{ booking: boolean; interactive: boolean }>>();
-/** whatsapp_automation_settings do salão, lida uma vez por mensagem. */
-export function automationOf(ctx: BotContext): Promise<{ booking: boolean; interactive: boolean }> {
+export type GuidedRenderMode = "hybrid" | "numbered" | "native";
+export interface AutomationRow {
+  booking: boolean; interactive: boolean;
+  /** Fluxo guiado (Typebot). Colunas da MIGRATION_TYPEBOT_EVOLUTION_237.sql; ausentes = desligado. */
+  guided: boolean; renderMode: GuidedRenderMode; welcome: string | null; confirmation: string | null; info: string | null; handoffHours: number;
+}
+const GUIDED_COLUMNS = "chatbot_booking_enabled,interactive_enabled,guided_flow_enabled,guided_render_mode,guided_welcome_message,guided_confirmation_message,guided_info_text,guided_handoff_hours";
+const autoCache = new WeakMap<BotContext, Promise<AutomationRow>>();
+/** whatsapp_automation_settings do salão, lida uma vez por mensagem. Sem a migração do fluxo guiado, relê só as colunas antigas. */
+export function automationOf(ctx: BotContext): Promise<AutomationRow> {
   let p = autoCache.get(ctx);
   if (!p) {
-    p = Promise.resolve(ctx.db.from("whatsapp_automation_settings").select("chatbot_booking_enabled,interactive_enabled").eq("salon_id", ctx.salonId).maybeSingle()).then(({ data, error }) => {
+    const read = (cols: string) => Promise.resolve(ctx.db.from("whatsapp_automation_settings").select(cols).eq("salon_id", ctx.salonId).maybeSingle());
+    p = read(GUIDED_COLUMNS).then(async r => {
+      // 42703 = coluna inexistente (migração ainda não aplicada): fallback resiliente às colunas antigas.
+      if (r.error && String(r.error.code) === "42703") r = await read("chatbot_booking_enabled,interactive_enabled");
+      const { data: raw, error } = r;
       if (error) throw new WhatsAppError("persistence_failed", 503);
-      return { booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false };
+      // deno-lint-ignore no-explicit-any
+      const data = raw as any;
+      const mode = String(data?.guided_render_mode ?? "hybrid");
+      const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+      return {
+        booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false,
+        guided: !!data?.guided_flow_enabled, renderMode: (mode === "numbered" || mode === "native" ? mode : "hybrid") as GuidedRenderMode,
+        welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
+        handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
+      };
     });
     p.catch(() => autoCache.delete(ctx));
     autoCache.set(ctx, p);

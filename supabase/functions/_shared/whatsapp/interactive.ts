@@ -4,13 +4,17 @@
 /** Limites do WhatsApp para listas (Evolution 2.3.x repassa direto ao Baileys). */
 export const LIST_ROWS = 10, TITLE_MAX = 24, DESC_MAX = 72, BUTTONS_MAX = 3, BUTTON_TEXT_MAX = 20;
 
-export interface Option { title: string; description?: string; value: Record<string, unknown> }
+/** `id` fixo (ex.: `menu_book`, `confirm_yes`) só para menus estáticos do fluxo guiado; sem id, vira `<nonce>.<n>`. */
+export interface Option { title: string; description?: string; value: Record<string, unknown>; id?: string }
 export interface MenuRow { id: string; title: string; description?: string }
-export interface Menu { kind: "list" | "buttons"; title: string; body: string; button: string; rows: MenuRow[] }
+export interface Menu { kind: "list" | "buttons"; title: string; body: string; button: string; rows: MenuRow[]; footer?: string }
 /** O que fica salvo no servidor: o id da linha só aponta para cá (não carrega valores do cliente). */
-export interface StoredMenu { nonce: string; step: string; options: Record<string, unknown>[]; page: number; hasMore: boolean; labels?: string[] }
+export interface StoredMenu { nonce: string; step: string; options: Record<string, unknown>[]; page: number; hasMore: boolean; labels?: string[]; ids?: string[] }
+export const FIXED_ID = /^[a-z][a-z0-9_]{2,30}$/;
 
 const oneLine = (s: unknown) => String(s ?? "").replace(/\s+/g, " ").trim();
+/** Corpo do menu: mantém quebras de linha (resumo, endereço), só normaliza espaços e linhas vazias repetidas. */
+const multiLine = (s: unknown) => String(s ?? "").replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 /** Corta em n caracteres com reticências (contagem por code point para não quebrar acento/emoji). */
 export function clip(s: unknown, n: number): string {
   const chars = Array.from(oneLine(s));
@@ -27,12 +31,13 @@ export function buildMenu(nonce: string, step: string, title: string, body: stri
   const size = Math.max(1, Math.min(perPage, LIST_ROWS - 1));
   const slice = all.slice(page * size, page * size + size);
   const hasMore = all.length > (page + 1) * size;
-  const rows: MenuRow[] = slice.map((o, i) => ({ id: `${nonce}.${i + 1}`, title: clip(o.title, TITLE_MAX), ...(o.description ? { description: clip(o.description, DESC_MAX) } : {}) }));
+  const rows: MenuRow[] = slice.map((o, i) => ({ id: o.id && FIXED_ID.test(o.id) ? o.id : `${nonce}.${i + 1}`, title: clip(o.title, TITLE_MAX), ...(o.description ? { description: clip(o.description, DESC_MAX) } : {}) }));
   if (hasMore) rows.push({ id: `${nonce}.${MORE}`, title: "Ver mais opções" });
   const buttons = rows.length <= BUTTONS_MAX && rows.every(r => !r.description && Array.from(r.title).length <= BUTTON_TEXT_MAX);
+  const ids = slice.map(o => (o.id && FIXED_ID.test(o.id) ? o.id : ""));
   return {
-    menu: { kind: buttons ? "buttons" : "list", title: clip(title, 60), body: oneLine(body).slice(0, 1000), button: "Ver opções", rows },
-    stored: { nonce, step, options: slice.map(o => o.value), labels: slice.map(o => oneLine(o.title)), page, hasMore },
+    menu: { kind: buttons ? "buttons" : "list", title: clip(title, 60), body: multiLine(body).slice(0, 1000), button: "Ver opções", rows },
+    stored: { nonce, step, options: slice.map(o => o.value), labels: slice.map(o => oneLine(o.title)), page, hasMore, ...(ids.some(Boolean) ? { ids } : {}) },
   };
 }
 
@@ -41,15 +46,18 @@ export function numberedText(menu: Menu): string {
   const lines = menu.rows.map((r, i) => r.id.endsWith(`.${MORE}`) ? `${i + 1}. ${r.title}` : `${i + 1}. ${r.title}${r.description ? ` — ${r.description}` : ""}`);
   const n = menu.rows.length;
   const hint = n === 1 ? "Responda 1." : `Responda com o número (1 a ${n}).`;
-  return `${menu.body}\n\n${lines.join("\n")}\n\n${hint}`;
+  // Rodapé do fluxo guiado já orienta a resposta: substitui a dica genérica em vez de repetir.
+  return `${menu.body}\n\n${lines.join("\n")}\n\n${menu.footer ? (/^Responda/.test(menu.footer) ? menu.footer : `${hint}\n${menu.footer}`) : hint}`;
 }
 
 /** Corpo exato de POST /message/sendList e /message/sendButtons (Evolution 2.3.7, src/api/dto/sendMessage.dto.ts). */
-export function evolutionBody(menu: Menu, number: string): { op: "list" | "buttons"; body: Record<string, unknown> } {
+export function evolutionBody(menu: Menu, number: string, numbered = false): { op: "list" | "buttons"; body: Record<string, unknown> } {
+  // Híbrido: o corpo traz os equivalentes numéricos ([1] Confirmar…) para quem não vê botões/listas.
+  const description = numbered ? `${menu.body}\n\n${menu.rows.map((r, i) => `[${i + 1}] ${r.title}`).join("\n")}`.slice(0, 1024) : menu.body;
   if (menu.kind === "buttons") {
-    return { op: "buttons", body: { number, title: menu.title, description: menu.body, footer: "", buttons: menu.rows.map(r => ({ type: "reply", displayText: r.title, id: r.id })) } };
+    return { op: "buttons", body: { number, title: menu.title, description, footer: menu.footer ?? "", buttons: menu.rows.map(r => ({ type: "reply", displayText: r.title, id: r.id })) } };
   }
-  return { op: "list", body: { number, title: menu.title, description: menu.body, buttonText: menu.button, footerText: "", sections: [{ title: clip(menu.title, TITLE_MAX), rows: menu.rows.map(r => ({ title: r.title, description: r.description ?? " ", rowId: r.id })) }] } };
+  return { op: "list", body: { number, title: menu.title, description, buttonText: menu.button, footerText: menu.footer ?? "", sections: [{ title: clip(menu.title, TITLE_MAX), rows: menu.rows.map(r => ({ title: r.title, description: r.description ?? " ", rowId: r.id })) }] } };
 }
 
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -62,11 +70,13 @@ export function resolveChoice(stored: StoredMenu | null | undefined, text: strin
   const total = stored.options.length + (stored.hasMore ? 1 : 0);
   const pick = (n: number) => (n >= 1 && n <= stored.options.length ? n - 1 : stored.hasMore && n === total ? "more" as const : null);
   if (selection) {
+    const fixed = stored.ids?.indexOf(selection) ?? -1;
+    if (fixed >= 0) return fixed;
     const m = selection.match(/^([a-z0-9]{4,12})\.(\d{1,2}|more)$/);
     if (!m || m[1] !== stored.nonce) return null;
     return m[2] === MORE ? (stored.hasMore ? "more" : null) : pick(Number(m[2]));
   }
-  const t = fold(text).replace(/[⃣️]/g, "");
+  const t = fold(text).replace(/[⃣️]/g, "").replace(/^[[(]\s*(\d{1,2})\s*[\])]$/, "$1");
   const num = t.match(/^(?:op(?:cao|ção)?\s*|n[ºo°]?\s*)?(\d{1,2})[.)]?$/);
   if (num) return pick(Number(num[1]));
   if (/^(ver mais|mais|mais opcoes|mais horarios|proxim[ao]s?)$/.test(t)) return stored.hasMore ? "more" : null;

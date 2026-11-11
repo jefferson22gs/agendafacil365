@@ -61,7 +61,8 @@ export function parseIncoming(data: unknown): IncomingMessage | null {
   const context = recordOf(extended?.contextInfo);
   return { ...base, text: text.trim(), quotedMessageId: typeof context?.stanzaId === "string" ? context.stanzaId : null };
 }
-const SELECTION_ID = /^[a-z0-9]{1,12}\.[a-z0-9]{1,8}$/;
+/** `<nonce>.<n>` (menus dinâmicos) ou id fixo do fluxo guiado (`menu_book`, `confirm_yes`…). */
+const SELECTION_ID = /^(?:[a-z0-9]{1,12}\.[a-z0-9]{1,8}|[a-z][a-z0-9_]{2,30})$/;
 /** listResponseMessage.singleSelectReply.selectedRowId | buttonsResponseMessage.selectedButtonId | templateButtonReplyMessage.selectedId | interactiveResponseMessage (nativeFlow paramsJson.id). */
 export function selectionOf(message: Record<string, unknown>): { id: string; text: string } | null {
   const list = recordOf(message.listResponseMessage), buttons = recordOf(message.buttonsResponseMessage), template = recordOf(message.templateButtonReplyMessage);

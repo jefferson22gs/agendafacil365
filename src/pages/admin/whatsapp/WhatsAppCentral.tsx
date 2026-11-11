@@ -16,9 +16,11 @@ const automationCard = Object.values(import.meta.glob<{ default?: ComponentType;
 const AutomationCard = automationCard ? lazy(() => automationCard().then(m => ({ default: (m.AutomationSettingsCard ?? m.default)! }))) : null;
 // Comprovantes de PIX enviados pelos clientes no WhatsApp (atendente): ficam junto das Conversas.
 const PaymentProofs = lazy(() => import("../../../components/whatsapp/PaymentProofsCard").then(m => ({ default: m.PaymentProofsCard })));
+// Fluxo guiado estilo Typebot (Evolution 2.3.7): configuração + simulador de WhatsApp.
+const GuidedFlow = lazy(() => import("../../../components/whatsapp/GuidedFlowCard").then(m => ({ default: m.GuidedFlowCard })));
 
 export const TABS = [
-  ["conversas", "Conversas"], ["disparador", "Disparador"], ["status", "Status"], ["chatbot", "Chatbot"], ["contatos", "Contatos"], ["conexao", "Conexão"],
+  ["conversas", "Conversas"], ["disparador", "Disparador"], ["status", "Status"], ["chatbot", "Chatbot"], ["fluxo", "Fluxo de agendamento"], ["contatos", "Contatos"], ["conexao", "Conexão"],
 ] as const;
 export type CentralTab = typeof TABS[number][0];
 /** Rotas antigas abrem a aba correspondente. */
@@ -33,7 +35,7 @@ export default function WhatsAppCentral() {
   const tab = tabFrom(params.get("aba"));
   const contacts = params.get("contatos") === "exportar" ? "exportar" : "importar";
   const go = (aba: string, extra: Record<string, string> = {}) => setParams({ aba, ...extra });
-  const panel = { conexao: <Connection />, conversas: <div className="space-y-6"><Inbox /><PaymentProofs /></div>, disparador: <Broadcast />, status: <Status />, chatbot: <div className="space-y-6"><Chatbot />{AutomationCard && <AutomationCard />}</div>, contatos: contacts === "exportar" ? <Export /> : <Import /> }[tab];
+  const panel = { conexao: <Connection />, conversas: <div className="space-y-6"><Inbox /><PaymentProofs /></div>, disparador: <Broadcast />, status: <Status />, chatbot: <div className="space-y-6"><Chatbot />{AutomationCard && <AutomationCard />}</div>, fluxo: <GuidedFlow />, contatos: contacts === "exportar" ? <Export /> : <Import /> }[tab];
   return <AdminLayout><div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
     <h1 className="text-2xl font-semibold">WhatsApp</h1>
     <nav data-tour="whatsapp-central-tabs" aria-label="Seções do WhatsApp" className="-mx-1 overflow-x-auto pb-1"><div role="tablist" className="flex w-max gap-1 px-1">
