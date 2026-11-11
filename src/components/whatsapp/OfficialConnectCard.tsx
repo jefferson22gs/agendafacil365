@@ -32,6 +32,14 @@ export function OfficialConnectCard({ salonId, onConnected }: { salonId: string;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const session = useRef<Session | null>(null);
+  // Config e SDK carregados ao abrir a tela: o FB.login precisa sair direto do clique, senão o navegador bloqueia a janela.
+  const ready = useRef<Promise<{ FB: FBType; configId: string }> | null>(null);
+  const prepare = () => (ready.current ??= (async () => {
+    const { data, error } = await supabase.functions.invoke("meta-embedded-signup", { body: { action: "config", salonId } });
+    if (error || !data?.success) throw new Error("config");
+    return { FB: await loadSdk(data.appId), configId: String(data.configId) };
+  })().catch(e => { ready.current = null; throw e; }));
+  useEffect(() => { void prepare().catch(() => undefined); }, [salonId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A Meta informa a conta e o número escolhidos por postMessage (WA_EMBEDDED_SIGNUP), separado do `code`.
   useEffect(() => {
@@ -51,11 +59,9 @@ export function OfficialConnectCard({ salonId, onConnected }: { salonId: string;
   const start = async () => {
     setBusy(true); setMessage(null); session.current = null;
     try {
-      const { data, error } = await supabase.functions.invoke("meta-embedded-signup", { body: { action: "config", salonId } });
-      if (error || !data?.success) throw new Error("config");
-      const FB = await loadSdk(data.appId);
+      const { FB, configId } = await prepare();
       const code = await new Promise<string | null>(resolve => FB.login(r => resolve(r.authResponse?.code ?? null), {
-        config_id: data.configId, response_type: "code", override_default_response_type: true,
+        config_id: configId, response_type: "code", override_default_response_type: true,
         extras: { setup: {}, featureType: "", sessionInfoVersion: "3" },
       }));
       if (!code) { setMessage(m => m ?? { ok: false, text: "A autorização não foi concluída." }); return; }
