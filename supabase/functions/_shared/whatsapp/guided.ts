@@ -6,9 +6,10 @@ import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 import { WhatsAppError } from "./errors.ts";
 import { automationOf, salonOf, type AutomationRow, type BotContext, type SalonRow } from "./chatbot-domain.ts";
 import { dayChunk, firstMatches } from "./latency.ts";
-import { brl, buildMenu, dateBR, fullName, resolveChoice, weekday, type Option, type StoredMenu } from "./interactive.ts";
+import { brl, buildMenu, clip, dateBR, fullName, resolveChoice, weekday, type Option, type StoredMenu } from "./interactive.ts";
 import { freeTimes, paymentStep, professionalsFor, services, type Flow, type Input, type OutMessage } from "./attendant.ts";
 import { renderMenu } from "./evolutionSender.ts";
+import { BUTTON_TEXT, MAX_BUTTONS, buttonPage, renderButtons } from "./evolutionButtons.ts";
 
 export type Step = "IDLE" | "MAIN_MENU" | "SELECT_SERVICE" | "SELECT_PROFESSIONAL" | "SELECT_DATE" | "SELECT_TIME" | "CONFIRM_NAME" | "CONFIRM_BOOKING"
   | "MY_APPOINTMENTS" | "APPOINTMENT_ACTIONS" | "CONFIRM_CANCEL_APPOINTMENT" | "RESCHEDULE_SELECT_DATE" | "RESCHEDULE_SELECT_TIME" | "HUMAN_HANDOFF";
@@ -18,6 +19,8 @@ export const STEPS: Step[] = ["IDLE", "MAIN_MENU", "SELECT_SERVICE", "SELECT_PRO
 interface Appt { id: string; date: string; start: string; service: string; professional: string }
 export interface SessionData {
   flow?: Flow; menu?: StoredMenu | null; stack?: Step[]; appts?: Appt[]; target?: Appt | null; typingDate?: boolean;
+  /** Modo botões: turno escolhido (Manhã/Tarde/Noite) antes dos horários. */
+  period?: string | null;
 }
 export interface GuidedSession { step: Step; data: SessionData; name: string | null; takeoverUntil: string | null; lastAt: string | null }
 export interface GuidedReply { text: string; provider: "deterministic" | string; model: string; messages: OutMessage[]; handoff?: boolean; session: GuidedSession; flowState?: Flow | null }
@@ -106,14 +109,52 @@ interface Ctx { ctx: BotContext; cfg: AutomationRow; salon: SalonRow; s: GuidedS
 type Out = { messages: OutMessage[]; model: string; handoff?: boolean; flowState?: Flow | null };
 
 function menu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page = 0, footer = FOOTER): Out {
+  if (c.cfg.renderMode === "buttons") return buttonsMenu(c, step, title, body, opts, page);
   const { menu, stored } = buildMenu(nonce(), step, title, body, opts, page);
   menu.footer = footer;
   c.s.step = step; c.s.data.menu = stored;
   return { messages: [renderMenu(menu, c.cfg.renderMode)], model: `guided_${step.toLowerCase()}` };
 }
-const say = (c: Ctx, step: Step, text: string, model = `guided_${step.toLowerCase()}`): Out => { c.s.step = step; c.s.data.menu = null; return { messages: [{ type: "text", text }], model }; };
+const buttonsFooter = (c: Ctx) => `${clip(c.salon.name, 30)} • Toque em um botão abaixo`;
+/** Modo 100% botões: até 3 por mensagem; sobra vira "➡️ Ver mais" e a última página oferece "🔁 Do início". */
+function buttonsMenu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page: number): Out {
+  const n = nonce(), pg = buttonPage(opts.length, page);
+  const slice = opts.slice(pg.start, pg.end);
+  // Botão tem 20 caracteres: preço, duração e nome completo vão no texto do card.
+  const details = slice.filter(o => o.description || Array.from(o.title).length > BUTTON_TEXT).map(o => `• *${o.title}*${o.description ? ` — ${o.description}` : ""}`);
+  const { menu, stored } = buildMenu(n, step, pg.pages > 1 ? `${title} (${pg.page + 1}/${pg.pages})` : title, details.length ? `${body}\n\n${details.join("\n")}` : body,
+    slice.map(o => ({ ...o, description: undefined })), 0, MAX_BUTTONS);
+  if (pg.more || pg.wrap) { menu.rows.push({ id: `${n}.more`, title: pg.more ? "➡️ Ver mais" : "🔁 Do início" }); stored.hasMore = true; }
+  stored.page = pg.page;
+  menu.footer = buttonsFooter(c);
+  c.s.step = step; c.s.data.menu = stored;
+  return { messages: [renderButtons(menu)], model: `guided_${step.toLowerCase()}` };
+}
+/** Tira do texto as instruções de digitação ("Digite *0*…") quando a resposta é por botão. */
+export function stripTypingHints(text: string): string {
+  return text.split("\n").map(line => line.split(/(?<=[.!?])[ \t]+/).filter(s => !/\b(?:[Dd]igit(?:e|ar)|[Rr]esponda) \*/.test(s)).join(" "))
+    .join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+/** Texto final com botões de saída (menu, atendente quando o texto oferece). */
+function quickButtons(c: Ctx, text: string, rows: { id: string; title: string }[] = []): OutMessage {
+  const out = [...rows, ...(rows.length ? [] : [{ id: "menu_main", title: "🏠 Menu inicial" }]), ...(/\*5\*/.test(text) && !rows.length ? [{ id: "menu_human", title: "💬 Atendente" }] : [])];
+  return renderButtons({ kind: "buttons", title: clip(c.salon.name, 60), body: stripTypingHints(text) || "Como posso ajudar?", button: "", rows: out.slice(0, MAX_BUTTONS), footer: buttonsFooter(c) });
+}
+const say = (c: Ctx, step: Step, text: string, model = `guided_${step.toLowerCase()}`): Out => {
+  c.s.step = step; c.s.data.menu = null;
+  return { messages: [c.cfg.renderMode === "buttons" ? quickButtons(c, text) : { type: "text", text }], model };
+};
 const push = (c: Ctx, from: Step) => { if (from !== "IDLE" && from !== "MAIN_MENU") c.s.data.stack = [...(c.s.data.stack ?? []).slice(-8), from]; };
-const prefix = (o: Out, intro: string): Out => { if (intro && o.messages[0]) o.messages[0].text = `${intro}\n\n${o.messages[0].text}`; return o; };
+const prefix = (o: Out, intro: string): Out => {
+  const m = o.messages[0];
+  if (!intro || !m) return o;
+  m.text = `${intro}\n\n${m.text}`;
+  // Card de botões: o texto visível é a description do payload.
+  const body = m.type === "interactive" ? m.payload.body as Record<string, unknown> | undefined : undefined;
+  if (body && typeof body.description === "string") body.description = `${intro}\n\n${body.description}`;
+  return o;
+};
+const buttonsMode = (c: Ctx) => c.cfg.renderMode === "buttons";
 
 async function knownClient(c: Ctx): Promise<string | null> {
   const { data, error } = await c.ctx.db.from("clients").select("name").eq("salon_id", c.ctx.salonId).eq("phone_normalized", c.ctx.phone).order("created_at").limit(1).maybeSingle();
@@ -121,12 +162,20 @@ async function knownClient(c: Ctx): Promise<string | null> {
   return fullName(data?.name) ?? null;
 }
 
-async function mainMenu(c: Ctx, greet = true): Promise<Out> {
+async function mainMenu(c: Ctx, greet = true, page = 0): Promise<Out> {
   c.s.data = {};
   const name = c.s.name ?? (c.s.name = await knownClient(c));
   const vars = { salao: c.salon.name, nome: name ?? "", primeiro_nome: firstName(name) };
   const hello = c.cfg.welcome ? fillTemplate(c.cfg.welcome, vars) : `Olá${name ? `, ${firstName(name)}` : ""}! 👋 Bem-vindo(a) ao *${c.salon.name}*.`;
   const body = greet ? `${hello}\nComo posso ajudar?` : "O que você quer fazer?";
+  // Botões: 2 por card + "Ver mais" (Serviços e Atendente na 2ª página, Endereço na 3ª). Títulos cabem em 20 caracteres.
+  if (buttonsMode(c)) return menu(c, "MAIN_MENU", "Menu principal", body, [
+    { id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } },
+    { id: "menu_my_appointments", title: "📋 Meus horários", value: { go: "mine" } },
+    { id: "menu_services", title: "💈 Serviços/valores", value: { go: "prices" } },
+    { id: "menu_human", title: "💬 Atendente", value: { go: "human" } },
+    { id: "menu_info", title: "📍 Endereço/horário", value: { go: "info" } },
+  ], page);
   return menu(c, "MAIN_MENU", "Menu principal", body, [
     { id: "menu_book", title: "📅 Agendar horário", description: "Escolha serviço, dia e horário", value: { go: "book" } },
     { id: "menu_my_appointments", title: "📋 Meus agendamentos", description: "Ver, remarcar ou cancelar", value: { go: "mine" } },
@@ -136,23 +185,23 @@ async function mainMenu(c: Ctx, greet = true): Promise<Out> {
   ], 0, "Responda com o número da opção.");
 }
 
-async function selectService(c: Ctx, intro = ""): Promise<Out> {
+async function selectService(c: Ctx, intro = "", page = 0): Promise<Out> {
   const list = await services(c.ctx);
   if (!list.length) return say(c, "MAIN_MENU", "Ainda não temos serviços disponíveis para agendar por aqui. Digite *5* para falar com a equipe.", "guided_no_services");
-  c.s.data.flow = { kind: "flow", step: "service", requestKey: crypto.randomUUID() };
-  return prefix(menu(c, "SELECT_SERVICE", "Serviços", "Qual serviço você quer agendar?", list.map(s => ({ title: s.name, description: `${brl(s.price)} (${s.duration_minutes} min)`, value: { id: s.id, name: s.name, price: s.price, duration: s.duration_minutes } }))), intro);
+  c.s.data.flow ??= { kind: "flow", step: "service", requestKey: crypto.randomUUID() };
+  return prefix(menu(c, "SELECT_SERVICE", "Serviços", "Qual serviço você quer agendar?", list.map(s => ({ title: s.name, description: `${brl(s.price)} (${s.duration_minutes} min)`, value: { id: s.id, name: s.name, price: s.price, duration: s.duration_minutes } })), page), intro);
 }
 
-async function selectProfessional(c: Ctx, intro = ""): Promise<Out> {
+async function selectProfessional(c: Ctx, intro = "", page = 0): Promise<Out> {
   const f = c.s.data.flow!;
   const pros = await professionalsFor(c.ctx, f.serviceId!);
   if (!pros.length) return say(c, "MAIN_MENU", "No momento ninguém da equipe atende esse serviço pelo agendamento online. Digite *5* para falar com a equipe.", "guided_no_professionals");
   // Um profissional só: escolhe sozinho e vai direto para a data.
   if (pros.length === 1) { f.professionalId = pros[0].id; return selectDate(c, intro); }
   return prefix(menu(c, "SELECT_PROFESSIONAL", "Profissional", "Com quem você prefere?", [
-    { id: "any_professional", title: "Qualquer profissional", description: "Primeiro horário livre", value: { id: null } },
+    { id: "any_professional", title: "Sem preferência", description: "Primeiro horário livre", value: { id: null } },
     ...pros.map(p => ({ title: p.name, description: p.specialty ?? undefined, value: { id: p.id, name: p.name } })),
-  ]), intro);
+  ], page), intro);
 }
 
 async function selectDate(c: Ctx, intro = "", page = 0): Promise<Out> {
@@ -160,23 +209,35 @@ async function selectDate(c: Ctx, intro = "", page = 0): Promise<Out> {
   const start = today(c.tz);
   const pros = f.professionalId ? 1 : Math.min(12, (await professionalsFor(c.ctx, f.serviceId!)).length);
   const all = Array.from({ length: DATE_LOOKAHEAD }, (_, i) => i);
-  const found = await firstMatches(all, async i => (await freeTimes(c.ctx, { ...f, date: start.add({ days: i }).toString() })).length > 0, DATE_OPTIONS * (page + 1), dayChunk(pros));
+  // Botões: os 7 próximos dias com vaga, paginados pelo "Ver mais" (a página não aumenta a busca).
+  const found = await firstMatches(all, async i => (await freeTimes(c.ctx, { ...f, date: start.add({ days: i }).toString() })).length > 0, DATE_OPTIONS * (buttonsMode(c) ? 1 : page + 1), dayChunk(pros));
   if (!found.length) return say(c, "MAIN_MENU", `Não encontrei horários livres nos próximos ${DATE_LOOKAHEAD} dias. Digite *5* para falar com a equipe ou *0* para o menu.`, "guided_no_dates");
   const days: Option[] = found.map(i => {
     const d = start.add({ days: i }).toString();
     const label = i === 0 ? "Hoje" : i === 1 ? "Amanhã" : dateBR(d);
     return { title: i < 2 ? `${label} (${dateBR(d)} - ${weekday(d)})` : `${label} (${weekday(d)})`, value: { date: d } };
   });
-  days.push({ id: "date_other", title: "Digitar outra data", description: "Formato DD/MM", value: { other: true } });
   c.s.data.typingDate = false;
+  if (buttonsMode(c)) return prefix(menu(c, step, "Datas", "📅 Para qual dia?", days, page), intro);
+  days.push({ id: "date_other", title: "Digitar outra data", description: "Formato DD/MM", value: { other: true } });
   return prefix(menu(c, step, "Datas", "Para qual dia?", days, page, `${FOOTER}\nVocê também pode digitar a data (ex.: 15/11).`), intro);
 }
 
+const PERIODS = [{ key: "Manhã", icon: "☀️" }, { key: "Tarde", icon: "🌤️" }, { key: "Noite", icon: "🌙" }];
 async function selectTime(c: Ctx, intro = "", page = 0): Promise<Out> {
   const f = c.s.data.flow!, step: Step = c.s.data.target ? "RESCHEDULE_SELECT_TIME" : "SELECT_TIME";
   const times = await freeTimes(c.ctx, f);
   if (!times.length) return selectDate(c, "Esse dia acabou de lotar. Escolha outro:");
-  return prefix(menu(c, step, "Horários", `Horários livres em ${dateBR(f.date!)} (${weekday(f.date!)}):`, times.map(t => ({ title: t, description: period(t), value: { start: t } })), page, `${FOOTER}\nVocê também pode digitar o horário (ex.: 14:00).`), intro);
+  const head = `Horários livres em ${dateBR(f.date!)} (${weekday(f.date!)})`;
+  if (!buttonsMode(c)) return prefix(menu(c, step, "Horários", `${head}:`, times.map(t => ({ title: t, description: period(t), value: { start: t } })), page, `${FOOTER}\nVocê também pode digitar o horário (ex.: 14:00).`), intro);
+  // Botões: primeiro o turno (só os que têm vaga; um só = pula), depois os horários dele, 2 por card + "Ver mais".
+  const groups = PERIODS.filter(p => times.some(t => period(t) === p.key));
+  if (!c.s.data.period || !groups.some(g => g.key === c.s.data.period)) {
+    if (groups.length > 1) return prefix(menu(c, step, "Turno", `${head}.\nQual turno você prefere?`, groups.map(g => ({ id: `period_${fold(g.key)}`, title: `${g.icon} ${g.key} (${times.filter(t => period(t) === g.key).length})`, value: { period: g.key } }))), intro);
+    c.s.data.period = groups[0].key;
+  }
+  const chosen = PERIODS.find(p => p.key === c.s.data.period)!;
+  return prefix(menu(c, step, "Horários", `${head} · ${chosen.icon} ${chosen.key}`, [...times.filter(t => period(t) === chosen.key).map(t => ({ title: `🕒 ${t}`, value: { start: t } })), ...(groups.length > 1 ? [{ id: "period_change", title: "🔄 Outro turno", value: { period: null } }] : [])], page), intro);
 }
 
 async function confirmName(c: Ctx, intro = ""): Promise<Out> {
@@ -184,6 +245,9 @@ async function confirmName(c: Ctx, intro = ""): Promise<Out> {
   const known = c.s.name ?? (c.s.name = await knownClient(c));
   if (known) { f.name = known; return confirmBooking(c, intro); }
   const suggested = fullName(c.ctx.name);
+  if (suggested && buttonsMode(c)) return prefix(menu(c, "CONFIRM_NAME", "Seu nome", `Para finalizar, o agendamento fica no nome de *${suggested}*?`, [
+    { id: "use_pushname", title: "✅ Sim, esse nome", value: { name: suggested } }, { id: "name_other", title: "✏️ Outro nome", value: { other: true } },
+  ]), intro);
   if (suggested) return prefix(menu(c, "CONFIRM_NAME", "Seu nome", `Para finalizar, qual é o seu nome completo? Pode usar o do WhatsApp ou digitar outro.`, [{ id: "use_pushname", title: `Usar "${suggested}"`.slice(0, 24), value: { name: suggested } }]), intro);
   return prefix(say(c, "CONFIRM_NAME", "Para finalizar, qual é o seu nome completo?"), intro);
 }
@@ -231,7 +295,9 @@ async function book(c: Ctx): Promise<Out> {
     console.warn("whatsapp_booking_failed", { eventId: ctx.eventId, code });
     await ctx.db.from("whatsapp_webhook_events").update({ error_code: code }).eq("id", ctx.eventId).eq("salon_id", ctx.salonId);
     if (msg.includes("slot_unavailable") || msg.includes("slot_conflict")) { f.start = undefined; f.requestKey = crypto.randomUUID(); return selectTime(c, "Esse horário acabou de ser ocupado. Escolha outro:"); }
-    return say(c, "CONFIRM_BOOKING", "Não consegui concluir o agendamento agora. Responda *1* para tentar de novo ou *5* para falar com a equipe.", "booking_failed");
+    const retry = await confirmBooking(c, "Não consegui concluir o agendamento agora. Toque em Confirmar para tentar de novo.");
+    retry.model = "booking_failed";
+    return retry;
   }
   const r = data as { id: string; final_price: number; status?: string };
   const confirmed = r.status === "confirmed";
@@ -241,9 +307,16 @@ async function book(c: Ctx): Promise<Out> {
   const where = [c.salon.address, c.salon.city].filter(Boolean).join(", ");
   const done = `${head}\n\n${summary}\n💰 *Valor:* ${brl(r.final_price)}${where ? `\n📍 ${where}` : ""}${link ? `\n\n📲 Acompanhe ou altere pelo app: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
   c.s.step = "IDLE"; c.s.data = {};
-  const out: Out = { messages: [{ type: "text", text: done }], model: "guided_booking" };
+  const out: Out = { messages: [buttonsMode(c) ? quickButtons(c, done, [{ id: "menu_my_appointments", title: "📋 Meus horários" }, { id: "menu_main", title: "🏠 Menu inicial" }]) : { type: "text", text: done }], model: "guided_booking" };
   // PIX cadastrado: o passo de pagamento do atendente assume (QR, copia e cola, comprovante).
   if (c.salon.pix_key && Number(r.final_price) > 0) {
+    if (buttonsMode(c)) {
+      // Mesmo passo "payment" do atendente (continueFlow resolve pelo id `<nonce>.<n>`), só que em botões.
+      const { menu: m, stored } = buildMenu(nonce(), "payment", "Pagamento", "Como prefere pagar?", [{ title: "💳 Pagar agora (PIX)", value: { pay: "pix" } }, { title: "🏪 Pagar no salão", value: { pay: "salon" } }]);
+      m.footer = buttonsFooter(c);
+      out.messages.push(renderButtons(m)); out.flowState = { ...f, appointmentId: r.id, step: "payment", menu: stored };
+      return out;
+    }
     const pay = await paymentStep(ctx, { ...f, appointmentId: r.id, menu: null }, c.cfg.interactive);
     out.messages.push(...pay.messages); out.flowState = pay.state;
   }
@@ -260,13 +333,13 @@ async function listAppointments(c: Ctx): Promise<Appt[]> {
 }
 const apptLabel = (a: Appt) => `${dateBR(a.date)} (${weekday(a.date)}) às ${a.start} — ${a.service}${a.professional ? ` com ${a.professional}` : ""}`;
 
-async function myAppointments(c: Ctx, intro = ""): Promise<Out> {
+async function myAppointments(c: Ctx, intro = "", page = 0): Promise<Out> {
   const appts = await listAppointments(c);
   c.s.data = { appts };
   if (c.ctx.preview) return prefix(say(c, "MAIN_MENU", "(Simulação) Aqui apareceriam os agendamentos futuros do cliente, com opções de remarcar ou cancelar.\n\nDigite *0* para o menu."), intro);
   if (!appts.length) return prefix(menu(c, "MAIN_MENU", "Agendamentos", "Você não tem agendamentos futuros por aqui.", [{ id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } }, { id: "menu_main", title: "⬅️ Menu inicial", value: { go: "menu" } }], 0, "Responda com o número."), intro);
   if (appts.length === 1) { c.s.data.target = appts[0]; return appointmentActions(c, intro); }
-  return prefix(menu(c, "MY_APPOINTMENTS", "Seus agendamentos", "Seus próximos horários. Qual deles?", appts.map(a => ({ title: `${dateBR(a.date)} ${a.start}`, description: `${a.service}${a.professional ? ` · ${a.professional}` : ""}`, value: { id: a.id } }))), intro);
+  return prefix(menu(c, "MY_APPOINTMENTS", "Seus agendamentos", "Seus próximos horários. Qual deles?", appts.map(a => ({ title: `${dateBR(a.date)} ${a.start}`, description: `${a.service}${a.professional ? ` · ${a.professional}` : ""}`, value: { id: a.id } })), page), intro);
 }
 
 function appointmentActions(c: Ctx, intro = ""): Out {
@@ -342,7 +415,8 @@ async function handoff(c: Ctx): Promise<Out> {
     const who = c.s.name ?? ctx.name ?? "Cliente";
     await ctx.db.from("admin_notifications").insert({ salon_id: ctx.salonId, type: "whatsapp_handoff", title: "💬 Cliente pediu atendente", message: `${who} (${ctx.phone}) quer falar com uma pessoa no WhatsApp. O assistente ficará pausado por ${c.cfg.handoffHours}h.`, client_name: who, client_phone: ctx.phone, metadata: { phone: ctx.phone, until } });
   }
-  return { messages: [{ type: "text", text: `Certo! Um atendente da equipe do *${c.salon.name}* vai assumir esta conversa em instantes. 🙋\n\nO assistente automático fica pausado por ${c.cfg.handoffHours}h. Se preferir voltar ao atendimento automático antes, digite *0*.` }], model: "guided_handoff", handoff: true };
+  const text = `Certo! Um atendente da equipe do *${c.salon.name}* vai assumir esta conversa em instantes. 🙋\n\nO assistente automático fica pausado por ${c.cfg.handoffHours}h. Se preferir voltar ao atendimento automático antes, digite *0*.`;
+  return { messages: [buttonsMode(c) ? quickButtons(c, text.replace(", digite *0*.", ", toque no botão abaixo."), [{ id: "menu_main", title: "🤖 Voltar ao robô" }]) : { type: "text", text }], model: "guided_handoff", handoff: true };
 }
 
 // ----------------------------------------------------------------------------------------------- transições
@@ -352,7 +426,7 @@ async function back(c: Ctx): Promise<Out> {
   switch (prev) {
     case "SELECT_SERVICE": return selectService(c);
     case "SELECT_PROFESSIONAL": if (f) f.professionalId = undefined; return selectProfessional(c);
-    case "SELECT_DATE": case "RESCHEDULE_SELECT_DATE": if (f) { f.date = undefined; f.start = undefined; } return selectDate(c);
+    case "SELECT_DATE": case "RESCHEDULE_SELECT_DATE": if (f) { f.date = undefined; f.start = undefined; } c.s.data.period = null; return selectDate(c);
     case "SELECT_TIME": case "RESCHEDULE_SELECT_TIME": if (f) f.start = undefined; return selectTime(c);
     case "CONFIRM_NAME": return confirmName(c);
     case "MY_APPOINTMENTS": return myAppointments(c);
@@ -391,17 +465,19 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
   const unknown = () => unknownInput(c, text, deps);
   switch (step) {
     case "MAIN_MENU": {
+      if (choice === "more") return mainMenu(c, false, page + 1);
       if (!picked) return unknown();
       push(c, step);
       switch (picked.go) { case "book": return selectService(c); case "mine": return myAppointments(c); case "prices": return pricesInfo(c); case "info": return infoMenu(c); case "human": return handoff(c); default: return mainMenu(c, false); }
     }
     case "SELECT_SERVICE": {
-      if (choice === "more") return selectService(c); // catálogo > 9 serviços: lista paginada
+      if (choice === "more") return selectService(c, "", page + 1); // lista (> 9) ou botões (> 3): próxima página
       if (!picked || !f) return unknown();
       push(c, step); f.serviceId = String(picked.id);
       return selectProfessional(c);
     }
     case "SELECT_PROFESSIONAL": {
+      if (choice === "more") return selectProfessional(c, "", page + 1);
       if (!picked || !f) return unknown();
       push(c, step); f.professionalId = (picked.id as string | null) ?? null;
       return selectDate(c);
@@ -412,12 +488,14 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
       if (picked?.other) { s.data.typingDate = true; s.data.menu = null; return say(c, step, "Digite a data desejada no formato *DD/MM* (ex.: 15/11)."); }
       const typed = picked ? String(picked.date) : parseTypedDate(text, today(c.tz).toString());
       if (!typed) return s.data.typingDate ? say(c, step, "Não entendi a data. Use o formato *DD/MM* (ex.: 15/11) ou digite *V* para voltar.") : unknown();
-      push(c, step); f.date = typed; f.start = undefined;
+      push(c, step); f.date = typed; f.start = undefined; s.data.period = null;
       return selectTime(c);
     }
     case "SELECT_TIME": case "RESCHEDULE_SELECT_TIME": {
       if (!f) return mainMenu(c, false);
       if (choice === "more") return selectTime(c, "", page + 1);
+      // Modo botões: turno escolhido (☀️/🌤️/🌙) ou "Outro turno" volta à escolha de turno.
+      if (picked && "period" in picked) { s.data.period = (picked.period as string | null) ?? null; return selectTime(c); }
       let start = picked ? String(picked.start) : parseTypedTime(text);
       if (start && !picked && !(await freeTimes(c.ctx, f)).includes(start)) start = null;
       if (!start) return parseTypedTime(text) ? selectTime(c, "Esse horário não está livre. Escolha um dos disponíveis:") : unknown();
@@ -427,6 +505,7 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
     }
     case "CONFIRM_NAME": {
       if (!f) return mainMenu(c, false);
+      if (picked?.other) return say(c, step, "Digite seu nome completo (ex.: Maria Souza).");
       const name = picked ? String(picked.name) : fullName(text);
       if (!name) return say(c, step, "Preciso do nome e sobrenome, por favor (ex.: Maria Souza).");
       push(c, step); f.name = name; s.name = name;
@@ -440,6 +519,7 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
       return unknown();
     }
     case "MY_APPOINTMENTS": {
+      if (choice === "more") return myAppointments(c, "", page + 1);
       if (!picked) return unknown();
       s.data.target = (s.data.appts ?? []).find(a => a.id === picked.id) ?? null;
       if (!s.data.target) return myAppointments(c);
@@ -508,7 +588,7 @@ export async function guidedReply(ctx: BotContext, input: Input, deps: GuidedDep
   // Transbordo humano com prazo: enquanto vale, silêncio; vencido, libera e volta ao menu.
   if (s.takeoverUntil) {
     // Só "0"/"menu" explícitos liberam antes do prazo ("oi" é conversa com a pessoa da equipe).
-    const release = /^(0|menu)$/i.test(input.text.trim());
+    const release = /^(0|menu)$/i.test(input.text.trim()) || input.selection === "menu_main";
     if (new Date(s.takeoverUntil).getTime() > now && !release) return { text: "", provider: "deterministic", model: "guided_paused", messages: [], session: s };
     s.takeoverUntil = null; s.step = "IDLE";
     if (!ctx.preview) {

@@ -153,7 +153,7 @@ test('voltar (V) regride uma etapa; 0 volta ao menu; data digitada; profissional
   const d = db({ pros: 2 });
   await send(d, 'menu'); await send(d, '1'); await send(d, '1');
   let r = await send(d, 'x');
-  assert.equal(r.session.step, 'SELECT_PROFESSIONAL'); assert.match(r.text, /1\. Qualquer profissional/); assert.match(r.text, /3\. Pro 1/);
+  assert.equal(r.session.step, 'SELECT_PROFESSIONAL'); assert.match(r.text, /1\. Sem preferência/); assert.match(r.text, /3\. Pro 1/);
   r = await send(d, 'v'); assert.equal(r.session.step, 'SELECT_SERVICE');
   r = await send(d, '2'); r = await send(d, '1'); assert.equal(r.session.data.flow.professionalId, null); assert.equal(r.session.step, 'SELECT_DATE');
   r = await send(d, '25/12'); assert.equal(r.session.step, 'SELECT_TIME'); assert.match(r.session.data.flow.date, /-12-25$/);
@@ -194,12 +194,69 @@ test('modo numerado: só texto; simulador (preview) não grava nem reserva', asy
   assert.equal(s.step, 'IDLE'); assert.ok(!p.calls.some(c => c.name === 'whatsapp_book_appointment_v2')); assert.equal(p.upserts.length, 0);
 });
 
+const buttons = load(path.join(sh, 'whatsapp/evolutionButtons.ts'));
+test('paginação por botão: até 3 cabem; acima, 2 + "Ver mais"; última página volta ao início', () => {
+  const p = (t, pg) => { const r = plain(buttons.buttonPage(t, pg)); return [r.start, r.end, r.more, r.wrap, r.pages]; };
+  assert.deepEqual(p(3, 0), [0, 3, false, false, 1]);
+  assert.deepEqual(p(5, 0), [0, 2, true, false, 3]);
+  assert.deepEqual(p(5, 2), [4, 5, false, true, 3]);
+  assert.deepEqual(p(5, 3), [0, 2, true, false, 3], 'dá a volta');
+  assert.throws(() => buttons.renderButtons({ kind: 'buttons', title: 't', body: 'b', button: '', rows: [1, 2, 3, 4].map(i => ({ id: `x${i}`, title: 'a' })) }));
+});
+
+// Toda mensagem do modo botões: só sendButtons, no máximo 3, displayText ≤ 20, nunca lista.
+const onlyButtons = r => r.messages.every(m => m.type === 'interactive' && m.payload.op === 'buttons' && m.payload.body.buttons.length >= 1 && m.payload.body.buttons.length <= 3 && m.payload.body.buttons.every(b => b.type === 'reply' && Array.from(b.displayText).length <= 20) && !('sections' in m.payload.body));
+const ids = r => plain(r.messages[0].payload.body.buttons.map(b => b.id));
+const labels = r => plain(r.messages[0].payload.body.buttons.map(b => b.displayText));
+const click = (d, r, i) => send(d, '', ids(r)[i]);
+
+test('100% botões: menu paginado, serviços com Ver mais, turno → horário, nome por botão, confirmação; zero digitação', async () => {
+  const d = db({ mode: 'buttons', pros: 2 });
+  let r = await send(d, 'oi');
+  assert.ok(onlyButtons(r)); assert.equal(r.session.step, 'MAIN_MENU');
+  assert.deepEqual(labels(r), ['📅 Agendar horário', '📋 Meus horários', '➡️ Ver mais']);
+  assert.match(r.messages[0].payload.body.footer, /Studio X • Toque em um botão abaixo/);
+  r = await click(d, r, 2); assert.ok(onlyButtons(r)); assert.deepEqual(ids(r).slice(0, 2), ['menu_services', 'menu_human']);
+  r = await click(d, r, 2); assert.deepEqual(ids(r)[0], 'menu_info'); assert.match(r.messages[0].payload.body.buttons[1].displayText, /Do início/);
+  r = await click(d, r, 1); assert.equal(ids(r)[0], 'menu_book', '"Do início" volta à 1ª página');
+  r = await click(d, r, 0); assert.ok(onlyButtons(r)); assert.equal(r.session.step, 'SELECT_SERVICE');
+  assert.match(r.messages[0].payload.body.description, /\*Barba\* — R\$ 30,00 \(20 min\)/, 'preço e duração no texto do card');
+  r = await click(d, r, 0); assert.equal(r.session.step, 'SELECT_PROFESSIONAL'); assert.ok(onlyButtons(r));
+  assert.match(r.messages[0].payload.body.buttons[0].displayText, /Sem preferência/);
+  r = await click(d, r, 1); assert.equal(r.session.data.flow.professionalId, PRO);
+  assert.equal(r.session.step, 'SELECT_DATE'); assert.ok(onlyButtons(r)); assert.equal(r.messages[0].payload.body.buttons.length, 3);
+  assert.ok(!JSON.stringify(r.messages).includes('Digitar outra data'));
+  r = await click(d, r, 2); assert.equal(r.session.step, 'SELECT_DATE', 'Ver mais datas'); assert.match(r.messages[0].payload.body.title, /\(2\/\d\)/);
+  r = await click(d, r, 0); assert.equal(r.session.step, 'SELECT_TIME');
+  assert.deepEqual(labels(r), ['☀️ Manhã (1)', '🌤️ Tarde (1)', '🌙 Noite (1)']);
+  r = await click(d, r, 1); assert.ok(onlyButtons(r)); assert.deepEqual(labels(r), ['🕒 14:00', '🔄 Outro turno']);
+  r = await click(d, r, 1); assert.match(r.messages[0].payload.body.buttons[0].displayText, /Manhã/, 'Outro turno volta à escolha');
+  r = await click(d, r, 1); r = await click(d, r, 0);
+  assert.equal(r.session.data.flow.start, '14:00'); assert.equal(r.session.step, 'CONFIRM_NAME'); assert.ok(onlyButtons(r));
+  assert.deepEqual(ids(r), ['use_pushname', 'name_other']); assert.match(r.messages[0].payload.body.description, /João Silva/);
+  r = await click(d, r, 0); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyButtons(r));
+  assert.deepEqual(ids(r), ['confirm_yes', 'confirm_change_date', 'confirm_cancel']);
+  r = await click(d, r, 0);
+  assert.ok(d.calls.some(c => c.name === 'whatsapp_book_appointment_v2')); assert.ok(onlyButtons(r));
+  assert.deepEqual(ids(r), ['menu_my_appointments', 'menu_main']); assert.doesNotMatch(r.messages[0].payload.body.description, /Digite \*0\*/);
+});
+
+test('100% botões: textos finais ganham botão de saída; atendente com "Voltar ao robô"', async () => {
+  const d = db({ mode: 'buttons' });
+  await send(d, 'oi');
+  let r = await send(d, '', 'menu_human');
+  assert.ok(onlyButtons(r)); assert.deepEqual(ids(r), ['menu_main']); assert.match(r.messages[0].payload.body.buttons[0].displayText, /Voltar ao robô/);
+  r = await send(d, 'oi'); assert.equal(r.model, 'guided_paused');
+  r = await send(d, '', 'menu_main'); assert.equal(r.session.step, 'MAIN_MENU', 'botão libera a pausa');
+  assert.equal(guided.stripTypingHints('Não deu certo. Digite *5* para falar com a equipe.\nAté logo!'), 'Não deu certo.\nAté logo!');
+});
+
 test('migração: aditiva, idempotente, RLS e índice por salão+telefone', () => {
   const sql = fs.readFileSync(path.join(root, 'MIGRATION_TYPEBOT_EVOLUTION_237.sql'), 'utf8');
   assert.match(sql, /^BEGIN;/m); assert.match(sql, /^COMMIT;/m);
   assert.doesNotMatch(sql, /^\s*(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)/m);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.whatsapp_chatbot_sessions/);
   assert.match(sql, /ON public\.whatsapp_chatbot_sessions \(salon_id, client_phone\)/);
-  assert.match(sql, /ENABLE ROW LEVEL SECURITY/); assert.match(sql, /guided_render_mode IN \('hybrid', 'numbered', 'native'\)/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/); assert.match(sql, /guided_render_mode IN \('buttons', 'hybrid', 'numbered', 'native'\)/);
   for (const s of guided.STEPS) assert.ok(sql.includes(`'${s}'`), s);
 });
