@@ -65,10 +65,19 @@ serve(async req => {
     // (primeiro com o token da plataforma, depois com o do cliente). Já atribuído = segue.
     const assign = `${wabaId}/assigned_users?user=${me.id}&tasks=${encodeURIComponent('["MANAGE"]')}&business=${business}`;
     await graph(assign, { method: "POST", token: system }).catch(() => graph(assign, { method: "POST", token: userToken })).catch(() => undefined);
-    // 4) webhook e registro do número na Cloud API.
+    // 4) webhook e ativação do número na Cloud API.
     await graph(`${wabaId}/subscribed_apps`, { method: "POST", token: system });
-    await graph(`${phoneId}/register`, { method: "POST", token: system, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messaging_product: "whatsapp", pin: requiredEnv("META_WA_PIN") }) })
-      .catch(e => { if (!(e instanceof WhatsAppError) || e.code !== "provider_rejected") throw e; }); // já registrado: segue
+    const json = { "Content-Type": "application/json" };
+    if (body.coexistence === true) {
+      // Coexistência: o número continua no app WhatsApp Business (não se registra com PIN). Pede à Meta a cópia
+      // dos contatos e do histórico recente do app; chega pelo webhook. Falha aqui não impede a conexão.
+      for (const sync_type of ["smb_app_state_sync", "history"]) {
+        await graph(`${phoneId}/smb_app_data`, { method: "POST", token: system, headers: json, body: JSON.stringify({ messaging_product: "whatsapp", sync_type }) }).catch(() => undefined);
+      }
+    } else {
+      await graph(`${phoneId}/register`, { method: "POST", token: system, headers: json, body: JSON.stringify({ messaging_product: "whatsapp", pin: requiredEnv("META_WA_PIN") }) })
+        .catch(e => { if (!(e instanceof WhatsAppError) || e.code !== "provider_rejected") throw e; }); // já registrado: segue
+    }
 
     const digits = String(phone.display_phone_number ?? "").replace(/\D/g, "") || null;
     const row = {

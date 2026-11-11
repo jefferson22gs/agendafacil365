@@ -118,9 +118,22 @@ export function parseMetaWebhook(body: unknown): MetaChange[] {
   for (const entry of (Array.isArray(rec(body)?.entry) ? rec(body)!.entry as unknown[] : []).slice(0, 50)) {
     for (const change of (Array.isArray(rec(entry)?.changes) ? rec(entry)!.changes as unknown[] : []).slice(0, 50)) {
       const c = rec(change), v = rec(c?.value);
-      if (c?.field !== "messages" || !v) continue;
+      if (!v || (c?.field !== "messages" && c?.field !== "smb_message_echoes")) continue;
       const phoneNumberId = str(rec(v.metadata)?.phone_number_id, 40);
       if (!/^\d{5,30}$/.test(phoneNumberId)) continue;
+      // Coexistência: o que o salão manda pelo app do celular volta como eco (saída "pelo celular" na Central).
+      if (c.field === "smb_message_echoes") {
+        const res: MetaChange = { phoneNumberId, incoming: [], inbox: [], statuses: [] };
+        for (const raw of (Array.isArray(v.message_echoes) ? v.message_echoes : []).slice(0, 100) as unknown[]) {
+          const m = rec(raw), to = str(m?.to, 20), id = str(m?.id, 200), ts = Number(m?.timestamp);
+          if (!/^[1-9]\d{7,14}$/.test(to) || !WAMID.test(id)) continue;
+          const type = str(m!.type, 30) || "text";
+          res.inbox.push({ id, phone: `+${to}`, direction: "out", kind: type === "text" ? "text" : "media", type, body: str(rec(m!.text)?.body).trim(), mediaUrl: null, mediaMime: null, mediaName: null, name: null,
+            createdAt: Number.isFinite(ts) && ts > 1e9 ? new Date(ts * 1000).toISOString() : null });
+        }
+        out.push(res);
+        continue;
+      }
       const names = new Map<string, string>();
       for (const ct of (Array.isArray(v.contacts) ? v.contacts : []) as unknown[]) names.set(str(rec(ct)?.wa_id, 20), str(rec(rec(ct)?.profile)?.name, 120));
       const res: MetaChange = { phoneNumberId, incoming: [], inbox: [], statuses: [] };

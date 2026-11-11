@@ -48,6 +48,13 @@ test('webhook: texto, clique em botão, item da lista, mídia e status de entreg
   assert.equal(c.inbox[1].type, 'buttons_reply'); assert.equal(c.inbox[2].type, 'list_reply');
 });
 
+test('coexistência: mensagem enviada pelo app do celular (smb_message_echoes) vira saída na Central, nunca entrada do robô', () => {
+  const body = { entry: [{ changes: [{ field: 'smb_message_echoes', value: { metadata: { phone_number_id: '1516976681488434' }, message_echoes: [{ from: '5511951645271', to: '5511961626897', id: W + 'Z', timestamp: '1794422300', type: 'text', text: { body: 'Te espero às 14h!' } }] } }] }] };
+  const [c] = plain(meta.parseMetaWebhook(body));
+  assert.deepEqual(c.incoming, [], 'eco não aciona o robô');
+  assert.deepEqual([c.inbox[0].direction, c.inbox[0].phone, c.inbox[0].body], ['out', '+5511961626897', 'Te espero às 14h!']);
+});
+
 test('webhook: ignora grupo/número inválido, id fora do padrão e outros campos', () => {
   assert.deepEqual(plain(meta.parseMetaWebhook(env({ messages: [{ from: '120363000000@g.us', id: W, type: 'text', text: { body: 'x' } }, { from: '5511961626897', id: 'falso', type: 'text', text: { body: 'x' } }] })))[0].incoming, []);
   assert.deepEqual(plain(meta.parseMetaWebhook({ entry: [{ changes: [{ field: 'account_update', value: {} }] }] })), []);

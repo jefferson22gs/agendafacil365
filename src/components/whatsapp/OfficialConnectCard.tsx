@@ -22,7 +22,9 @@ function loadSdk(appId: string): Promise<FBType> {
     document.body.appendChild(s);
   });
 }
-type Session = { wabaId: string; phoneNumberId: string };
+type Session = { wabaId: string; phoneNumberId: string; coexistence: boolean };
+/** coexistence: o número continua no app WhatsApp Business do celular e também passa a funcionar pela API. */
+type Mode = "keep_app" | "new_number";
 
 /**
  * "Conectar WhatsApp oficial": Cadastro Incorporado da Meta. O dono autoriza no Facebook; o servidor
@@ -48,7 +50,10 @@ export function OfficialConnectCard({ salonId, onConnected }: { salonId: string;
       try {
         const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
         if (d?.type !== "WA_EMBEDDED_SIGNUP") return;
-        if (d.event === "FINISH" && d.data?.waba_id && d.data?.phone_number_id) session.current = { wabaId: String(d.data.waba_id), phoneNumberId: String(d.data.phone_number_id) };
+        // FINISH = número novo; FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING = número do app WhatsApp Business (coexistência).
+        if ((d.event === "FINISH" || d.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING") && d.data?.waba_id && d.data?.phone_number_id) {
+          session.current = { wabaId: String(d.data.waba_id), phoneNumberId: String(d.data.phone_number_id), coexistence: d.event !== "FINISH" };
+        }
         if (d.event === "CANCEL") setMessage({ ok: false, text: "Cadastro cancelado. Você pode tentar de novo quando quiser." });
       } catch { /* mensagens de outros scripts */ }
     };
@@ -56,13 +61,13 @@ export function OfficialConnectCard({ salonId, onConnected }: { salonId: string;
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const start = async () => {
+  const start = async (mode: Mode) => {
     setBusy(true); setMessage(null); session.current = null;
     try {
       const { FB, configId } = await prepare();
       const code = await new Promise<string | null>(resolve => FB.login(r => resolve(r.authResponse?.code ?? null), {
         config_id: configId, response_type: "code", override_default_response_type: true,
-        extras: { setup: {}, featureType: "", sessionInfoVersion: "3" },
+        extras: { setup: {}, featureType: mode === "keep_app" ? "whatsapp_business_app_onboarding" : "", sessionInfoVersion: "3" },
       }));
       if (!code) { setMessage(m => m ?? { ok: false, text: "A autorização não foi concluída." }); return; }
       // O postMessage pode chegar logo depois do callback do login.
@@ -84,9 +89,16 @@ export function OfficialConnectCard({ salonId, onConnected }: { salonId: string;
         <CardDescription>Conexão aprovada pela Meta: botões e menu clicáveis para o cliente, sem risco de bloqueio por conexão não oficial. Você entra com o Facebook do estabelecimento e escolhe o número.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Button variant="brand" className="min-h-11" disabled={busy} onClick={() => void start()} data-tour="whatsapp-official-connect">
-          {busy && <Loader2 className="mr-2 animate-spin" size={16} aria-hidden />}Conectar WhatsApp oficial
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="brand" className="min-h-11" disabled={busy} onClick={() => void start("keep_app")} data-tour="whatsapp-official-connect">
+            {busy && <Loader2 className="mr-2 animate-spin" size={16} aria-hidden />}Conectar WhatsApp oficial
+          </Button>
+          <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void start("new_number")} data-tour="whatsapp-official-new-number">Usar um número novo</Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          <strong>Conectar WhatsApp oficial:</strong> use o número que já está no app <strong>WhatsApp Business</strong> do celular. Ele continua funcionando no celular e passa a responder com botões. No celular, atualize o WhatsApp Business e tenha-o à mão para ler o código que a Meta mostra.{" "}
+          <strong>Usar um número novo:</strong> para um chip que nunca teve WhatsApp.
+        </p>
         {message && <p role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "text-success" : "text-destructive"}`}>{message.text}</p>}
       </CardContent>
     </Card>
