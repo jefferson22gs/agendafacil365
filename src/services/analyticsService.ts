@@ -70,7 +70,7 @@ export const analyticsService = {
         const cancelledAppts = allAppointments.filter(a => a.status === 'cancelled');
 
         // Calcular métricas
-        const totalRevenue = completedAppts.reduce((sum, a) => sum + (a.total_price || 0), 0);
+        const totalRevenue = completedAppts.reduce((sum, a) => sum + (a.final_price || 0), 0);
         const averageTicket = completedAppts.length > 0 ? totalRevenue / completedAppts.length : 0;
 
         // Contar clientes novos vs retornando
@@ -201,7 +201,7 @@ export const analyticsService = {
     async getServicesPerformance(salonId: string, startDate: string, endDate: string): Promise<ServicePerformance[]> {
         const { data: appointments } = await supabase
             .from('appointments')
-            .select('service_id, total_price, service:services(name)')
+            .select('service_id, final_price, service:services(name)')
             .eq('salon_id', salonId)
             .eq('status', 'completed')
             .gte('date', startDate)
@@ -223,7 +223,7 @@ export const analyticsService = {
             }
 
             serviceStats[apt.service_id].count++;
-            serviceStats[apt.service_id].revenue += apt.total_price || 0;
+            serviceStats[apt.service_id].revenue += apt.final_price || 0;
         });
 
         return Object.entries(serviceStats)
@@ -241,7 +241,7 @@ export const analyticsService = {
     async getProfessionalsPerformance(salonId: string, startDate: string, endDate: string): Promise<ProfessionalPerformance[]> {
         const { data: appointments } = await supabase
             .from('appointments')
-            .select('professional_id, total_price, status, professional:professionals(name)')
+            .select('professional_id, final_price, status, professional:professionals(name)')
             .eq('salon_id', salonId)
             .gte('date', startDate)
             .lte('date', endDate);
@@ -272,7 +272,7 @@ export const analyticsService = {
             profStats[apt.professional_id].total++;
             if (apt.status === 'completed') {
                 profStats[apt.professional_id].completed++;
-                profStats[apt.professional_id].revenue += apt.total_price || 0;
+                profStats[apt.professional_id].revenue += apt.final_price || 0;
             }
         });
 

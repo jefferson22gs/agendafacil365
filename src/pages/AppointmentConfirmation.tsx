@@ -72,7 +72,7 @@ export default function AppointmentConfirmation() {
         .single();
 
       if (error) throw error;
-      setAppointment(data);
+      setAppointment(data as unknown as AppointmentDetails);
     } catch (error) {
       console.error("Error loading appointment:", error);
     } finally {

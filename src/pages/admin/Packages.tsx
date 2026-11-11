@@ -95,7 +95,7 @@ const PackagesPage = () => {
       console.error("Error fetching packages:", error);
       return;
     }
-    setPackages(data || []);
+    setPackages((data || []) as unknown as ServicePackage[]);
   };
 
   const fetchServices = async () => {

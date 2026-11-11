@@ -104,13 +104,13 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
 
             const { data: appointments } = await supabase
                 .from('appointments')
-                .select('total_price')
+                .select('final_price')
                 .eq('salon_id', salonId)
                 .eq('status', 'completed')
                 .gte('date', format(startDate, 'yyyy-MM-dd'))
                 .lte('date', format(endDate, 'yyyy-MM-dd'));
 
-            const total = appointments?.reduce((sum, a) => sum + (a.total_price || 0), 0) || 0;
+            const total = appointments?.reduce((sum, a) => sum + (a.final_price || 0), 0) || 0;
 
             months.push({
                 month: format(monthDate, 'MMM', { locale: ptBR }),
@@ -216,7 +216,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
             // Buscar último agendamento
             const { data: lastAppointment } = await supabase
                 .from('appointments')
-                .select('date, total_price')
+                .select('date, final_price')
                 .eq('client_id', client.id)
                 .eq('status', 'completed')
                 .order('date', { ascending: false })
@@ -228,11 +228,11 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
             // Calcular total gasto
             const { data: allAppointments } = await supabase
                 .from('appointments')
-                .select('total_price')
+                .select('final_price')
                 .eq('client_id', client.id)
                 .eq('status', 'completed');
 
-            const totalSpent = allAppointments?.reduce((sum, a) => sum + (a.total_price || 0), 0) || 0;
+            const totalSpent = allAppointments?.reduce((sum, a) => sum + (a.final_price || 0), 0) || 0;
 
             // Calcular dias desde última visita
             const lastVisitDate = new Date(lastAppointment.date);

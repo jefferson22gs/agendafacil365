@@ -2,6 +2,7 @@ import { Logo } from "@/components/icons/Logo";
 import { Instagram, MessageCircle, ExternalLink } from "lucide-react";
 import { BRAND } from "@/config/brand";
 import { DEVELOPER_INFO, getSupportWhatsAppLink } from "@/config/contact";
+import { WcagBadge } from "@/components/a11y/WcagBadge";
 
 // ponytail: Blog, Termos de uso, Privacidade e Cookies apontavam para "#" (sem rota). Removidos até existirem páginas.
 const footerColumns = [
@@ -97,7 +98,10 @@ export const Footer = () => {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-center text-sm text-muted-foreground md:flex-row md:text-left">
-          <p>© {year} {BRAND.name}. Todos os direitos reservados.</p>
+          <div className="flex flex-col items-center gap-1 md:items-start">
+            <p>© {year} {BRAND.name}. Todos os direitos reservados.</p>
+            <WcagBadge />
+          </div>
           <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
             <p>
               Desenvolvido por{" "}

@@ -75,3 +75,15 @@ verify_jwt = false
 # Webhook externo (Mercado Pago não envia JWT do Supabase)
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+# Worker valida authorizeWorker (cron/Vault); disparo manual valida authorizeSalon + tenant do alerta.
+[functions.process-return-alerts]
+verify_jwt = false
+
+# Valida o JWT do dono dentro da função (getUser).
+[functions.autentique-contract]
+verify_jwt = false
+
+# Webhook externo: autenticado por HMAC (X-Autentique-Signature), não por JWT.
+[functions.autentique-webhook]
+verify_jwt = false

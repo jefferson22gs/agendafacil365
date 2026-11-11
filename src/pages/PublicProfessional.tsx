@@ -30,6 +30,10 @@ import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { safeHexColor } from "@/config/brand";
+import { accessibleBackground, textOnColor } from '../../api/_pwa';
+import { useSalonHead } from '@/components/pwa/useSalonHead';
+import { SalonLogo } from '@/components/pwa/SalonLogo';
+import { useAuth } from '@/hooks/useAuth';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 
@@ -417,12 +421,15 @@ const PublicProfessional = () => {
     };
 
     // Cor do estabelecimento (só HEX válido; ausente/inválida cai no azul padrão)
-    const primaryColor = safeHexColor(salon?.primary_color);
+    useSalonHead(salon);
+    const primaryColor = accessibleBackground(safeHexColor(salon?.primary_color));
+    const primaryForeground = textOnColor(primaryColor);
+    const primaryText = 'var(--tenant-text, currentColor)';
 
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} aria-hidden="true" />
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryText }} aria-hidden="true" />
                 <span className="sr-only">Carregando</span>
             </div>
         );
@@ -450,7 +457,7 @@ const PublicProfessional = () => {
                         className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: `${primaryColor}20` }}
                     >
-                        <Check size={40} style={{ color: primaryColor }} />
+                        <Check size={40} style={{ color: primaryText }} />
                     </div>
                     <h1 className="font-display text-3xl font-bold text-foreground mb-4">
                         Agendamento Confirmado!
@@ -483,7 +490,7 @@ const PublicProfessional = () => {
                             <div className="border-t border-border pt-3 mt-3">
                                 <div className="flex justify-between">
                                     <span className="font-medium text-foreground">Total</span>
-                                    <span className="text-xl font-bold" style={{ color: primaryColor }}>
+                                    <span className="text-xl font-bold" style={{ color: primaryText }}>
                                         R$ {cartTotal.toFixed(2)}
                                     </span>
                                 </div>
@@ -520,6 +527,7 @@ const PublicProfessional = () => {
                         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
                     >
                         <ArrowLeft size={16} />
+                        <SalonLogo salon={salon} className="w-10 h-10 rounded-lg" />
                         Voltar para {salon.name}
                     </Link>
 
@@ -535,7 +543,7 @@ const PublicProfessional = () => {
                         ) : (
                             <div
                                 className="w-28 h-28 rounded-full flex items-center justify-center text-4xl font-bold"
-                                style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                                style={{ backgroundColor: `${primaryColor}20`, color: primaryText }}
                             >
                                 {professional.name.charAt(0)}
                             </div>
@@ -635,7 +643,7 @@ const PublicProfessional = () => {
                                                         }}
                                                     >
                                                         {isInCart(service.id) && (
-                                                            <Check size={14} className="text-white" />
+                                                            <Check size={14} style={{ color: primaryForeground }} aria-hidden />
                                                         )}
                                                     </div>
                                                 </button>
@@ -653,7 +661,7 @@ const PublicProfessional = () => {
                                                 <span className="font-medium">
                                                     {cart.length} {cart.length === 1 ? 'serviço' : 'serviços'} selecionado(s)
                                                 </span>
-                                                <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                                                <span className="text-lg font-bold" style={{ color: primaryText }}>
                                                     R$ {cartTotal.toFixed(2)}
                                                 </span>
                                             </div>
@@ -663,7 +671,7 @@ const PublicProfessional = () => {
                                             </p>
                                             <Button
                                                 className="w-full"
-                                                style={{ backgroundColor: primaryColor }}
+                                                style={{ backgroundColor: primaryColor, color: primaryForeground }}
                                                 onClick={() => setStep(2)}
                                             >
                                                 Escolher Data e Horário
@@ -746,7 +754,7 @@ const PublicProfessional = () => {
                                                     <Badge
                                                         key={day}
                                                         variant={isWorking ? 'default' : 'secondary'}
-                                                        style={isWorking ? { backgroundColor: primaryColor } : {}}
+                                                        style={isWorking ? { backgroundColor: primaryColor, color: primaryForeground } : {}}
                                                     >
                                                         {day}
                                                     </Badge>
@@ -814,7 +822,7 @@ const PublicProfessional = () => {
                                             </h3>
                                             {loadingSlots ? (
                                                 <div className="flex items-center justify-center py-8">
-                                                    <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryColor }} />
+                                                    <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryText }} />
                                                 </div>
                                             ) : availableSlots.length === 0 ? (
                                                 <div className="text-center py-8">
@@ -833,7 +841,7 @@ const PublicProfessional = () => {
                                                             style={{
                                                                 borderColor: selectedTime === slot ? primaryColor : 'hsl(var(--border))',
                                                                 backgroundColor: selectedTime === slot ? primaryColor : 'transparent',
-                                                                color: selectedTime === slot ? 'white' : undefined,
+                                                                color: selectedTime === slot ? primaryForeground : undefined,
                                                             }}
                                                         >
                                                             {slot}
@@ -852,7 +860,7 @@ const PublicProfessional = () => {
                                     {selectedTime && (
                                         <Button
                                             className="w-full mt-6"
-                                            style={{ backgroundColor: primaryColor }}
+                                            style={{ backgroundColor: primaryColor, color: primaryForeground }}
                                             onClick={() => setStep(3)}
                                         >
                                             Continuar
@@ -884,7 +892,7 @@ const PublicProfessional = () => {
                                         <img src={professional.avatar_url} alt={professional.name} className="w-12 h-12 rounded-full object-cover" />
                                     ) : (
                                         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                                            <User size={24} style={{ color: primaryColor }} />
+                                            <User size={24} style={{ color: primaryText }} />
                                         </div>
                                     )}
                                     <div>
@@ -907,7 +915,7 @@ const PublicProfessional = () => {
                                     </div>
                                     <div className="flex justify-between pt-2 border-t border-border">
                                         <span className="font-medium">Total</span>
-                                        <span className="font-bold" style={{ color: primaryColor }}>R$ {cartTotal.toFixed(2)}</span>
+                                        <span className="font-bold" style={{ color: primaryText }}>R$ {cartTotal.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1002,7 +1010,7 @@ const PublicProfessional = () => {
 
                             <Button
                                 className="w-full mt-6"
-                                style={{ backgroundColor: primaryColor }}
+                                style={{ backgroundColor: primaryColor, color: primaryForeground }}
                                 onClick={handleConfirmBooking}
                                 disabled={submitting || !clientName.trim() || !clientPhone.trim()}
                             >

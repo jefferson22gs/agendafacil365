@@ -133,8 +133,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             if (!isActive && (status === 'trial' || status === 'active')) {
                 finalStatus = 'expired';
 
-                // Only update the database if the current status in the DB is different from expired
-                if (status !== 'expired') {
+                // status é trial/active aqui: o banco ainda não está como expired.
+
+                {
                     // Check the current database status again to avoid race conditions
                     const { data: currentSub, error } = await supabase
                         .from('subscriptions')

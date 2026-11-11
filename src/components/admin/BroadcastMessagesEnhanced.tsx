@@ -200,9 +200,10 @@ export const BroadcastMessagesComponent = () => {
 
       if (clientsError) throw clientsError;
 
-      const contactsWithSelection = (clientsData || []).map((c: any) => ({
+      const contactsWithSelection: Contact[] = (clientsData || []).map((c: any) => ({
         name: c.name,
         phone: c.phone,
+        source: 'database' as const,
         selected: false
       }));
 
@@ -236,7 +237,7 @@ export const BroadcastMessagesComponent = () => {
       .limit(10);
 
     if (data) {
-      setBroadcasts(data);
+      setBroadcasts(data as unknown as Broadcast[]);
 
       // Verificar se há broadcast ativo
       const active = data.find(b => b.status === 'processing');
@@ -267,7 +268,7 @@ export const BroadcastMessagesComponent = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setBroadcastMessages(data || []);
+      setBroadcastMessages((data || []) as unknown as BroadcastMessage[]);
     } catch (error) {
       console.error("Error loading broadcast messages:", error);
       toast({

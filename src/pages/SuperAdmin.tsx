@@ -90,6 +90,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SellersManagement } from "@/components/admin/SellersManagement";
 import { AISettingsManagement } from "@/components/admin/AISettingsManagement";
+import { ContractSettingsManagement } from "@/components/admin/ContractSettingsManagement";
 import { PushHealthCard } from "@/components/admin/PushHealthCard";
 import { StatCard } from "@/components/admin/StatCard";
 import { displayPlanName } from "@/config/brand";
@@ -679,8 +680,6 @@ const SuperAdmin = () => {
             const result = await response.json();
             
             if (response.ok && result.success) {
-                // Atualizar email na tabela salons também
-                await supabase.from("salons").update({ owner_email: newEmail }).eq("id", selectedSalon.id);
                 
                 toast({ 
                     title: "✅ Email atualizado", 
@@ -795,7 +794,7 @@ const SuperAdmin = () => {
                 <Tabs defaultValue="salons" className="w-full">
                     {/* Broadcast/atualizar/sair ficam só no cabeçalho (antes estavam duplicados aqui) */}
                     <div className="mb-6">
-                        <TabsList className="grid w-full max-w-lg grid-cols-3">
+                        <TabsList className="grid w-full max-w-2xl grid-cols-4">
                             <TabsTrigger value="salons" className="flex items-center gap-2 min-w-0">
                                 <Building2 className="w-4 h-4 shrink-0 hidden sm:block" aria-hidden />
                                 <span className="truncate">Estabelecimentos</span>
@@ -807,6 +806,10 @@ const SuperAdmin = () => {
                             <TabsTrigger value="ai-settings" className="flex items-center gap-2 min-w-0">
                                 <Brain className="w-4 h-4 shrink-0 hidden sm:block" aria-hidden />
                                 IA
+                            </TabsTrigger>
+                            <TabsTrigger value="contract" className="flex items-center gap-2 min-w-0">
+                                <Shield className="w-4 h-4 shrink-0 hidden sm:block" aria-hidden />
+                                <span className="truncate">Contrato</span>
                             </TabsTrigger>
                         </TabsList>
                     </div>
@@ -1349,6 +1352,10 @@ const SuperAdmin = () => {
                     {/* Configurações de IA Tab */}
                     <TabsContent value="ai-settings">
                         <AISettingsManagement />
+                    </TabsContent>
+
+                    <TabsContent value="contract">
+                        <ContractSettingsManagement />
                     </TabsContent>
 
                 </Tabs>

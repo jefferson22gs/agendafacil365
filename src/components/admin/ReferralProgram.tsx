@@ -114,8 +114,9 @@ export const ReferralProgram = ({
                             size="icon"
                             onClick={() => copyToClipboard(referralCode)}
                             className="h-12 w-12"
+                            aria-label={copied ? "Código copiado" : "Copiar código de indicação"}
                         >
-                            {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
+                            {copied ? <CheckCircle size={20} aria-hidden /> : <Copy size={20} aria-hidden />}
                         </Button>
                     </div>
                 </div>
@@ -133,8 +134,9 @@ export const ReferralProgram = ({
                             variant="outline"
                             size="icon"
                             onClick={() => copyToClipboard(referralLink)}
+                            aria-label="Copiar link de indicação"
                         >
-                            <Link2 size={18} />
+                            <Link2 size={18} aria-hidden />
                         </Button>
                     </div>
                 </div>

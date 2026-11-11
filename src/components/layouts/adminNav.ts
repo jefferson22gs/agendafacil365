@@ -6,6 +6,8 @@ import {
   ClipboardList,
   DollarSign,
   BarChart3,
+  FileSignature,
+  CalendarClock,
   Package,
   Gift,
   ShoppingBag,
@@ -59,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { icon: Users, label: "Clientes", path: "/admin/clients" },
       { icon: UserCog, label: "Profissionais", path: "/admin/professionals", keywords: "equipe funcionarios" },
       { icon: ClipboardList, label: "Serviços", path: "/admin/services", keywords: "precos" },
+      { icon: CalendarClock, label: "Retornos & Lembretes", path: "/admin/returns", keywords: "retorno retoque manutencao recorrencia lembrete botox" },
     ],
   },
   {
@@ -87,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { icon: Settings, label: "Configurações", path: "/admin/settings", keywords: "horarios link pix dados" },
       { icon: Crown, label: "Minha Assinatura", path: "/admin/subscription", keywords: "plano pagamento" },
+      { icon: FileSignature, label: "Contrato", path: "/admin/contract", keywords: "contrato assinatura eletronica autentique" },
       { icon: GraduationCap, label: "Central de Treinamento", path: "/admin/training", keywords: "ajuda tutorial tour" },
     ],
   },

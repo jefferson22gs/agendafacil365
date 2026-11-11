@@ -40,6 +40,8 @@ const Services = lazy(() => import("./pages/admin/Services"));
 const Coupons = lazy(() => import("./pages/admin/Coupons"));
 const Appointments = lazy(() => import("./pages/admin/Appointments"));
 const Clients = lazy(() => import("./pages/admin/Clients"));
+const Returns = lazy(() => import("./pages/admin/Returns"));
+const Contract = lazy(() => import("./pages/admin/Contract"));
 const Financial = lazy(() => import("./pages/admin/Financial"));
 const Analytics = lazy(() => import("./pages/admin/Analytics"));
 const Packages = lazy(() => import("./pages/admin/Packages"));
@@ -168,6 +170,20 @@ const App = () => (
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <Clients />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/contract" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Contract />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/returns" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Returns />
                   </Suspense>
                 </ProtectedRoute>
               } />

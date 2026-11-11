@@ -668,12 +668,12 @@ export const SellersManagement = () => {
                                                                 <Phone className="w-3 h-3" />
                                                             </Button>
                                                         )}
-                                                        {seller.whatsapp && (
+                                                        {sellers.find(x => x.id === seller.seller_id)?.whatsapp && (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-8 px-2 text-success"
-                                                                onClick={() => window.open(`https://wa.me/55${seller.whatsapp.replace(/\D/g, '')}`, "_blank")}
+                                                                onClick={() => window.open(`https://wa.me/55${(sellers.find(x => x.id === seller.seller_id)?.whatsapp ?? '').replace(/\D/g, '')}`, "_blank")}
                                                             >
                                                                 <Mail className="w-3 h-3" />
                                                             </Button>
@@ -803,7 +803,7 @@ export const SellersManagement = () => {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={commission.payment_type === "annual" ? "purple" : "blue"}>
+                                                    <Badge variant={commission.payment_type === "annual" ? "info" : "secondary"}>
                                                         {commission.payment_type === "annual" ? "Anual" : "Mensal"}
                                                     </Badge>
                                                     <p className="text-xs text-muted-foreground">{commission.subscription_plan}</p>

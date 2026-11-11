@@ -165,6 +165,16 @@ const SubscriptionManagement = () => {
                     </div>
                 )}
 
+                <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="flex items-start gap-2 text-sm text-foreground">
+                        <FileText size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                        Contrato do plano com preenchimento automático e assinatura eletrônica pelas duas partes (Autentique).
+                    </p>
+                    <Button variant="outline" className="h-11 shrink-0" onClick={() => navigate(`/admin/contract?plano=${selectedPlan}`)}>
+                        Ver / assinar contrato
+                    </Button>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Subscription Card */}
                     <div className="lg:col-span-2">

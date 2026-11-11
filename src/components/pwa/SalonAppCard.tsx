@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { isIOSDevice, isIOSSafari, setTenantApp, usePWA } from '@/hooks/usePWA';
 import { usePushNotificationsFCM } from '@/hooks/usePushNotificationsFCM';
-import { textOnColor } from '../../../api/_pwa';
+import { accessibleBackground, textOnColor } from '../../../api/_pwa';
 import { safeHexColor } from '@/config/brand';
+import { SalonLogo } from './SalonLogo';
 
 interface SalonAppCardProps {
   salonName: string;
@@ -35,7 +36,7 @@ export function SalonAppCard({ salonName, salonSlug, logoUrl, color, enabled = t
   const [dismissed, setDismissed] = useState(() => readDismissed(salonSlug));
   const [showIOS, setShowIOS] = useState(false);
   const [busy, setBusy] = useState(false);
-  const bg = safeHexColor(color);
+  const bg = accessibleBackground(safeHexColor(color));
   const fg = textOnColor(bg);
 
   // Marca a página como "app do salão": o prompt global de instalar a plataforma não aparece aqui.
@@ -87,8 +88,7 @@ export function SalonAppCard({ salonName, salonSlug, logoUrl, color, enabled = t
     >
       <div className="flex items-start gap-3 p-4 pr-12" style={{ backgroundColor: bg, color: fg }}>
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/90">
-          {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-cover" />
-            : <span className="text-xl font-bold" style={{ color: bg }} aria-hidden>{salonName.charAt(0).toUpperCase()}</span>}
+          <SalonLogo salon={{ name: salonName, logo_url: logoUrl, primary_color: bg }} className="h-full w-full text-xl" />
         </div>
         <div className="min-w-0">
           <h2 id="salon-app-title" className="font-display text-base font-bold leading-tight break-words">

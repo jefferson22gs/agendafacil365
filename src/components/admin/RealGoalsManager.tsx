@@ -301,7 +301,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                                 aria-label="Excluir meta"
                                                 onClick={() => handleDeleteGoal(goal.id)}
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-4 h-4" aria-hidden />
                                             </Button>
                                         </div>
 

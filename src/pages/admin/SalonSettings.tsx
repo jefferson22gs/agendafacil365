@@ -157,8 +157,8 @@ const SalonSettings = () => {
           // Coluna existe em produção; types.ts desatualizado.
           auto_confirm_appointments: (data as typeof data & { auto_confirm_appointments?: boolean | null }).auto_confirm_appointments ?? false,
           pix_key: data.pix_key || "",
-          lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
-          working_hours: data.working_hours || null
+          lunch_break_config: (data.lunch_break_config && typeof data.lunch_break_config === 'object' && !Array.isArray(data.lunch_break_config) ? data.lunch_break_config : defaultSalon.lunch_break_config) as typeof defaultSalon.lunch_break_config,
+          working_hours: (data.working_hours || null) as typeof defaultSalon.working_hours
         });
 
         // Colunas pwa_* existem em produção, mas ainda não nos tipos gerados (types.ts desatualizado).

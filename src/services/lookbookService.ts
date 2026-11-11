@@ -149,20 +149,20 @@ export const lookbookService = {
                     .eq('lookbook_item_id', itemId)
                     .or(`client_id.eq.${clientId},session_id.eq.${sessionId}`);
 
-                // Decrementar contador
-                await supabase.rpc('decrement_likes', { item_id: itemId });
+                await this.syncLikes(itemId);
                 return false;
             }
             throw error;
         }
 
-        // Incrementar contador
-        await supabase
-            .from('lookbook_items')
-            .update({ likes_count: supabase.rpc('increment_likes', { item_id: itemId }) })
-            .eq('id', itemId);
-
+        await this.syncLikes(itemId);
         return true;
+    },
+
+    // Contador = total real de curtidas (antes passava uma Promise como valor e as RPCs não existem no banco).
+    async syncLikes(itemId: string): Promise<void> {
+        const { count } = await supabase.from('lookbook_likes').select('*', { count: 'exact', head: true }).eq('lookbook_item_id', itemId);
+        await supabase.from('lookbook_items').update({ likes_count: count ?? 0 }).eq('id', itemId);
     },
 
     // Upload de imagem

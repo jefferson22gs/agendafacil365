@@ -46,7 +46,7 @@ export async function processJob(db: SupabaseClient, job: OutboxJob, keys: Vapid
   if (!salon?.slug || !targets.length) return finish({ total: 0, sent: 0, failed: 0, removed: 0, status: "sent" }, null);
 
   const payload = buildPayload({
-    title: job.title, body: job.body, url: job.url, kind: job.kind, icon: salon.pwa_icon_url || salon.logo_url,
+    title: job.title, body: job.body, url: job.url, kind: job.kind, icon: salon.logo_url || salon.pwa_icon_url,
     salonSlug: salon.slug, appointmentId: job.appointment_id, tag: `${job.kind}:${job.id}`,
   });
   if (payloadBytes(payload) > MAX_PAYLOAD_BYTES) return finish({ total: targets.length, sent: 0, failed: targets.length, removed: 0, status: "failed" }, "payload_too_large");

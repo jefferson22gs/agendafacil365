@@ -137,8 +137,9 @@ export const SalonStore = ({
                         size="icon"
                         className="h-6 w-6"
                         onClick={() => onRemoveFromCart(item.product.id)}
+                        aria-label={`Remover ${item.product.name} do carrinho`}
                       >
-                        <X size={14} />
+                        <X size={14} aria-hidden />
                       </Button>
                     </div>
                   </div>
@@ -219,8 +220,9 @@ export const SalonStore = ({
                                       quantityInCart - 1
                                     )
                                   }
+                                  aria-label={`Diminuir quantidade de ${product.name}`}
                                 >
-                                  <Minus size={12} />
+                                  <Minus size={12} aria-hidden />
                                 </Button>
                                 <span className="w-6 text-center text-sm font-medium">
                                   {quantityInCart}
@@ -236,8 +238,9 @@ export const SalonStore = ({
                                     )
                                   }
                                   disabled={maxReached}
+                                  aria-label={`Aumentar quantidade de ${product.name}`}
                                 >
-                                  <Plus size={12} />
+                                  <Plus size={12} aria-hidden />
                                 </Button>
                               </>
                             ) : (

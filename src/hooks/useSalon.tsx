@@ -34,6 +34,8 @@ interface Salon {
   working_days: number[];
   primary_color: string | null;
   logo_url: string | null;
+  slug?: string | null;
+  pix_key?: string | null;
 }
 
 interface Coupon {
@@ -117,6 +119,7 @@ export const useSalon = (salonId?: string) => {
           working_days: salonData.working_days || [1, 2, 3, 4, 5, 6],
           primary_color: salonData.primary_color,
           logo_url: salonData.logo_url,
+          slug: salonData.slug,
         });
 
         await fetchServicesAndProfessionals(salonData.id);
@@ -156,6 +159,7 @@ export const useSalon = (salonId?: string) => {
         working_days: salonData.working_days || [1, 2, 3, 4, 5, 6],
         primary_color: salonData.primary_color,
         logo_url: salonData.logo_url,
+          slug: salonData.slug,
       });
 
       await fetchServicesAndProfessionals(salonData.id);
@@ -269,7 +273,7 @@ export const useSalon = (salonId?: string) => {
       }
     } else if (packagesData) {
       console.log('Packages found (view):', packagesData.length);
-      setPackages(packagesData);
+      setPackages(packagesData as unknown as ServicePackage[]);
     } else {
       console.log('No packages found');
     }

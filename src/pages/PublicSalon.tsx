@@ -9,6 +9,10 @@ import { SalonAppCard } from "@/components/pwa/SalonAppCard";
 import { AppointmentPushOptIn } from "@/components/pwa/AppointmentPushOptIn";
 import { useSalonHead } from "@/components/pwa/useSalonHead";
 import { safeHexColor } from "@/config/brand";
+import { accessibleBackground, textOnColor } from '../../api/_pwa';
+import { SalonLogo } from '@/components/pwa/SalonLogo';
+import { useAuth } from '@/hooks/useAuth';
+import { WcagBadge } from '@/components/a11y/WcagBadge';
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -180,6 +184,11 @@ const PublicSalon = () => {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientBirthday, setClientBirthday] = useState("");
+  const { profile } = useAuth();
+  useEffect(() => {
+    if (profile?.full_name) setClientName(value => value || profile.full_name || '');
+    if (profile?.phone) setClientPhone(value => value || profile.phone || '');
+  }, [profile?.full_name, profile?.phone]);
 
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ id: string; discount: number; message: string } | null>(null);
@@ -322,7 +331,7 @@ const PublicSalon = () => {
         .eq('is_active', true)
         .order('name');
 
-      if (packagesData) setPackages(packagesData);
+      if (packagesData) setPackages(packagesData as unknown as ServicePackage[]);
 
       // Fetch public gallery images
       const { data: galleryData } = await supabase
@@ -947,12 +956,14 @@ const PublicSalon = () => {
   };
 
   // Cor do estabelecimento (só HEX válido; ausente/inválida cai no azul padrão)
-  const primaryColor = safeHexColor(salon?.primary_color);
+  const primaryColor = accessibleBackground(safeHexColor(salon?.primary_color));
+  const primaryForeground = textOnColor(primaryColor);
+  const primaryText = 'var(--tenant-text, currentColor)';
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} aria-hidden="true" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryText }} aria-hidden="true" />
         <span className="sr-only">Carregando</span>
       </div>
     );
@@ -980,7 +991,7 @@ const PublicSalon = () => {
             className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
             style={{ backgroundColor: `${primaryColor}20` }}
           >
-            <Check size={40} style={{ color: primaryColor }} />
+            <Check size={40} style={{ color: primaryText }} />
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground mb-4">
             {bookedStatus === 'confirmed' ? 'Agendamento confirmado!' : 'Aguardando confirmação do salão'}
@@ -1017,7 +1028,7 @@ const PublicSalon = () => {
               <div className="border-t border-border pt-3 mt-3">
                 <div className="flex justify-between">
                   <span className="font-medium text-foreground">Total</span>
-                  <span className="text-xl font-bold" style={{ color: primaryColor }}>
+                  <span className="text-xl font-bold" style={{ color: primaryText }}>
                     R$ {finalPrice.toFixed(2)}
                   </span>
                 </div>
@@ -1031,7 +1042,7 @@ const PublicSalon = () => {
               type="button"
               onClick={() => window.open(generateGoogleCalendarLink(), '_blank')}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
-              style={{ backgroundColor: primaryColor }}
+              style={{ backgroundColor: primaryColor, color: primaryForeground }}
             >
               <CalendarIcon size={20} aria-hidden />
               Adicionar ao Google Calendar
@@ -1043,7 +1054,7 @@ const PublicSalon = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
-                style={{ backgroundColor: '#25D366' }}
+                style={{ backgroundColor: '#25D366', color: '#000000' }}
               >
                 <MessageCircle size={20} />
                 Falar no WhatsApp
@@ -1069,22 +1080,7 @@ const PublicSalon = () => {
           {/* Centered Salon Header */}
           <div className="flex flex-col items-center text-center">
             {/* Logo */}
-            {salon.logo_url ? (
-              <img
-                src={salon.logo_url}
-                alt={`Logo de ${salon.name}`}
-                className="h-20 w-20 rounded-2xl object-cover shadow-lg mb-4 border-2"
-                style={{ borderColor: primaryColor }}
-              />
-            ) : (
-              <div
-                className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-4"
-                style={{ backgroundColor: primaryColor }}
-                aria-hidden="true"
-              >
-                {salon.name.charAt(0)}
-              </div>
-            )}
+            <SalonLogo salon={salon} className="h-20 w-20 rounded-2xl shadow-lg mb-4 border-2 text-2xl" />
 
             {/* Salon Name */}
             <h1 className="font-display text-2xl font-bold text-foreground mb-1">
@@ -1094,7 +1090,7 @@ const PublicSalon = () => {
             {/* Address */}
             {(salon.address || salon.city) && (
               <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-3 max-w-full">
-                <MapPin size={14} className="shrink-0" style={{ color: primaryColor }} aria-hidden="true" />
+                <MapPin size={14} className="shrink-0" style={{ color: primaryText }} aria-hidden="true" />
                 <span>
                   {salon.address ? `${salon.address}` : ''}
                   {salon.address && salon.city ? ' - ' : ''}
@@ -1108,7 +1104,7 @@ const PublicSalon = () => {
               {/* Working Hours */}
               <div
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-                style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                style={{ backgroundColor: `${primaryColor}15`, color: primaryText }}
               >
                 <Clock size={14} />
                 <span>{salon.opening_time?.slice(0, 5)} - {salon.closing_time?.slice(0, 5)} • {formatWorkingDays()}</span>
@@ -1135,7 +1131,7 @@ const PublicSalon = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
-                  style={{ backgroundColor: '#25D366' }}
+                  style={{ backgroundColor: '#25D366', color: '#000000' }}
                 >
                   <MessageCircle size={18} />
                   <span>WhatsApp</span>
@@ -1164,7 +1160,7 @@ const PublicSalon = () => {
           <SalonAppCard
             salonName={salon.pwa_short_name || salon.name}
             salonSlug={salon.slug}
-            logoUrl={salon.pwa_icon_url || salon.logo_url}
+            logoUrl={salon.logo_url || salon.pwa_icon_url}
             color={salon.pwa_theme_color || salon.primary_color}
             enabled={salon.pwa_enabled !== false}
           />
@@ -1179,9 +1175,9 @@ const PublicSalon = () => {
                   className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
                   style={{
                     background: step >= s.number
-                      ? `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)`
+                      ? primaryColor
                       : 'hsl(var(--secondary))',
-                    color: step >= s.number ? 'white' : 'hsl(var(--muted-foreground))'
+                    color: step >= s.number ? primaryForeground : 'hsl(var(--muted-foreground))'
                   }}
                 >
                   {step > s.number ? <Check size={18} aria-hidden="true" /> : <s.icon size={18} aria-hidden="true" />}
@@ -1281,7 +1277,7 @@ const PublicSalon = () => {
                             }}
                           >
                             {isInCart(service.id, 'service') && (
-                              <Check size={14} className="text-white" />
+                              <Check size={14} style={{ color: primaryForeground }} aria-hidden />
                             )}
                           </div>
                         </button>
@@ -1338,7 +1334,7 @@ const PublicSalon = () => {
                                   className="w-11 h-11 rounded-full border flex items-center justify-center hover:bg-secondary"
                                   style={{ borderColor: primaryColor }}
                                 >
-                                  <Minus size={14} style={{ color: primaryColor }} aria-hidden="true" />
+                                  <Minus size={14} style={{ color: primaryText }} aria-hidden="true" />
                                 </button>
                                 <span className="font-medium w-6 text-center" aria-live="polite">{getCartQuantity(product.id, 'product')}</span>
                                 <button
@@ -1346,7 +1342,7 @@ const PublicSalon = () => {
                                   onClick={() => addToCart(product, 'product')}
                                   aria-label={`Aumentar quantidade de ${product.name}`}
                                   className="w-11 h-11 rounded-full flex items-center justify-center text-white"
-                                  style={{ backgroundColor: primaryColor }}
+                                  style={{ backgroundColor: primaryColor, color: primaryForeground }}
                                 >
                                   <Plus size={14} aria-hidden="true" />
                                 </button>
@@ -1356,7 +1352,7 @@ const PublicSalon = () => {
                                 type="button"
                                 onClick={() => addToCart(product, 'product')}
                                 className="mt-2 px-4 py-2 rounded-full text-sm font-medium text-white"
-                                style={{ backgroundColor: primaryColor }}
+                                style={{ backgroundColor: primaryColor, color: primaryForeground }}
                               >
                                 Adicionar
                               </button>
@@ -1395,7 +1391,7 @@ const PublicSalon = () => {
                             <div className="flex items-center gap-3">
                               <div
                                 className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                                style={{ backgroundColor: primaryColor }}
+                                style={{ backgroundColor: primaryColor, color: primaryForeground }}
                               >
                                 <Package size={24} />
                               </div>
@@ -1409,7 +1405,7 @@ const PublicSalon = () => {
                             {isInCart(pkg.id, 'package') && (
                               <div
                                 className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-                                style={{ backgroundColor: primaryColor }}
+                                style={{ backgroundColor: primaryColor, color: primaryForeground }}
                               >
                                 <Check size={14} />
                               </div>
@@ -1424,7 +1420,7 @@ const PublicSalon = () => {
                                   <span className="text-muted-foreground">
                                     • {item.service_name || 'Serviço'}
                                   </span>
-                                  <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
+                                  <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${primaryColor}15`, color: primaryText }}>
                                     {item.quantity}x
                                   </span>
                                 </div>
@@ -1441,7 +1437,7 @@ const PublicSalon = () => {
                                 Válido por {pkg.validity_days} dias
                               </span>
                             </div>
-                            <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                            <p className="text-xl font-bold" style={{ color: primaryText }}>
                               R$ {pkg.price.toFixed(2)}
                             </p>
                           </div>
@@ -1516,10 +1512,10 @@ const PublicSalon = () => {
                 <div className="mt-6 p-4 rounded-2xl border-2" style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}08` }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <ShoppingCart size={18} style={{ color: primaryColor }} />
+                      <ShoppingCart size={18} style={{ color: primaryText }} />
                       <span className="font-medium">Carrinho ({cart.length} {cart.length === 1 ? 'item' : 'itens'})</span>
                     </div>
-                    <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                    <span className="text-lg font-bold" style={{ color: primaryText }}>
                       R$ {cartTotal.toFixed(2)}
                     </span>
                   </div>
@@ -1557,7 +1553,7 @@ const PublicSalon = () => {
                   >
                     <div
                       className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden"
-                      style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)` }}
+                      style={{ background: primaryColor, color: primaryForeground }}
                     >
                       {pro.avatar_url ? (
                         <img src={pro.avatar_url} alt={pro.name} className="w-full h-full object-cover" />
@@ -1574,9 +1570,9 @@ const PublicSalon = () => {
                     {selectedProfessional === pro.id && (
                       <div
                         className="w-6 h-6 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: primaryColor }}
+                        style={{ backgroundColor: primaryColor, color: primaryForeground }}
                       >
-                        <Check size={14} className="text-white" />
+                        <Check size={14} style={{ color: primaryForeground }} aria-hidden />
                       </div>
                     )}
                   </button>
@@ -1602,9 +1598,9 @@ const PublicSalon = () => {
                   {selectedProfessional === "any" && (
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: primaryColor }}
+                      style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     >
-                      <Check size={14} className="text-white" />
+                      <Check size={14} style={{ color: primaryForeground }} aria-hidden />
                     </div>
                   )}
                 </button>
@@ -1639,7 +1635,7 @@ const PublicSalon = () => {
 
                   {loadingSlots ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryColor }} aria-hidden="true" />
+                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryText }} aria-hidden="true" />
                       <span className="sr-only">Carregando horários</span>
                     </div>
                   ) : availableSlots.length === 0 ? (
@@ -1658,7 +1654,7 @@ const PublicSalon = () => {
                           className="py-3 px-2 rounded-lg text-sm font-medium transition-all"
                           style={{
                             backgroundColor: selectedTime === slot ? primaryColor : 'hsl(var(--secondary))',
-                            color: selectedTime === slot ? 'white' : 'hsl(var(--foreground))'
+                            color: selectedTime === slot ? primaryForeground : 'hsl(var(--foreground))'
                           }}
                         >
                           {slot}
@@ -1802,7 +1798,7 @@ const PublicSalon = () => {
               {/* Coupon */}
               <div className="mb-6">
                 <Label className="flex items-center gap-2 mb-2">
-                  <Gift size={16} style={{ color: primaryColor }} />
+                  <Gift size={16} style={{ color: primaryText }} />
                   Cupom de desconto
                 </Label>
                 <div className="flex gap-2">
@@ -1817,13 +1813,13 @@ const PublicSalon = () => {
                     onClick={validateCoupon}
                     disabled={validatingCoupon || !couponCode.trim() || !!couponApplied}
                     variant="outline"
-                    style={{ borderColor: primaryColor, color: primaryColor }}
+                    style={{ borderColor: primaryColor, color: primaryText }}
                   >
                     {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
                   </Button>
                 </div>
                 {couponApplied && (
-                  <p className="text-sm mt-2" style={{ color: primaryColor }}>
+                  <p className="text-sm mt-2" style={{ color: primaryText }}>
                     ✓ {couponApplied.message}
                   </p>
                 )}
@@ -1837,14 +1833,14 @@ const PublicSalon = () => {
                     <span>R$ {price.toFixed(2)}</span>
                   </div>
                   {discount > 0 && (
-                    <div className="flex justify-between text-sm" style={{ color: primaryColor }}>
+                    <div className="flex justify-between text-sm" style={{ color: primaryText }}>
                       <span>Desconto</span>
                       <span>- R$ {discount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold pt-2">
                     <span>Total</span>
-                    <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
+                    <span style={{ color: primaryText }}>R$ {finalPrice.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -1911,7 +1907,7 @@ const PublicSalon = () => {
                 }
                 style={{
                   backgroundColor: primaryColor,
-                  color: 'white'
+                  color: primaryForeground
                 }}
               >
                 Próximo
@@ -1924,7 +1920,7 @@ const PublicSalon = () => {
                 disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
                 style={{
                   backgroundColor: primaryColor,
-                  color: 'white'
+                  color: primaryForeground
                 }}
               >
                 {submitting ? (
@@ -1944,9 +1940,12 @@ const PublicSalon = () => {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          Ao agendar, você concorda com os termos de uso do estabelecimento.
-        </p>
+        <footer className="mt-8 flex flex-col items-center gap-2 text-center">
+          <p className="text-xs text-muted-foreground">
+            Ao agendar, você concorda com os termos de uso do estabelecimento.
+          </p>
+          <WcagBadge />
+        </footer>
       </main >
 
       {/* Review Modal */}
@@ -1959,7 +1958,7 @@ const PublicSalon = () => {
                   className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
                   style={{ backgroundColor: `${primaryColor}20` }}
                 >
-                  <Star size={28} style={{ color: primaryColor }} />
+                  <Star size={28} style={{ color: primaryText }} />
                 </div>
                 <h3 className="font-display text-xl font-bold text-foreground mb-2">
                   Avalie sua visita anterior
@@ -2024,7 +2023,7 @@ const PublicSalon = () => {
                 <Button
                   onClick={submitReview}
                   disabled={submittingReview}
-                  style={{ backgroundColor: primaryColor, color: 'white' }}
+                  style={{ backgroundColor: primaryColor, color: primaryForeground }}
                   className="flex-1"
                 >
                   {submittingReview ? (

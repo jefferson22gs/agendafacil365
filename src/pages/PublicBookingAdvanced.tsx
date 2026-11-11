@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSalon } from "@/hooks/useSalon";
+import { useSalonHead } from '@/components/pwa/useSalonHead';
+import { SalonLogo } from '@/components/pwa/SalonLogo';
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Calendar as CalendarIcon,
@@ -32,6 +34,7 @@ const PublicBookingAdvanced = () => {
     const { salonSlug } = useParams();
     const { salon, services, professionals, loading, getAvailableTimeSlots } = useSalon(salonSlug);
 
+    useSalonHead(salon);
     const [step, setStep] = useState<'service' | 'professional' | 'datetime' | 'confirm'>('service');
     const [selectedService, setSelectedService] = useState<any | null>(null);
     const [selectedProfessional, setSelectedProfessional] = useState<any | null>(null);
@@ -183,13 +186,7 @@ const PublicBookingAdvanced = () => {
             <header className="border-b border-border bg-card/90 backdrop-blur-sm sticky top-0 z-50">
                 {/* Identidade do estabelecimento prevalece; a marca da plataforma vira assinatura no rodapé */}
                 <div className="container mx-auto px-4 min-h-16 py-2 flex items-center gap-3">
-                    {salon?.logo_url && (
-                        <img
-                            src={salon.logo_url}
-                            alt=""
-                            className="w-10 h-10 rounded-xl object-cover border border-border bg-card shrink-0"
-                        />
-                    )}
+                    {salon && <SalonLogo salon={salon} className="w-10 h-10 rounded-xl border border-border bg-card shrink-0" />}
                     <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">{salon?.name || 'Carregando...'}</p>
                         {salon?.address && (

@@ -211,9 +211,23 @@
     font-size: 16px; /* Prevents iOS zoom */
   }
 
-  /* Focus visible for keyboard navigation */
+  :where(button, [role="button"], [role="tab"], [role="menuitem"]) {
+    min-height: 36px;
+    min-width: 36px;
+  }
+  @media (pointer: coarse) {
+    :where(button, [role="button"], [role="tab"], [role="menuitem"]) {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  :where(a, button, input, select, textarea, [tabindex]) {
+    scroll-margin-top: 12rem;
+    scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom));
+  }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-primary;
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
 

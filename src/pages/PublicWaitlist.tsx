@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, MessageCircle, Clock } from "lucide-react";
 import { BRAND } from "@/config/brand";
+import { useSalonHead } from '@/components/pwa/useSalonHead';
+import { SalonLogo } from '@/components/pwa/SalonLogo';
 
 /**
  * /waitlist/:salonId — link público mantido (pode ter sido distribuído).
@@ -20,6 +22,7 @@ const PublicWaitlist = () => {
     const { salonId } = useParams<{ salonId: string }>();
     const [salon, setSalon] = useState<PublicSalon | null>(null);
     const [loading, setLoading] = useState(true);
+    useSalonHead(salon);
 
     useEffect(() => {
         if (!salonId) { setLoading(false); return; }
@@ -63,9 +66,7 @@ const PublicWaitlist = () => {
         <div className="min-h-screen bg-background py-8 px-4">
             <div className="max-w-md mx-auto space-y-6">
                 <div className="text-center">
-                    {salon.logo_url && (
-                        <img src={salon.logo_url} alt="" className="w-20 h-20 mx-auto mb-4 rounded-2xl object-cover border border-border bg-card" />
-                    )}
+                    <SalonLogo salon={{ ...salon, slug: salon.slug || undefined }} className="w-20 h-20 mx-auto mb-4 rounded-2xl border border-border bg-card" />
                     <h1 className="text-2xl font-bold">{salon.name}</h1>
                     <p className="text-muted-foreground">Lista de espera</p>
                 </div>

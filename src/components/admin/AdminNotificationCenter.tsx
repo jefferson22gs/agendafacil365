@@ -14,6 +14,7 @@ import {
   Clock,
   User,
   Phone,
+  RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,7 @@ interface AdminNotification {
   id: string;
   salon_id: string;
   appointment_id: string | null;
-  type: "new_appointment" | "cancelled_appointment" | "rescheduled_appointment";
+  type: string;
   title: string;
   message: string;
   client_name: string | null;
@@ -91,7 +92,7 @@ export function AdminNotificationCenter() {
 
       if (error) throw error;
 
-      setNotifications(data || []);
+      setNotifications((data || []) as AdminNotification[]);
       setUnreadCount(data?.filter(n => !n.read).length || 0);
     } catch (error: any) {
       console.error("Error loading notifications:", error);
@@ -253,6 +254,8 @@ export function AdminNotificationCenter() {
         return <X className="text-destructive" size={20} />;
       case "rescheduled_appointment":
         return <Clock className="text-primary" size={20} />;
+      case "procedure_return":
+        return <RotateCcw className="text-primary" size={20} aria-hidden />;
       default:
         return <Bell className="text-muted-foreground" size={20} />;
     }
@@ -265,6 +268,7 @@ export function AdminNotificationCenter() {
       case "cancelled_appointment":
         return "bg-destructive/10 border-destructive/30";
       case "rescheduled_appointment":
+      case "procedure_return":
         return "bg-primary/10 border-primary/30";
       default:
         return "bg-muted border-border";
@@ -450,9 +454,13 @@ export function AdminNotificationCenter() {
                 </div>
               )}
 
-              {selectedNotification.metadata && (
+              {typeof selectedNotification.metadata?.url === "string" && selectedNotification.metadata.url.startsWith("/admin/") && (
+                <Button asChild className="h-11 w-full"><a href={selectedNotification.metadata.url}>Abrir</a></Button>
+              )}
+
+              {selectedNotification.metadata?.service_name && (
                 <div className="text-xs text-muted-foreground">
-                  <p>Serviço: {selectedNotification.metadata.service_name || "N/A"}</p>
+                  <p>Serviço: {selectedNotification.metadata.service_name}</p>
                   {selectedNotification.type === "rescheduled_appointment" && (
                     <>
                       <p className="mt-1">

@@ -13,8 +13,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Plus, Edit2, Trash2, ClipboardList, Clock, DollarSign, Building2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/page-header";
 import { Tables } from "@/integrations/supabase/types";
+import { Switch } from "@/components/ui/switch";
+import { ReturnDaysPicker } from "@/components/admin/ReturnDaysPicker";
+import { DEFAULT_RETURN_TEMPLATE, RETURN_TEMPLATE_VARS, RETURNS_MIGRATION_NOTICE, humanDays, returnsAvailable, type ServiceReturnConfig } from "@/lib/procedureReturns";
 
-type Service = Tables<"services">;
+type Service = Tables<"services"> & ServiceReturnConfig;
+const RETURN_DEFAULTS = { default_return_days: 0, auto_return_alert: true, notify_whatsapp: true, notify_email: true, notify_push: true, return_message_template: "" };
 
 const Services = () => {
   const { user } = useAuth();
@@ -23,6 +27,8 @@ const Services = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [returnReady, setReturnReady] = useState(false);
+  const [returnForm, setReturnForm] = useState(RETURN_DEFAULTS);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -53,6 +59,7 @@ const Services = () => {
       }
 
       setSalonId(salon.id);
+      setReturnReady(await returnsAvailable());
 
       const { data: servicesData, error } = await supabase
         .from('services')
@@ -94,6 +101,12 @@ const Services = () => {
         duration_minutes: formData.duration_minutes,
         icon: formData.icon,
         salon_id: salonId,
+        // Só envia as colunas de retorno quando a migration existe (senão salvar o serviço quebraria).
+        ...(returnReady ? {
+          ...returnForm,
+          default_return_days: returnForm.default_return_days > 0 ? returnForm.default_return_days : null,
+          return_message_template: returnForm.return_message_template.trim() || null,
+        } : {}),
       };
 
       if (editingService) {
@@ -124,6 +137,11 @@ const Services = () => {
 
   const handleEdit = (service: Service) => {
     setEditingService(service);
+    setReturnForm({
+      default_return_days: service.default_return_days ?? 0, auto_return_alert: service.auto_return_alert ?? true,
+      notify_whatsapp: service.notify_whatsapp ?? true, notify_email: service.notify_email ?? true, notify_push: service.notify_push ?? true,
+      return_message_template: service.return_message_template ?? "",
+    });
     setFormData({
       name: service.name,
       description: service.description || "",
@@ -154,6 +172,7 @@ const Services = () => {
 
   const resetForm = () => {
     setEditingService(null);
+    setReturnForm(RETURN_DEFAULTS);
     setFormData({
       name: "",
       description: "",
@@ -209,7 +228,7 @@ const Services = () => {
                 Novo Serviço
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md" data-tour="services-dialog">
+            <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto" data-tour="services-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingService ? "Editar Serviço" : "Novo Serviço"}
@@ -220,15 +239,17 @@ const Services = () => {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2" data-tour="services-icon">
-                  <Label>Ícone</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <Label id="services-icon-label">Ícone</Label>
+                  <div className="flex flex-wrap gap-2" role="group" aria-labelledby="services-icon-label">
                     {icons.map((icon) => (
                       <button
                         key={icon}
                         type="button"
                         onClick={() => setFormData({ ...formData, icon })}
-                        className={`
-                          w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all
+                        aria-pressed={formData.icon === icon}
+                        aria-label={`Ícone ${icon}`}
+                        className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+                          w-11 h-11 rounded-lg text-xl flex items-center justify-center transition-all
                           ${formData.icon === icon
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary hover:bg-secondary/80'
@@ -282,6 +303,35 @@ const Services = () => {
                     />
                   </div>
                 </div>
+                <section aria-labelledby="service-return-title" className="space-y-3 rounded-xl border border-border p-4">
+                  <h3 id="service-return-title" className="font-semibold">Retorno / manutenção do procedimento</h3>
+                  {!returnReady && <p role="status" className="text-sm text-muted-foreground">{RETURNS_MIGRATION_NOTICE}</p>}
+                  <ReturnDaysPicker disabled={!returnReady} label="Retorno padrão" value={returnForm.default_return_days}
+                    onChange={(d) => setReturnForm({ ...returnForm, default_return_days: d ?? 0 })} />
+                  {returnForm.default_return_days > 0 && (
+                    <p className="text-sm text-muted-foreground" aria-live="polite">
+                      Cada atendimento concluído gera um lembrete {humanDays(returnForm.default_return_days)} depois. O prazo pode ser ajustado por cliente no agendamento.
+                    </p>
+                  )}
+                  <fieldset disabled={!returnReady || returnForm.default_return_days <= 0} className="space-y-2 disabled:opacity-60">
+                    <legend className="sr-only">Canais do lembrete</legend>
+                    {([
+                      ["auto_return_alert", "Enviar lembrete automático"],
+                      ["notify_whatsapp", "WhatsApp"],
+                      ["notify_email", "E-mail"],
+                      ["notify_push", "Notificação no app (PWA)"],
+                    ] as const).map(([key, text]) => (
+                      <div key={key} className="flex min-h-11 items-center justify-between gap-3">
+                        <Label htmlFor={`svc-${key}`}>{text}</Label>
+                        <Switch id={`svc-${key}`} checked={returnForm[key]} onCheckedChange={(v) => setReturnForm({ ...returnForm, [key]: v })} />
+                      </div>
+                    ))}
+                    <Label htmlFor="svc-return-template">Mensagem do lembrete (opcional)</Label>
+                    <Textarea id="svc-return-template" maxLength={2000} aria-describedby="svc-return-vars" placeholder={DEFAULT_RETURN_TEMPLATE}
+                      value={returnForm.return_message_template} onChange={(e) => setReturnForm({ ...returnForm, return_message_template: e.target.value })} />
+                    <p id="svc-return-vars" className="text-xs text-muted-foreground break-words">Variáveis: {RETURN_TEMPLATE_VARS}. Vazio usa a mensagem padrão.</p>
+                  </fieldset>
+                </section>
               </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -337,6 +387,9 @@ const Services = () => {
                   <h3 className="text-lg font-semibold text-foreground mb-1">
                     {service.name}
                   </h3>
+                  {!!service.default_return_days && service.auto_return_alert !== false && (
+                    <p className="mb-2 text-xs font-medium text-primary">Retorno em {humanDays(service.default_return_days)}</p>
+                  )}
                   {service.description && (
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                       {service.description}

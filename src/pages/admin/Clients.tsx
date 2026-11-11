@@ -11,7 +11,7 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake, Download, Building2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake, Download, Building2, CalendarClock } from "lucide-react";
 import { EmptyState } from "@/components/ui/page-header";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -329,6 +329,15 @@ const Clients = () => {
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate(`/admin/returns?client=${encodeURIComponent(client.id)}`)}
+                        aria-label={`Retornos de ${client.name}`}
+                        title="Retornos e lembretes"
+                      >
+                        <CalendarClock size={16} aria-hidden />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

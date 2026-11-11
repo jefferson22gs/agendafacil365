@@ -132,7 +132,8 @@ test('manifest por tenant: valida slug, 404, JSON público e cor segura', async 
   assert.equal(body.theme_color, '#2563EB', 'cor inválida cai no padrão');
   assert.equal(body.start_url, '/s/studio-a?source=pwa');
   assert.equal(body.id, '/s/studio-a', 'id distinto do app da plataforma');
-  assert.ok(body.icons.some(i => i.purpose === 'maskable' && i.src === '/pwa-maskable-512x512.png'));
+  assert.ok(body.icons.some(i => i.purpose === 'maskable' && i.src.startsWith('/api/icon/studio-a')), 'maskable do próprio salão');
+  assert.ok(!body.icons.some(i => i.src.startsWith('/pwa-')), 'nenhum ícone da plataforma no app do salão');
   const last = calls.at(-1);
   assert.match(last.url, /select=name,slug,primary_color,logo_url,pwa_[a-z_,]+&slug=eq\.studio-a/, 'só colunas públicas de identidade, escopo por slug');
   assert.match(last.url, /or=\(is_active\.is\.null,is_active\.eq\.true\)/, 'is_active nulo é ativo (igual à RLS pública)');

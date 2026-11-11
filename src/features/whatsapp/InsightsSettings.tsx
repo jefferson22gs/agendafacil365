@@ -28,7 +28,8 @@ const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sáb
 const KIND_LABEL: Record<string, string> = { weekly: "Semanal", monthly: "Mensal", yearly: "Anual", alert: "Alerta", test: "Teste", on_demand: "Consulta" };
 
 // Tabelas novas ainda fora dos tipos gerados do Supabase.
-const table = (name: string) => (supabase as unknown as { from: (t: string) => ReturnType<typeof supabase.from> }).from(name);
+// Tabelas do Insights com cliente não tipado (evita instanciação profunda dos tipos gerados).
+const table = (name: string) => (supabase as unknown as import("@supabase/supabase-js").SupabaseClient).from(name);
 
 export function InsightsSettings({ salonId }: { salonId: string }) {
   const { toast } = useToast();

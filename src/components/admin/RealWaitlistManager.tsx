@@ -322,7 +322,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                         onClick={() => handlePriorityChange(item, 'up')}
                                                         aria-label="Subir prioridade na fila"
                                                     >
-                                                        <ChevronUp className="w-4 h-4" />
+                                                        <ChevronUp className="w-4 h-4" aria-hidden />
                                                     </Button>
                                                     <span className="text-xs text-center text-muted-foreground">
                                                         #{index + 1}
@@ -334,7 +334,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                         onClick={() => handlePriorityChange(item, 'down')}
                                                         aria-label="Descer prioridade na fila"
                                                     >
-                                                        <ChevronDown className="w-4 h-4" />
+                                                        <ChevronDown className="w-4 h-4" aria-hidden />
                                                     </Button>
                                                 </div>
 

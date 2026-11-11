@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { AppointmentPushOptIn } from "@/components/pwa/AppointmentPushOptIn";
+import { useSalonHead } from '@/components/pwa/useSalonHead';
+import { safeHexColor } from '@/config/brand';
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -58,6 +60,7 @@ export default function ManageAppointment() {
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
+  useSalonHead(appointment?.salon || null);
   const [action, setAction] = useState<'view' | 'cancel' | 'reschedule'>('view');
   const [submitting, setSubmitting] = useState(false);
 
@@ -231,7 +234,7 @@ export default function ManageAppointment() {
     );
   }
 
-  const primaryColor = appointment.salon.primary_color || '#000000';
+  const primaryColor = safeHexColor(appointment.salon.primary_color);
   const appointmentDate = new Date(`${appointment.date}T${appointment.start_time}`);
   const canModifyAppointment = canModify();
 
@@ -381,7 +384,7 @@ export default function ManageAppointment() {
           <div className="container mx-auto px-4 py-4 flex items-center gap-4">
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" aria-label="Voltar aos dados do agendamento"
               onClick={() => setAction('view')}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -444,7 +447,7 @@ export default function ManageAppointment() {
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Voltar aos dados do agendamento"
             onClick={() => setAction('view')}
           >
             <ArrowLeft className="w-5 h-5" />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,15 @@ import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { sendPush } from "@/hooks/usePushNotificationsFCM";
 import { AppointmentStatusBadge } from "@/components/admin/AppointmentStatusBadge";
+import { ReturnDaysPicker } from "@/components/admin/ReturnDaysPicker";
+import { RETURNS_MIGRATION_NOTICE, returnPreview, returnsAvailable, type ServiceReturnConfig } from "@/lib/procedureReturns";
 
-type Appointment = Tables<"appointments"> & {
+type Appointment = Tables<"appointments"> & { return_days?: number | null } & {
   services?: { name: string; duration_minutes: number } | null;
   professionals?: { name: string } | null;
 };
 
-type Service = Tables<"services">;
+type Service = Tables<"services"> & ServiceReturnConfig;
 type Professional = Tables<"professionals">;
 
 const statusLabels = {
@@ -44,6 +47,12 @@ const Appointments = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [batchBusy, setBatchBusy] = useState(false);
+  const [returnReady, setReturnReady] = useState(false);
+  // null = herda o padrão do serviço; 0 = sem retorno; N = dias para este cliente.
+  const [returnDays, setReturnDays] = useState<number | null>(null);
+  // Concluir atendimento: confirma/ajusta o retorno antes de gravar.
+  const [completing, setCompleting] = useState<Appointment | null>(null);
+  const [completeDays, setCompleteDays] = useState<number | null>(null);
   // Use local date to avoid UTC timezone offset (Brazil UTC-3 can show tomorrow after 21h)
   const getLocalToday = () => {
     const now = new Date();
@@ -66,6 +75,16 @@ const Appointments = () => {
     fetchData();
   }, [user, selectedDate]);
 
+  // "Agendar retorno" (Retornos & Lembretes): abre o novo agendamento já preenchido (entrada redundante, WCAG 3.3.7).
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('novo') !== '1' || !services.length) return;
+    setFormData((f) => ({ ...f, client_name: searchParams.get('cliente') ?? f.client_name, client_phone: searchParams.get('tel') ?? f.client_phone,
+      service_id: services.some((s) => s.id === searchParams.get('servico')) ? searchParams.get('servico')! : f.service_id }));
+    setDialogOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, services, setSearchParams]);
+
   const fetchData = async () => {
     if (!user) return;
 
@@ -82,6 +101,7 @@ const Appointments = () => {
       }
 
       setSalonId(salon.id);
+      setReturnReady(await returnsAvailable());
 
       // Fetch appointments APENAS da data selecionada pelo usuário
       const { data: appointmentsData, error } = await supabase
@@ -147,6 +167,7 @@ const Appointments = () => {
           price: service.price,
           final_price: service.price,
           status: 'confirmed',
+          ...(returnReady && returnDays !== null ? { return_days: returnDays } : {}),
         });
 
       if (error) throw error;
@@ -160,11 +181,11 @@ const Appointments = () => {
     }
   };
 
-  const updateStatus = async (id: string, status: "pending" | "confirmed" | "completed" | "cancelled" | "no_show") => {
+  const updateStatus = async (id: string, status: "pending" | "confirmed" | "completed" | "cancelled" | "no_show", days?: number | null) => {
     try {
       const { error } = await supabase
         .from('appointments')
-        .update({ status })
+        .update({ status, ...(returnReady && days !== undefined ? { return_days: days } : {}) })
         .eq('id', id);
 
       if (error) throw error;
@@ -223,7 +244,18 @@ const Appointments = () => {
     }
   };
 
+  const serviceDays = (serviceId: string) => {
+    const s = services.find((x) => x.id === serviceId);
+    return s?.auto_return_alert === false ? 0 : s?.default_return_days ?? 0;
+  };
+  const openComplete = (appointment: Appointment) => {
+    if (!returnReady) { void updateStatus(appointment.id, 'completed'); return; }
+    setCompleting(appointment);
+    setCompleteDays(appointment.return_days ?? serviceDays(appointment.service_id));
+  };
+
   const resetForm = () => {
+    setReturnDays(null);
     setFormData({
       client_name: "",
       client_phone: "",
@@ -303,7 +335,7 @@ const Appointments = () => {
                 Novo Agendamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md" data-tour="appointments-new-dialog">
+            <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto" data-tour="appointments-new-dialog">
               <DialogHeader>
                 <DialogTitle>Novo Agendamento</DialogTitle>
                 <DialogDescription>
@@ -397,6 +429,18 @@ const Appointments = () => {
                     </Select>
                   </div>
                 </div>
+                {formData.service_id && (
+                  <section aria-labelledby="appt-return-title" className="space-y-2 rounded-xl border border-border p-3">
+                    <h3 id="appt-return-title" className="text-sm font-semibold">Retorno deste cliente</h3>
+                    {!returnReady ? <p role="status" className="text-sm text-muted-foreground">{RETURNS_MIGRATION_NOTICE}</p> : <>
+                      <ReturnDaysPicker label="Prazo de retorno" value={returnDays ?? serviceDays(formData.service_id)}
+                        onChange={(d) => setReturnDays(d)} />
+                      <p className="text-sm text-muted-foreground" aria-live="polite">
+                        {returnPreview(formData.date, returnDays ?? serviceDays(formData.service_id))}
+                      </p>
+                    </>}
+                  </section>
+                )}
               </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -577,10 +621,10 @@ const Appointments = () => {
                           <span className="text-sm font-semibold text-foreground tabular-nums">R$ {appointment.final_price.toFixed(2)}</span>
                           {appointment.status === 'pending' && (
                             <div className="flex items-center gap-1">
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 dark:text-emerald-400" onClick={() => updateStatus(appointment.id, 'confirmed')}>
+                              <Button size="sm" variant="outline" className="h-11 px-3 text-xs text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 dark:text-emerald-400" onClick={() => updateStatus(appointment.id, 'confirmed')}>
                                 <Check size={12} className="mr-1" /> Confirmar
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10" onClick={() => updateStatus(appointment.id, 'cancelled')}>
+                              <Button size="sm" variant="ghost" className="h-11 px-3 text-xs text-destructive hover:bg-destructive/10" onClick={() => updateStatus(appointment.id, 'cancelled')}>
                                 <X size={12} className="mr-1" /> Recusar
                               </Button>
                             </div>
@@ -591,10 +635,10 @@ const Appointments = () => {
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       {appointment.status === 'pending' && (
                         <div className="hidden sm:flex items-center gap-1.5">
-                          <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 dark:text-emerald-400" onClick={() => updateStatus(appointment.id, 'confirmed')}>
+                          <Button size="sm" variant="outline" className="h-9 px-2.5 text-xs text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 dark:text-emerald-400" onClick={() => updateStatus(appointment.id, 'confirmed')}>
                             <Check size={14} className="mr-1" /> Confirmar
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10" onClick={() => updateStatus(appointment.id, 'cancelled')}>
+                          <Button size="sm" variant="ghost" className="h-9 px-2 text-xs text-destructive hover:bg-destructive/10" onClick={() => updateStatus(appointment.id, 'cancelled')}>
                             <X size={14} className="mr-1" /> Recusar
                           </Button>
                         </div>
@@ -635,7 +679,7 @@ const Appointments = () => {
                           {appointment.status === 'confirmed' && (
                             <>
                               <DropdownMenuItem
-                                onClick={() => updateStatus(appointment.id, 'completed')}
+                                onClick={() => openComplete(appointment)}
                                 className="text-success"
                               >
                                 <Check size={16} className="mr-2" />
@@ -716,6 +760,28 @@ const Appointments = () => {
             <EnhancedSalonCalendar />
           </TabsContent>
         </Tabs>
+
+        {/* Concluir atendimento: confirma o prazo de retorno deste cliente antes de gravar. */}
+        <Dialog open={!!completing} onOpenChange={(open) => { if (!open) setCompleting(null); }}>
+          <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Concluir atendimento</DialogTitle>
+              <DialogDescription>
+                {completing?.client_name || 'Cliente'} · {completing?.services?.name}. Ajuste o retorno deste cliente se necessário.
+              </DialogDescription>
+            </DialogHeader>
+            <ReturnDaysPicker label="Prazo de retorno" value={completeDays ?? 0} onChange={(d) => setCompleteDays(d)} />
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {completing ? returnPreview(completing.date, completeDays ?? 0) : ''}
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setCompleting(null)}>Cancelar</Button>
+              <Button variant="brand" onClick={() => { if (completing) void updateStatus(completing.id, 'completed', completeDays ?? 0); setCompleting(null); }}>
+                <Check size={16} className="mr-2" aria-hidden /> Concluir
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

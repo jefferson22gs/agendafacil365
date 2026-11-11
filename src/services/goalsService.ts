@@ -184,13 +184,13 @@ export const goalsService = {
                 case 'revenue':
                     const { data: revenueData } = await supabase
                         .from('appointments')
-                        .select('total_price')
+                        .select('final_price')
                         .eq('salon_id', salonId)
                         .eq('status', 'completed')
                         .gte('date', goal.start_date)
                         .lte('date', goal.end_date);
 
-                    currentValue = revenueData?.reduce((sum, a) => sum + (a.total_price || 0), 0) || 0;
+                    currentValue = revenueData?.reduce((sum, a) => sum + (a.final_price || 0), 0) || 0;
                     break;
 
                 case 'appointments':
@@ -198,7 +198,7 @@ export const goalsService = {
                         .from('appointments')
                         .select('*', { count: 'exact', head: true })
                         .eq('salon_id', salonId)
-                        .in('status', ['scheduled', 'completed'])
+                        .in('status', ['pending', 'confirmed', 'completed'])
                         .gte('date', goal.start_date)
                         .lte('date', goal.end_date);
 
