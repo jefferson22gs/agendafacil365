@@ -36,7 +36,7 @@ export function buildMenu(nonce: string, step: string, title: string, body: stri
   const buttons = rows.length <= BUTTONS_MAX && rows.every(r => !r.description && Array.from(r.title).length <= BUTTON_TEXT_MAX);
   const ids = slice.map(o => (o.id && FIXED_ID.test(o.id) ? o.id : ""));
   return {
-    menu: { kind: buttons ? "buttons" : "list", title: clip(title, 60), body: multiLine(body).slice(0, 1000), button: "Ver opções", rows },
+    menu: { kind: buttons ? "buttons" : "list", title: clip(title, 60), body: multiLine(body).slice(0, 1000), button: "☰ Menu", rows },
     stored: { nonce, step, options: slice.map(o => o.value), labels: slice.map(o => oneLine(o.title)), page, hasMore, ...(ids.some(Boolean) ? { ids } : {}) },
   };
 }

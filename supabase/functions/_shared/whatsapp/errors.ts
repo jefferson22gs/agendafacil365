@@ -16,6 +16,7 @@ const messages: Record<string, string> = {
   conversation_missing: "Esta conversa não existe neste salão.",
   provider_rate_limited: "Muitas mensagens em pouco tempo. Aguarde alguns minutos.",
   feature_removed: "A IA agora é configurada pela plataforma. Não é preciso informar chave.",
+  outside_service_window: "Passaram 24 horas desde a última mensagem do cliente. Pelo WhatsApp oficial, só é possível responder depois que ele escrever de novo.",
 };
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

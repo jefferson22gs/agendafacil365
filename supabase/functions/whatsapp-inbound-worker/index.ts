@@ -33,8 +33,9 @@ serve(async req => {
     const db=serviceClient();
     const started=Date.now();
     const names=new Map<string,Promise<string|null>>();
+    // API oficial: "digitando…" sai no envio (outbox, com o id da mensagem do cliente). Aqui só Evolution.
     const instanceName=(id:string,salonId:string)=>{
-      if(!names.has(id)) names.set(id,Promise.resolve(db.from("whatsapp_instances").select("instance_name").eq("id",id).eq("salon_id",salonId).maybeSingle()).then(r=>r.data?.instance_name??null,()=>null));
+      if(!names.has(id)) names.set(id,Promise.resolve(db.from("whatsapp_instances").select("instance_name,provider").eq("id",id).eq("salon_id",salonId).maybeSingle()).then(r=>r.data&&r.data.provider!=="meta"?r.data.instance_name:null,()=>null));
       return names.get(id)!;
     };
     let processed=0;

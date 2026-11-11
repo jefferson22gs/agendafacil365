@@ -19,6 +19,8 @@ export async function checkDeliveries(db: SupabaseClient, api = evolutionClient(
   if (error || !Array.isArray(data)) return 0;
   let promoted = 0;
   for (const row of data as { salon_id: string; instance_id: string; instance_name: string; provider_message_id: string }[]) {
+    // API oficial (id "wamid."): entregue/lida chegam pelo webhook da Meta; não existe consulta na Evolution.
+    if (row.provider_message_id.startsWith("wamid.")) continue;
     try {
       const remote = await api.request("messages", row.instance_name, { where: { key: { id: row.provider_message_id } }, page: 1, offset: 5 });
       for (const u of deliveryUpdates(messageRecords(remote))) {

@@ -56,6 +56,18 @@ serve(async (req) => {
     }
     const instance = await salonInstance(db, tenant);
     if (body.instanceName && body.instanceName !== instance.instance_name) throw new WhatsAppError("forbidden", 403);
+    // API oficial: não há QR, webhook da Evolution nem grupos; o estado vem da Meta (número registrado e qualidade).
+    const { data: prov } = await db.from("whatsapp_instances").select("provider,meta_phone_number_id,meta_display_name").eq("id", instance.id).maybeSingle();
+    if (prov?.provider === "meta") {
+      if (action !== "status" && action !== "fetch" && action !== "retry_message") throw new WhatsAppError("invalid_request", 409);
+      if (action === "retry_message") {
+        const { data: ok, error } = await db.rpc("whatsapp_retry_outbox", { p_salon_id: tenant, p_message_id: body.messageId });
+        if (error) throw new WhatsAppError("persistence_failed", 503);
+        return jsonResponse({ success: true, requeued: ok === true });
+      }
+      return jsonResponse({ success: true, state: "open", status: instance.status, provider: "meta", phoneNumber: instance.phone_number, displayName: prov.meta_display_name ?? null,
+        instance: { instanceName: instance.instance_name, owner: instance.phone_number ? `${instance.phone_number}@s.whatsapp.net` : null } });
+    }
     // Instâncias conectadas antes do webhook autenticado não passam pelo connect; sincronizar
     // sem exigir novo QR evita que o webhook passe a rejeitar mensagens após o deploy.
     const syncWebhook = async () => {

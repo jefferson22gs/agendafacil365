@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeSalon, salonInstance, serviceClient, validUuid } from "../_shared/whatsapp/auth.ts";
 import { evolutionClient } from "../_shared/whatsapp/evolution.ts";
+import { metaClient } from "../_shared/whatsapp/meta.ts";
 import { corsHeaders, errorResponse, jsonResponse, objectValue, readRequest, WhatsAppError } from "../_shared/whatsapp/errors.ts";
 import { messageRecords, parseInboxMessage } from "../_shared/whatsapp/inbound.ts";
 import { inboxRow, replyText } from "../_shared/whatsapp/inbox.ts";
@@ -40,6 +41,10 @@ serve(async (req) => {
 
     const instance = await salonInstance(db, salonId);
     if (instance.status !== "connected") throw new WhatsAppError("disconnected", 409);
+    const { data: prov } = await db.from("whatsapp_instances").select("provider,meta_phone_number_id").eq("id", instance.id).maybeSingle();
+    const meta = prov?.provider === "meta" ? String(prov.meta_phone_number_id ?? "") : null;
+    // API oficial: o histórico chega todo pelo webhook (não há "buscar mensagens"); sincronizar não importa nada.
+    if (action === "sync" && meta !== null) return jsonResponse({ success: true, imported: 0 });
     const api = evolutionClient();
 
     if (action === "sync") {
@@ -79,9 +84,18 @@ serve(async (req) => {
       if (error) throw new WhatsAppError("persistence_failed", 503);
     };
     try {
-      const result = objectValue(await api.request("text", instance.instance_name, { number: phone.slice(1), text }));
-      const key = result.key && typeof result.key === "object" ? objectValue(result.key) : null;
-      const providerId = typeof key?.id === "string" && key.id ? key.id : undefined;
+      let providerId: string | undefined;
+      if (meta !== null) {
+        // Fora das 24h desde a última mensagem do cliente a Meta só aceita modelo aprovado.
+        const { data: open, error: winError } = await db.rpc("whatsapp_service_window_open", { p_salon_id: salonId, p_phone: phone });
+        if (winError) throw new WhatsAppError("persistence_failed", 503);
+        if (!open) throw new WhatsAppError("outside_service_window", 409);
+        providerId = await metaClient().send(meta, { to: phone.slice(1), type: "text", text: { body: text, preview_url: true } });
+      } else {
+        const result = objectValue(await api.request("text", instance.instance_name, { number: phone.slice(1), text }));
+        const key = result.key && typeof result.key === "object" ? objectValue(result.key) : null;
+        providerId = typeof key?.id === "string" && key.id ? key.id : undefined;
+      }
       await finish(providerId ? "sent" : "uncertain", providerId, providerId ? undefined : "provider_missing_message_id");
       return jsonResponse({ success: true, id: row.id, status: providerId ? "sent" : "uncertain" });
     } catch (err) {

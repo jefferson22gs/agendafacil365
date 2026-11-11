@@ -2,6 +2,45 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { evolutionClient, privateNumber } from "./evolution.ts";
 import { objectValue, WhatsAppError } from "./errors.ts";
 import { providerMessageId, sendWithFallback, typingPulse } from "./evolutionSender.ts";
+import { metaClient, toMetaInteractive } from "./meta.ts";
+
+type OutboxItem = { id: string; salon_id: string; category: string; content_type: string; recipient_phone: string; text_content: string; payload: unknown; media_path: string | null; media_mime: string | null; media_filename: string | null; source_event_id: string | null };
+/**
+ * API oficial (Cloud API). Texto livre e interativo só dentro da janela de 24h desde a última mensagem do cliente;
+ * fora dela, sem modelo aprovado, cancela (`outside_service_window`) em vez de pagar/arriscar recusa da Meta.
+ * Interativo vira botões (≤ 3) ou lista "☰ Menu"; se a Meta recusar o interativo (4xx), manda o texto numerado.
+ */
+async function sendViaMeta(db: SupabaseClient, item: OutboxItem, phoneNumberId: string | null, begin: () => Promise<void>): Promise<{ id: string; skip?: undefined } | { skip: string; id?: undefined }> {
+  if (!phoneNumberId) throw new WhatsAppError("configuration_missing", 503);
+  if (item.content_type.startsWith("status_")) return { skip: "unsupported_on_meta" };
+  const to = item.recipient_phone.replace(/^\+/, "");
+  const { data: open, error } = await db.rpc("whatsapp_service_window_open", { p_salon_id: item.salon_id, p_phone: item.recipient_phone });
+  if (error) throw new WhatsAppError("persistence_failed", 503);
+  if (!open) return { skip: "outside_service_window" };
+  const api = metaClient();
+  // "Digitando…" + lido na mensagem que gerou a resposta (o id da Meta está no evento de origem).
+  if (item.category === "chatbot" && item.source_event_id) {
+    const { data: ev } = await db.from("whatsapp_webhook_events").select("provider_message_id").eq("id", item.source_event_id).maybeSingle();
+    if (ev?.provider_message_id?.startsWith("wamid.")) await api.typing(phoneNumberId, ev.provider_message_id);
+  }
+  let body: Record<string, unknown>;
+  if (item.content_type === "interactive") body = toMetaInteractive(item.payload as Record<string, unknown> | null, item.text_content) ?? { type: "text", text: { body: item.text_content, preview_url: false } };
+  else if (item.content_type === "text") body = { type: "text", text: { body: item.text_content, preview_url: true } };
+  else {
+    if (typeof item.media_path !== "string" || !item.media_path.startsWith(`${item.salon_id}/`) || item.media_path.includes("..")) return { skip: "invalid_media" };
+    const { data: signed, error: mediaError } = await db.storage.from("whatsapp-media").createSignedUrl(item.media_path, 600);
+    if (mediaError || !signed?.signedUrl) throw new WhatsAppError("persistence_failed", 503);
+    const kind = item.content_type === "image" ? "image" : item.content_type === "video" ? "video" : "document";
+    body = { type: kind, [kind]: { link: signed.signedUrl, ...(item.text_content ? { caption: item.text_content.slice(0, 1024) } : {}), ...(kind === "document" && item.media_filename ? { filename: item.media_filename } : {}) } };
+  }
+  await begin();
+  try { return { id: await api.send(phoneNumberId, body) }; }
+  catch (e) {
+    // Interativo recusado antes de sair (4xx): cai para o texto numerado, mesmo comportamento da Evolution.
+    if (body.type === "interactive" && e instanceof WhatsAppError && e.code === "provider_rejected") return { id: await api.send(phoneNumberId, { type: "text", text: { body: item.text_content, preview_url: false } }) };
+    throw e;
+  }
+}
 
 /**
  * Sem opções: fila geral (whatsapp_claim_outbox, conversa primeiro). `sourceEvent`: só a resposta deste evento
@@ -25,7 +64,7 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
     if (item.category === "chatbot" && !privateNumber(String(item.recipient_phone ?? "").replace(/^\+/, ""))) {
       await finish("cancelled", "not_private_chat"); return true;
     }
-    const { data: instance, error: instanceError } = await db.from("whatsapp_instances").select("instance_name,salon_id").eq("id", item.instance_id).eq("salon_id", item.salon_id).maybeSingle();
+    const { data: instance, error: instanceError } = await db.from("whatsapp_instances").select("instance_name,salon_id,provider,meta_phone_number_id").eq("id", item.instance_id).eq("salon_id", item.salon_id).maybeSingle();
     if (instanceError) throw new WhatsAppError("persistence_failed", 503);
     if (!instance) { await finish("failed", "instance_missing"); return true; }
     if (item.appointment_id) {
@@ -41,6 +80,16 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
       const { data: suppression, error: suppressionError } = await db.from("whatsapp_marketing_suppression").select("phone").eq("salon_id", item.salon_id).eq("phone", item.recipient_phone).limit(1);
       if (suppressionError) throw new WhatsAppError("persistence_failed", 503);
       if (blocked?.length || suppression?.length) { await finish("cancelled", "marketing_opt_out"); return true; }
+    }
+    if (instance.provider === "meta") {
+      const r = await sendViaMeta(db, item, instance.meta_phone_number_id, async () => {
+        const { data, error } = await db.rpc("whatsapp_begin_send", { p_id: item.id, p_claim: item.claim_token });
+        if (error || !data) throw new WhatsAppError("persistence_failed", 503);
+        sendStarted = true;
+      });
+      if (r.skip) { await finish("cancelled", r.skip); return true; }
+      await finish("accepted", undefined, r.id);
+      return true;
     }
     const api = evolutionClient();
     const remote = objectValue(await api.request("state", instance.instance_name));

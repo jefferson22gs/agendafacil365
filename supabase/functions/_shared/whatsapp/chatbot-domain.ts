@@ -39,6 +39,8 @@ export function salonOf(ctx: BotContext): Promise<SalonRow> {
 export type GuidedRenderMode = "poll" | "hybrid" | "numbered" | "native" | "buttons";
 export interface AutomationRow {
   booking: boolean; interactive: boolean;
+  /** API oficial (Meta): botões e lista "☰ Menu" nativos sempre funcionam, então o modo vira "native". */
+  provider: "evolution" | "meta";
   /** Fluxo guiado (Typebot). Colunas da MIGRATION_TYPEBOT_EVOLUTION_237.sql; ausentes = desligado. */
   guided: boolean; renderMode: GuidedRenderMode; welcome: string | null; confirmation: string | null; info: string | null; handoffHours: number;
 }
@@ -49,7 +51,10 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
   let p = autoCache.get(ctx);
   if (!p) {
     const read = (cols: string) => Promise.resolve(ctx.db.from("whatsapp_automation_settings").select(cols).eq("salon_id", ctx.salonId).maybeSingle());
-    p = read(GUIDED_COLUMNS).then(async r => {
+    // Coluna provider ausente (migração Meta pendente) = Evolution.
+    const provider = Promise.resolve(ctx.db.from("whatsapp_instances").select("provider").eq("salon_id", ctx.salonId).maybeSingle())
+      .then(r => ((r.data as { provider?: string } | null)?.provider === "meta" ? "meta" : "evolution") as AutomationRow["provider"], () => "evolution" as const);
+    p = Promise.all([read(GUIDED_COLUMNS), provider]).then(async ([r, prov]) => {
       // 42703 = coluna inexistente (migração ainda não aplicada): fallback resiliente às colunas antigas.
       if (r.error && String(r.error.code) === "42703") r = await read("chatbot_booking_enabled,interactive_enabled");
       const { data: raw, error } = r;
@@ -59,8 +64,9 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
       const mode = String(data?.guided_render_mode ?? "hybrid");
       const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
       return {
-        booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false,
-        guided: !!data?.guided_flow_enabled, renderMode: (["poll", "numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
+        booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false, provider: prov,
+        guided: !!data?.guided_flow_enabled,
+        renderMode: (prov === "meta" ? "native" : ["poll", "numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
         welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
         handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
       };

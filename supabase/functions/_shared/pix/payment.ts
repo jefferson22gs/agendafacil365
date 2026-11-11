@@ -2,6 +2,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { pixBRCode } from "./brcode.ts";
 import { WhatsAppError } from "../whatsapp/errors.ts";
 import { evolutionClient, type EvolutionOperation } from "../whatsapp/evolution.ts";
+import { metaClient } from "../whatsapp/meta.ts";
 
 export interface PixContext {
   db: SupabaseClient;
@@ -110,19 +111,30 @@ export async function receivePaymentProof(ctx: PixContext, appointmentId: string
   if (ctx.preview) return { ok: true, proofId: null };
 
   const { data: instance, error: instanceError } = await db.from("whatsapp_instances")
-    .select("instance_name").eq("id", event.instance_id).eq("salon_id", salonId).maybeSingle();
+    .select("instance_name,provider").eq("id", event.instance_id).eq("salon_id", salonId).maybeSingle();
   if (instanceError) throw new WhatsAppError("persistence_failed", 503);
   if (!instance?.instance_name) return { ok: false, reason: "download_failed" };
 
-  let result: { base64?: unknown; fileName?: unknown };
-  try {
-    // ponytail: op "mediaBase64" adicionada em evolution.ts pelo atendente; cast cai fora quando estiver no union.
-    result = await evolutionClient().request("mediaBase64" as EvolutionOperation, instance.instance_name, {
-      message: { key: { id: messageId, remoteJid: `${phone.slice(1)}@s.whatsapp.net`, fromMe: false } }, convertToMp4: false,
-    }) as typeof result;
-  } catch { return { ok: false, reason: "download_failed" }; }
+  let result: { base64?: unknown; fileName?: unknown } = {};
+  let downloaded: Uint8Array | null = null;
+  if (instance.provider === "meta") {
+    // API oficial: o webhook guarda o id da mídia; o download exige o token do sistema.
+    const mediaId = (event.payload as { mediaId?: unknown } | null)?.mediaId;
+    const file = typeof mediaId === "string" ? await metaClient().media(mediaId) : null;
+    if (!file) return { ok: false, reason: "download_failed" };
+    if (file.bytes.byteLength > PROOF_MAX_BYTES) return { ok: false, reason: "too_large" };
+    downloaded = file.bytes;
+    result.fileName = (event.payload as { media?: { name?: unknown } } | null)?.media?.name;
+  } else {
+    try {
+      // ponytail: op "mediaBase64" adicionada em evolution.ts pelo atendente; cast cai fora quando estiver no union.
+      result = await evolutionClient().request("mediaBase64" as EvolutionOperation, instance.instance_name, {
+        message: { key: { id: messageId, remoteJid: `${phone.slice(1)}@s.whatsapp.net`, fromMe: false } }, convertToMp4: false,
+      }) as typeof result;
+    } catch { return { ok: false, reason: "download_failed" }; }
+  }
 
-  const decoded = decodeProof(result?.base64);
+  const decoded = downloaded ? { bytes: downloaded } : decodeProof(result?.base64);
   if ("error" in decoded) return { ok: false, reason: decoded.error };
   const mime = detectProofMime(decoded.bytes);
   if (!mime) return { ok: false, reason: "invalid_media" };
