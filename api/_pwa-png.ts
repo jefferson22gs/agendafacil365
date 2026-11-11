@@ -15,7 +15,8 @@ const GLYPHS: Record<string, string> = {
   '8': '0e11110e11110e', '9': '0e11110f01010e', '?': '0e110102040004',
 };
 export function initials(name: string): string {
-  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(word => Array.from(word)[0].toUpperCase()).join('') || '?';
+  // Só palavras que começam com letra/dígito: "Jefferson - Agendamento" vira "JA", não "J-".
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('') || '?';
 }
 function chunk(type: string, data: Buffer): Buffer {
   const body = Buffer.concat([Buffer.from(type), data]);

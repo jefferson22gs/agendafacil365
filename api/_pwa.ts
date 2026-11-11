@@ -112,8 +112,8 @@ export function getEstablishmentBranding(s: PwaIdentity) {
   return {
     ...app, primary, primaryForeground: textOnColor(primary),
     secondary: hexColor(s.secondary_color, primary),
-    initials: s.name.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().split(/\s+/).filter(Boolean).slice(0, 2)
-      .map(w => Array.from(w)[0].toUpperCase()).join('') || '?',
+    initials: s.name.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).slice(0, 2)
+      .map(w => w[0]).join('') || '?',
   };
 }
 

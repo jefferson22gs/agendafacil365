@@ -128,7 +128,7 @@ test('fallback real PNG 180/192/512: salon color, contrasting initials, broken/a
   }
   assert.equal(png.initials('Ána Bela'), 'AB');
   const svg = icon.buildIconSvg({ name: '<b>Ana', color: '#fff', logo: null, maskable: true });
-  assert.match(svg, /&#60;/); assert.doesNotMatch(svg, /<b>/);
+  assert.match(svg, />BA<\/text>/, 'pontuação/HTML do nome descartados nas iniciais'); assert.doesNotMatch(svg, /<b>/);
   assert.match(icon.buildIconSvg({ name: 'Ana', color: '#000', logo: data, maskable: true }), /x="106" y="106" width="300"/);
 });
 
@@ -170,4 +170,11 @@ test('branding central: foto anexada vence, cores e iniciais', () => {
   const b = pwa.getEstablishmentBranding({ name: 'Clínica Ágata Bela', avatar_url: 'https://cdn.exemplo.com.br/a.png', pwa_icon_url: 'https://cdn.exemplo.com.br/old.png', primary_color: '#fafafa', secondary_color: 'lixo' });
   assert.equal(b.logo, 'https://cdn.exemplo.com.br/a.png'); assert.equal(b.initials, 'CA');
   assert.equal(b.primaryForeground, '#0F172A'); assert.equal(b.secondary, '#fafafa');
+});
+
+test('iniciais ignoram pontuação e acentos', () => {
+  assert.equal(png.initials('Jefferson - Agendamento'), 'JA');
+  assert.equal(png.initials('  Ágata & Cia. '), 'AC');
+  assert.equal(png.initials('---'), '?');
+  assert.equal(pwa.getEstablishmentBranding({ name: 'Studio - Bela' }).initials, 'SB');
 });
