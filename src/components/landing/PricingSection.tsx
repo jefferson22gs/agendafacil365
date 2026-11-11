@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 const features = [
   "Profissionais ilimitados",
   "Agendamentos ilimitados",
-  "Dashboard completo",
-  "Lembretes por WhatsApp",
-  "Cupons de desconto",
-  "Gestão de clientes",
-  "Relatórios financeiros",
+  "Retorno automático de procedimentos",
+  "Lembretes por WhatsApp, e-mail e app",
+  "App e e-mails com a sua marca",
+  "Chatbot IA no WhatsApp",
+  "Gestão de clientes e financeiro",
+  "Cupons e relatórios",
+  "Contrato com assinatura eletrônica",
   "Suporte prioritário",
 ];
 

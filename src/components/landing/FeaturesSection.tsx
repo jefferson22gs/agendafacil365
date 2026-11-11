@@ -11,6 +11,10 @@ import {
   Share2,
   Bot,
   ImagePlus,
+  RotateCcw,
+  Palette,
+  FileSignature,
+  Accessibility,
 } from "lucide-react";
 
 const features = [
@@ -20,21 +24,42 @@ const features = [
     description: "Seus clientes agendam pelo link do negócio, com confirmação automática via WhatsApp.",
   },
   {
+    icon: RotateCcw,
+    title: "Retorno automático",
+    description: "Prazo de retorno por procedimento e lembrete na data certa por WhatsApp, e-mail e app.",
+    isNew: true,
+  },
+  {
+    icon: Palette,
+    title: "App com a sua marca",
+    description: "App instalável, página e e-mails com a logo e as cores do seu negócio.",
+    isNew: true,
+  },
+  {
     icon: Bot,
     title: "Chatbot IA no WhatsApp",
     description: "Atendimento automático 24/7 que responde dúvidas e agenda clientes sozinho.",
-    isNew: true,
   },
   {
     icon: ImagePlus,
     title: "Status com IA",
     description: "Agende posts para o Status do WhatsApp com legendas geradas por Inteligência Artificial.",
-    isNew: true,
   },
   {
     icon: Share2,
     title: "Página pública",
     description: "Cada profissional tem sua página exclusiva para compartilhar com clientes.",
+  },
+  {
+    icon: FileSignature,
+    title: "Contrato digital",
+    description: "Contratação com contrato preenchido e assinatura eletrônica pelas duas partes.",
+    isNew: true,
+  },
+  {
+    icon: Accessibility,
+    title: "Acessibilidade WCAG 2.2",
+    description: "Texto sempre legível sobre a sua cor, alvos de toque grandes e leitor de tela.",
     isNew: true,
   },
   {
@@ -55,7 +80,7 @@ const features = [
   {
     icon: Bell,
     title: "Automações",
-    description: "Lembretes automáticos e sugestões de retorno para fidelizar clientes.",
+    description: "Confirmações, lembretes de horário e mensagens de aniversário automáticas.",
   },
   {
     icon: Gift,
@@ -83,11 +108,11 @@ export const FeaturesSection = () => {
           </p>
         </div>
 
-        <ul className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+        <ul className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6">
           {features.map(({ icon: Icon, title, description, isNew }) => (
             <li
               key={title}
-              className="relative rounded-2xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
+              className="landing-reveal group relative rounded-2xl border border-border bg-card p-6 shadow-sm transition-[box-shadow,border-color] hover:border-primary/40 hover:shadow-lg"
             >
               {isNew && (
                 <span className="absolute right-4 top-4 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">

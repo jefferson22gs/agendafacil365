@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { DEMO_URL, IS_DEMO } from "@/config/demo";
 
 const navLinks = [
+  { label: "Novidades", href: "#novidades" },
   { label: "Funcionalidades", href: "#features" },
   { label: "Preços", href: "#pricing" },
   { label: "Sobre", href: "#about" },

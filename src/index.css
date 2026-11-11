@@ -455,3 +455,25 @@
     margin-bottom: max(1rem, var(--spacing-safe-bottom));
   }
 }
+
+/* Landing: movimento só para quem não pediu redução; sem suporte, o conteúdo fica estático e visível. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes landing-float {
+    50% { translate: 0 -10px; }
+  }
+  /* Termina em menos de 5 s (WCAG 2.2.2): sem movimento contínuo, sem precisar de botão de pausa. */
+  .landing-float {
+    animation: landing-float 2.2s ease-in-out 2;
+  }
+
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    @keyframes landing-reveal {
+      from { opacity: 0; translate: 0 28px; }
+    }
+    .landing-reveal {
+      animation: landing-reveal auto ease-out backwards;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}

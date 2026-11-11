@@ -38,11 +38,15 @@ const faqs = [
             },
             {
                 question: "Posso testar antes de assinar?",
-                answer: "Sim! Ao criar sua conta você tem 30 dias de teste grátis com acesso a todas as funcionalidades, sem cadastrar cartão de crédito. A assinatura (mensal ou anual) é feita depois, pelo Mercado Pago."
+                answer: "Sim! Ao criar sua conta você tem 30 dias de teste grátis com acesso a todas as funcionalidades, sem cadastrar cartão de crédito. A assinatura (mensal ou anual) é feita depois, pela InfinitePay ou pelo Mercado Pago."
+            },
+            {
+                question: "Existe contrato?",
+                answer: "Sim. Na contratação, o contrato é preenchido automaticamente com os dados do seu negócio e assinado eletronicamente pelas duas partes, via Autentique, com validade jurídica. Ele inclui os termos de proteção de dados (LGPD)."
             },
             {
                 question: "Como funciona o pagamento?",
-                answer: "O pagamento é feito via cartão de crédito, PIX ou boleto através do Mercado Pago. Você pode escolher entre pagamento mensal ou anual. Pode cancelar a qualquer momento, sem multas."
+                answer: "O pagamento é feito por cartão de crédito ou PIX pela InfinitePay, ou por cartão, PIX ou boleto pelo Mercado Pago. Você pode escolher entre pagamento mensal ou anual. Pode cancelar a qualquer momento, sem multas."
             },
             {
                 question: "Vocês cobram taxa sobre os agendamentos?",
@@ -60,6 +64,18 @@ const faqs = [
             {
                 question: "Meus clientes conseguem agendar sozinhos?",
                 answer: "Sim! Você recebe um link próprio do seu negócio (ex.: …/s/seu-negocio) que pode compartilhar nas redes sociais. Os clientes acessam, escolhem o serviço, profissional e horário - sem precisar ligar."
+            },
+            {
+                question: "Como funciona o retorno automático de procedimentos?",
+                answer: "Em cada serviço você define o prazo de retorno (7, 15, 30, 60, 90, 120, 180 dias ou personalizado). Ao concluir o atendimento, o sistema calcula a data e, nesse dia, avisa o cliente por WhatsApp, e-mail e no app — e você também é avisado. Se o cliente reagendar antes, o lembrete é cancelado sozinho."
+            },
+            {
+                question: "Meus clientes veem a minha marca ou a do sistema?",
+                answer: "A sua. A página de agendamento e o app que o cliente instala no celular mostram a logo e as cores do seu negócio, e os e-mails chegam com o nome do seu negócio como remetente."
+            },
+            {
+                question: "O sistema é acessível?",
+                answer: "Sim. Seguimos as diretrizes WCAG 2.2 nível AA: o texto sobre a cor do seu negócio é ajustado para ficar sempre legível, os botões são fáceis de tocar e as telas funcionam com teclado e leitor de tela."
             },
             {
                 question: "Posso gerenciar múltiplas unidades?",

@@ -93,7 +93,7 @@ export const FloatingChat = () => {
                             initial={{ opacity: 0, scale: 0.8, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                            className="absolute bottom-full right-0 mb-3 mr-2 whitespace-nowrap"
+                            className="absolute bottom-full right-0 mb-3 mr-2 hidden whitespace-nowrap md:block"
                         >
                             <div className="bg-card border border-border rounded-2xl rounded-br-none px-4 py-3 shadow-lg">
                                 <p className="text-sm text-foreground">💬 Precisa de ajuda?</p>
