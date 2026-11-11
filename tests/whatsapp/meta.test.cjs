@@ -81,12 +81,14 @@ test('limites da Cloud API: títulos cortados (botão 20, linha 24, descrição 
 test('envio: 4xx recusado (nada saiu), limite = rate_limited, 5xx/rede = incerto; id da mensagem devolvido', async () => {
   const E = load(path.join(sh, 'whatsapp/errors.ts')).WhatsAppError;
   const mk = (status, body) => new meta.MetaClient('tok', async () => ({ ok: status < 300, status, json: async () => body }));
-  assert.equal(await mk(200, { messages: [{ id: 'wamid.X' }] }).send('1516976681488434', { to: '1', type: 'text', text: { body: 'a' } }), 'wamid.X');
-  await assert.rejects(() => mk(400, { error: { code: 131047 } }).send('1516976681488434', {}), e => e.code === 'provider_rejected');
-  await assert.rejects(() => mk(429, { error: { code: 130429 } }).send('1516976681488434', {}), e => e.code === 'provider_rate_limited');
-  await assert.rejects(() => mk(503, {}).send('1516976681488434', {}), e => e.code === 'send_uncertain');
-  await assert.rejects(() => new meta.MetaClient('t', async () => { throw new Error('rede'); }).send('1516976681488434', {}), e => e.code === 'send_uncertain');
-  await assert.rejects(() => mk(200, {}).send('abc', {}), e => e instanceof E);
+  assert.equal(await mk(200, { messages: [{ id: 'wamid.X' }] }).send('1516976681488434', { to: '5511961626897', type: 'text', text: { body: 'a' } }), 'wamid.X');
+  await assert.rejects(() => mk(400, { error: { code: 131047 } }).send('1516976681488434', { to: '5511961626897' }), e => e.code === 'provider_rejected');
+  await assert.rejects(() => mk(429, { error: { code: 130429 } }).send('1516976681488434', { to: '5511961626897' }), e => e.code === 'provider_rate_limited');
+  await assert.rejects(() => mk(503, {}).send('1516976681488434', { to: '5511961626897' }), e => e.code === 'send_uncertain');
+  await assert.rejects(() => new meta.MetaClient('t', async () => { throw new Error('rede'); }).send('1516976681488434', { to: '5511961626897' }), e => e.code === 'send_uncertain');
+  await assert.rejects(() => mk(200, {}).send('abc', { to: '5511961626897' }), e => e instanceof E);
+  await assert.rejects(() => mk(200, { messages: [{ id: 'wamid.X' }] }).send('1516976681488434', { type: 'text' }), e => e.code === 'invalid_request', 'sem destinatário nunca chama a Meta');
+  await assert.rejects(() => mk(200, { messages: [{ id: 'wamid.X' }] }).send('1516976681488434', { to: '120363000000000000-1' }), e => e.code === 'invalid_request', 'grupo');
 });
 
 test('migração Meta: aditiva, provider com check, Phone Number ID único, janela de 24h só para o servidor', () => {
@@ -97,4 +99,10 @@ test('migração Meta: aditiva, provider com check, Phone Number ID único, jane
   assert.match(sql, /UNIQUE INDEX IF NOT EXISTS whatsapp_instances_meta_phone_unique/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.whatsapp_service_window_open\(uuid, text\) FROM PUBLIC, anon, authenticated/);
   assert.doesNotMatch(sql.replace(/--.*$/gm, ''), /token/i, 'token nunca vai para o banco');
+});
+
+test('outbox (Meta): todo envio leva o número do cliente em "to"', () => {
+  const src = fs.readFileSync(path.join(root, 'supabase/functions/_shared/whatsapp/outbox.ts'), 'utf8');
+  const sends = src.match(/api\.send\(phoneNumberId, \{[^}]*/g) ?? [];
+  assert.ok(sends.length >= 2); assert.ok(sends.every(c => c.includes('{ to,')), sends.join(' | '));
 });

@@ -34,10 +34,10 @@ async function sendViaMeta(db: SupabaseClient, item: OutboxItem, phoneNumberId: 
     body = { type: kind, [kind]: { link: signed.signedUrl, ...(item.text_content ? { caption: item.text_content.slice(0, 1024) } : {}), ...(kind === "document" && item.media_filename ? { filename: item.media_filename } : {}) } };
   }
   await begin();
-  try { return { id: await api.send(phoneNumberId, body) }; }
+  try { return { id: await api.send(phoneNumberId, { to, ...body }) }; }
   catch (e) {
     // Interativo recusado antes de sair (4xx): cai para o texto numerado, mesmo comportamento da Evolution.
-    if (body.type === "interactive" && e instanceof WhatsAppError && e.code === "provider_rejected") return { id: await api.send(phoneNumberId, { type: "text", text: { body: item.text_content, preview_url: false } }) };
+    if (body.type === "interactive" && e instanceof WhatsAppError && e.code === "provider_rejected") return { id: await api.send(phoneNumberId, { to, type: "text", text: { body: item.text_content, preview_url: false } }) };
     throw e;
   }
 }

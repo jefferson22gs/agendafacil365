@@ -14,6 +14,8 @@ export class MetaClient {
   /** POST /{phoneNumberId}/messages. Erro de rede/5xx = incerto (pode ter saído); 4xx = recusado (nada saiu). */
   async send(phoneNumberId: string, body: Record<string, unknown>): Promise<string> {
     if (!/^\d{5,30}$/.test(phoneNumberId)) throw new WhatsAppError("configuration_missing", 503);
+    // Destinatário obrigatório: só dígitos de número individual (nunca grupo).
+    if (typeof body.to !== "string" || !/^[1-9]\d{7,14}$/.test(body.to)) throw new WhatsAppError("invalid_request");
     let response: Response;
     try {
       response = await this.transport(`${GRAPH}/${phoneNumberId}/messages`, {

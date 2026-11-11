@@ -66,7 +66,8 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
       return {
         booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false, provider: prov,
         guided: !!data?.guided_flow_enabled,
-        renderMode: (prov === "meta" ? "native" : ["poll", "numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
+        // API oficial: "buttons" = só botões (3 por mensagem, "Ver mais"); qualquer outro modo = botões até 3 e lista "☰ Menu".
+        renderMode: (prov === "meta" ? (mode === "buttons" ? "buttons" : "native") : ["poll", "numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
         welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
         handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
       };
