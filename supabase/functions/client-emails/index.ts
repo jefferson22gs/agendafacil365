@@ -5,7 +5,7 @@
 import { authorizeWorker, serviceClient } from "../_shared/whatsapp/auth.ts";
 import { corsHeaders, errorResponse, jsonResponse, WhatsAppError } from "../_shared/whatsapp/errors.ts";
 import { emailPayload, resendOutcome, safeHttps, salonReplyTo, salonSender } from "../process-return-alerts/core.ts";
-import { confirmedMessage } from "./core.ts";
+import { emailText } from "./core.ts";
 
 const BATCH = 30, BUDGET_MS = 40_000;
 
@@ -28,13 +28,16 @@ Deno.serve(async (req: Request) => {
       if (error) throw new WhatsAppError("persistence_failed", 503);
       if (!row) break;
       if (row.skip) continue;
-      const { subject, message } = confirmedMessage(row);
-      const payload = emailPayload({
+      const t = emailText(row);
+      const base = `/s/${encodeURIComponent(row.salon.slug ?? "")}`;
+      const payload = t && emailPayload({
         from: salonSender(row.salon.name, row.salon.slug, from), to: row.to, salon: row.salon.name, color: row.salon.primary_color,
-        logo: row.salon.logo_url || row.salon.pwa_icon_url, message, procedure: row.service ?? "",
-        url: new URL(`/s/${encodeURIComponent(row.salon.slug ?? "")}/meus-agendamentos`, origin).href,
-        replyTo: salonReplyTo(row.salon.email, replyTo), subject, cta: "Ver meus agendamentos",
-        footer: `Você recebeu este e-mail porque agendou um horário em ${row.salon.name}. Não foi você? Responda a este e-mail.`,
+        logo: row.salon.logo_url || row.salon.pwa_icon_url, message: t.message, procedure: row.service ?? "",
+        url: new URL(t.target === "portal" ? `${base}/meus-agendamentos` : base, origin).href,
+        replyTo: salonReplyTo(row.salon.email, replyTo), subject: t.subject, cta: t.cta,
+        footer: t.marketing
+          ? `Você recebe este e-mail por ser cliente de ${row.salon.name}. Não quer mais receber? Responda a este e-mail ou avise o salão.`
+          : `Você recebeu este e-mail porque agendou um horário em ${row.salon.name}. Não foi você? Responda a este e-mail.`,
       });
       let status = "failed", id: string | null = null;
       if (payload) {
