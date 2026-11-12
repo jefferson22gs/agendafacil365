@@ -68,7 +68,9 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
         booking: !!data?.chatbot_booking_enabled, interactive: data?.interactive_enabled !== false, provider: prov,
         guided: !!data?.guided_flow_enabled,
         // API oficial: "buttons" = só botões (3 por mensagem, "Ver mais"); qualquer outro modo = botões até 3 e lista "☰ Menu".
-        renderMode: (prov === "meta" ? (mode === "buttons" ? "buttons" : "native") : ["poll", "numbered", "native", "buttons"].includes(mode) ? mode : "hybrid") as GuidedRenderMode,
+        // QR Code (Evolution): botões e listas são descartados pelo WhatsApp sem aviso. Atende 100% em texto numerado
+        // (ou enquete, se o dono escolheu "Opções clicáveis"): mesmo fluxo, mesmas etapas, cliente responde o número.
+        renderMode: (prov === "meta" ? (mode === "buttons" ? "buttons" : "native") : mode === "poll" ? "poll" : "numbered") as GuidedRenderMode,
         welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
         handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
       };

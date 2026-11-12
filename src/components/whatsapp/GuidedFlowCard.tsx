@@ -18,11 +18,11 @@ const COLUMNS = "guided_flow_enabled,guided_render_mode,guided_welcome_message,g
 // Iguais aos defaults de MIGRATION_TYPEBOT_EVOLUTION_237.sql.
 const DEFAULTS: Settings = { guided_flow_enabled: false, guided_render_mode: "poll", guided_welcome_message: "", guided_confirmation_message: "", guided_info_text: "", guided_handoff_hours: 2 };
 const MODES: { value: RenderMode; label: string; hint: string }[] = [
-  { value: "poll", label: "Opções clicáveis (recomendado)", hint: "Cada etapa chega como uma enquete de toque único, com até 9 opções (1️⃣ 2️⃣ 3️⃣…). É o formato que chega em qualquer celular (Android, iPhone e WhatsApp Web). O cliente também pode responder com o número." },
-  { value: "buttons", label: "Botões (até 3 por mensagem)", hint: "Atenção: com a conexão atual (WhatsApp Web), o WhatsApp pode não mostrar estes botões ao cliente. Só botões, até 3 por mensagem. Mais opções aparecem em ➡️ Ver mais e os horários são filtrados por turno (☀️ Manhã, 🌤️ Tarde, 🌙 Noite). O cliente não precisa digitar números." },
-  { value: "hybrid", label: "Híbrido inteligente", hint: "Botões e listas da Evolution 2.3.7 com os números no texto. Se o aparelho não mostrar o botão, o cliente responde com o número." },
-  { value: "numbered", label: "Apenas menus numerados", hint: "Só texto numerado (1, 2, 3…). 100% compatível com iOS e Android." },
-  { value: "native", label: "Botões e listas nativas", hint: "Botões e listas sem os números no texto. O fallback numerado continua automático se a API recusar." },
+  { value: "poll", label: "Enquete clicável (QR Code)", hint: "No QR Code, cada etapa chega como uma enquete de toque único, com até 9 opções (1️⃣ 2️⃣ 3️⃣…). O cliente também pode responder o número. Na API oficial, vira botões e lista." },
+  { value: "buttons", label: "Só botões (API oficial)", hint: "Na API oficial: só botões, até 3 por mensagem, com ➡️ Ver mais e horários por turno. No QR Code o WhatsApp não mostra botões: vira texto numerado automaticamente." },
+  { value: "native", label: "Automático (recomendado)", hint: "API oficial: botões (até 3) e lista ☰ Menu. QR Code: texto numerado (1, 2, 3…), que chega em qualquer celular. Mesmo fluxo nas duas." },
+  { value: "numbered", label: "Apenas menus numerados", hint: "Só texto numerado (1, 2, 3…) nas duas conexões. 100% compatível com iOS e Android." },
+  { value: "hybrid", label: "Automático com números no texto", hint: "Igual ao Automático, com os números repetidos no texto dos botões da API oficial." },
 ];
 
 /** Aba "Fluxo de agendamento (Typebot / botões)": configuração + simulador. Sem a migração aplicada, avisa e não quebra. */
@@ -85,7 +85,8 @@ export function GuidedFlowCard() {
             <Switch id="guided-enabled" aria-describedby="guided-enabled-hint" checked={s.guided_flow_enabled} disabled={!migrated} onCheckedChange={v => setS(p => ({ ...p, guided_flow_enabled: v }))} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="guided-mode">Modo de renderização na Evolution API 2.3.7</Label>
+            <p className="rounded-xl bg-muted p-3 text-sm">O fluxo é o mesmo nas duas conexões, do menu até o Pix ou o link de pagamento. <strong>API oficial:</strong> botões e listas clicáveis. <strong>QR Code:</strong> o WhatsApp não mostra botões, então cada etapa chega em texto numerado (ou enquete, se escolher abaixo) e o cliente responde o número. A conexão que atende é escolhida em Conexão &gt; Quem atende os clientes no automático.</p>
+            <Label htmlFor="guided-mode">Como as opções aparecem</Label>
             <Select value={s.guided_render_mode} onValueChange={v => setS(p => ({ ...p, guided_render_mode: v as RenderMode }))} disabled={!migrated}>
               <SelectTrigger id="guided-mode" className="min-h-11"><SelectValue /></SelectTrigger>
               <SelectContent>{MODES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>

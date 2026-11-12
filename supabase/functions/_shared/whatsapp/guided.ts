@@ -187,7 +187,7 @@ function quickButtons(c: Ctx, text: string, rows: { id: string; title: string }[
 const say = (c: Ctx, step: Step, text: string, model = `guided_${step.toLowerCase()}`): Out => {
   c.s.step = step; c.s.data.menu = null;
   if (buttonsMode(c)) return { messages: quickButtons(c, text), model };
-  if (c.cfg.renderMode === "numbered") return { messages: [{ type: "text", text }], model };
+  // Numerado (QR Code) e lista: mesmo card de saída (Atendente/Voltar/Menu), em texto numerado no QR Code.
   const human: Option[] = /\*5\*/.test(text) ? [{ id: "menu_human", title: "💬 Falar com atendente", value: { go: "human" } }] : [];
   const nav = step === "IDLE" || step === "MAIN_MENU" ? [...human, MENU_HOME] : [...human, ...navFor(step, [], !!c.s.data.stack?.length)];
   const out = menu(c, step, c.salon.name, stripTypingHints(text) || text, nav, 0, "Toque em uma opção ou escreva sua resposta.");

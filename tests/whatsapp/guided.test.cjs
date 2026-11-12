@@ -97,7 +97,9 @@ test('horário de funcionamento a partir de working_hours', () => {
 
 // Banco simulado: 2 serviços, 1 profissional (seleção automática), cliente desconhecido.
 const SALON = '00000000-0000-4000-8000-000000000010', SVC = '00000000-0000-4000-8000-000000000030', PRO = '00000000-0000-4000-8000-000000000020';
-function db({ guided: on = true, mode = 'hybrid', pros = 1, client = null, booking = true, sessionTable = true } = {}) {
+// provider: quem atende o robô. Botões/lista/enquete só valem na oficial ('meta') ou em enquete ('poll') no QR Code;
+// QR Code com qualquer outro modo vira texto numerado (coberto em parity.test.cjs).
+function db({ guided: on = true, mode = 'hybrid', pros = 1, client = null, booking = true, sessionTable = true, provider = mode === 'poll' || mode === 'numbered' ? 'evolution' : 'meta' } = {}) {
   const calls = [], upserts = [], inserts = [];
   const rows = {
     salons: { name: 'Studio X', timezone: 'America/Sao_Paulo', address: 'Rua A, 1', city: 'SP', pix_key: null, slug: 'studio-x', phone: null, working_hours: null, opening_time: '09:00:00', closing_time: '18:00:00' },
@@ -118,7 +120,7 @@ function db({ guided: on = true, mode = 'hybrid', pros = 1, client = null, booki
       update() { return q; },
       then(res2) { return Promise.resolve({ data: res(), error: null }).then(res2); } };
     return q;
-  }, rpc: async (name, args) => { calls.push({ name, args }); if (name === 'get_available_time_slots') return { data: ['09:00', '14:00', '19:00'], error: null }; if (name === 'whatsapp_book_appointment_v2') return { data: { id: 'appt', final_price: 45, status: 'pending' }, error: null }; return { data: null, error: null }; } };
+  }, rpc: async (name, args) => { calls.push({ name, args }); if (name === 'whatsapp_bot_provider') return { data: provider, error: null }; if (name === 'get_available_time_slots') return { data: ['09:00', '14:00', '19:00'], error: null }; if (name === 'whatsapp_book_appointment_v2') return { data: { id: 'appt', final_price: 45, status: 'pending' }, error: null }; return { data: null, error: null }; } };
 }
 const ctx = (d, o = {}) => ({ db: d, salonId: SALON, phone: '+5511912345678', eventId: 'ev', preview: false, name: 'João Silva', ...o });
 const send = (d, text, selection = null) => guided.guidedReply(ctx(d), { text, selection });
