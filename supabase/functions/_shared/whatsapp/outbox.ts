@@ -132,7 +132,10 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
   } catch (err) {
     if (err instanceof WhatsAppError && err.code !== "persistence_failed") {
       const uncertain = err.code === "send_uncertain" || (sendStarted && !["provider_rejected", "provider_rate_limited"].includes(err.code));
-      await finish(uncertain ? "uncertain" : ["provider_unavailable", "provider_rate_limited", "disconnected"].includes(err.code) ? "pending" : "failed", err.code);
+      // Recusa da Meta guarda o código real (ex.: meta_131026) para o diagnóstico na Central.
+      const meta = (err as { meta?: number }).meta;
+      await finish(uncertain ? "uncertain" : ["provider_unavailable", "provider_rate_limited", "disconnected"].includes(err.code) ? "pending" : "failed",
+        err.code === "provider_rejected" && Number.isFinite(meta) ? `meta_${meta}` : err.code);
     } else {
       // Persistência falhou: mantém lease; recovery identifica se o envio havia começado.
       console.warn("whatsapp_outbox_persistence_failed");

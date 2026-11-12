@@ -128,6 +128,9 @@ export default function Inbox() {
                     <span className="inline-flex items-center gap-1 text-muted-foreground font-medium" title="Entregue no celular">✓✓ Entregue</span>
                   ) : m.status === "read" ? (
                     <span className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 font-medium" title="Mensagem lida">✓✓ Lida</span>
+                  ) : m.error_code === "appointment_changed" ? (
+                    // Não é falha: o agendamento mudou antes do envio (ex.: confirmado) e vale a mensagem mais nova.
+                    <span className="text-muted-foreground" title="O agendamento mudou antes do envio; o cliente recebe a mensagem atualizada">↻ Substituída pela atualização</span>
                   ) : (
                     <span className="inline-flex flex-wrap items-center gap-1 text-destructive font-medium">
                       <span>⚠ {statuses[m.status] || m.status}{m.error_code ? ` (${m.error_code})` : ""}</span>
