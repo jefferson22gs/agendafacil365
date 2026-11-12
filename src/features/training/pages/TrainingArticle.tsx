@@ -9,6 +9,8 @@ import { useTraining } from "../TrainingProvider";
 import { ARTICLES, getArticle } from "../registry/articles";
 import { categoryById } from "../registry/categories";
 import type { ArticleImage } from "../types";
+import { videoForArticle } from "../registry/videos";
+import { VideoPlayer } from "../TrainingVideos";
 
 function Screenshot({ image }: { image: ArticleImage }) {
   const [failed, setFailed] = useState(false);
@@ -38,6 +40,7 @@ export default function TrainingArticle() {
   const index = ARTICLES.findIndex((a) => a.id === articleId);
   const previous = ARTICLES[index - 1];
   const next = ARTICLES[index + 1];
+  const video = videoForArticle(articleId);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -71,6 +74,13 @@ export default function TrainingArticle() {
             {article.route && <Button variant="outline" asChild><Link to={article.route}><ExternalLink size={16} className="mr-2" aria-hidden /> Abrir tela</Link></Button>}
           </div>
         </header>
+
+        {video && (
+          <section aria-label="Videoaula deste assunto" className="space-y-2">
+            <VideoPlayer video={video} />
+            <p className="text-xs text-muted-foreground">Videoaula {String(video.n).padStart(2, "0")}: {video.title}. Gravada no ambiente de demonstração, com dados fictícios.</p>
+          </section>
+        )}
 
         {article.notes?.length ? <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4"><p className="font-medium text-sm mb-2">Antes de começar</p><ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">{article.notes.map((note, i) => <li key={i}>{note}</li>)}</ul></CardContent></Card> : null}
 

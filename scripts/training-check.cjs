@@ -47,6 +47,18 @@ for (const a of articles) {
     else { assert(fs.existsSync(path.join(root, 'public', s.image.src)), `Imagem faltando: ${s.image.src}`); captures.add(s.image.src); }
   }
 }
+// Videoaulas: numeração 01–28 sem buracos, arquivo e capa publicados, tutorial e categoria existentes.
+const { VIDEOS } = load(path.join(feature, 'registry/videos.ts'));
+const { CATEGORIES } = load(path.join(feature, 'registry/categories.ts'));
+assert.deepEqual(VIDEOS.map(v => v.n), VIDEOS.map((_, i) => i + 1), 'Videoaulas fora de ordem ou com número repetido');
+for (const v of VIDEOS) {
+  assert(v.slug.startsWith(String(v.n).padStart(2, '0') + '-') && v.title && v.summary && v.seconds > 0, `Videoaula inválida: ${v.slug}`);
+  assert(CATEGORIES.some(c => c.id === v.category), `Categoria não existe: ${v.slug}/${v.category}`);
+  assert(!v.articleId || articles.some(a => a.id === v.articleId), `Tutorial não existe: ${v.slug}/${v.articleId}`);
+  assert(!v.route || v.route === '/admin' || v.route.startsWith('/admin/'), `Rota inválida: ${v.slug}`);
+  for (const ext of ['mp4', 'webp']) assert(fs.existsSync(path.join(root, 'public/training/videos', `${v.slug}.${ext}`)), `Arquivo faltando: ${v.slug}.${ext}`);
+}
+assert.equal(new Set(VIDEOS.map(v => v.articleId).filter(Boolean)).size, VIDEOS.filter(v => v.articleId).length, 'Dois vídeos no mesmo tutorial');
 // Toda rota /admin do App precisa de tour existente na ajuda contextual e de artigo (próprio ou do tour).
 const appSource = fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8');
 const adminRoutes = [...appSource.matchAll(/path="(\/admin[^"]*)"/g)].map(m => m[1].replace(':articleId', 'exemplo'));
@@ -62,4 +74,4 @@ for (const [query, expected] of [['agenda', 'appointments'], ['funcionário', 'p
   assert(searchArticles(articles, query).some(a => (a.tourId ?? a.id).includes(expected)), `Busca falhou: ${query}`);
 }
 assert.equal(searchArticles(articles, '').length, 0);
-console.log(JSON.stringify({ tours: tours.length, articles: articles.length, captures: captures.size, pendingImageReferences: pending, tests: 'PASS', adminRoutes: adminRoutes.length, coverage: tours.map(t => ({ id: t.id, steps: t.steps.length })) }, null, 2));
+console.log(JSON.stringify({ tours: tours.length, articles: articles.length, videos: VIDEOS.length, captures: captures.size, pendingImageReferences: pending, tests: 'PASS', adminRoutes: adminRoutes.length, coverage: tours.map(t => ({ id: t.id, steps: t.steps.length })) }, null, 2));

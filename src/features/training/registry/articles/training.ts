@@ -24,9 +24,9 @@ export const navigationArticles: Article[] = [
   },
   {
     id: "training-center-use",
-    version: 1,
+    version: 2,
     title: "Como usar a Central de Treinamento",
-    summary: "Busque tutoriais, inicie tours e acompanhe os primeiros passos.",
+    summary: "Assista às videoaulas, busque tutoriais, inicie tours e acompanhe os primeiros passos.",
     category: "start",
     difficulty: "fácil",
     minutes: 2,
@@ -34,7 +34,8 @@ export const navigationArticles: Article[] = [
     tourId: "training-center",
     steps: [
       { text: "Abra Central de Treinamento, no grupo Configurações e ajuda do menu, ou use Ajuda > Central de Treinamento." },
-      { text: "Digite um assunto na busca ou filtre por categoria. Ler tutorial abre o passo a passo; Me mostre inicia o tour da tela relacionada." },
+      { text: "Em Videoaulas há 28 aulas de cerca de 1 minuto, com narração e legenda, uma para cada parte do sistema. Toque na capa para assistir e use Anterior e Próxima para seguir a trilha. Ver todas mostra a lista completa." },
+      { text: "Digite um assunto na busca ou filtre por categoria. A busca e o filtro valem para as videoaulas e para os tutoriais. Ler tutorial abre o passo a passo; Me mostre inicia o tour da tela relacionada." },
       { text: "Dentro de um tutorial, responda Foi útil? para registrar sua avaliação." },
       { text: "Reiniciar treinamento apaga somente o progresso dos tours e boas-vindas. Clientes, agendamentos e configurações continuam iguais." },
     ],

@@ -13,6 +13,8 @@ import { FirstStepsChecklist } from "../FirstStepsChecklist";
 import { ARTICLES } from "../registry/articles";
 import { CATEGORIES } from "../registry/categories";
 import { searchArticles } from "../search";
+import { VIDEOS } from "../registry/videos";
+import { TrainingVideos } from "../TrainingVideos";
 
 export default function TrainingCenter() {
   const { startTour, progress, isAdminArea } = useTraining();
@@ -23,6 +25,12 @@ export default function TrainingCenter() {
     const matches = query.trim() ? searchArticles(ARTICLES, query) : ARTICLES;
     return category === "all" ? matches : matches.filter((a) => a.category === category);
   }, [query, category]);
+  // Videoaulas seguem a ordem da trilha (01–28), mesmo quando filtradas pela busca.
+  const videos = useMemo(() => {
+    const hits = query.trim() ? new Set(searchArticles(VIDEOS, query)) : null;
+    return VIDEOS.filter((v) => (!hits || hits.has(v)) && (category === "all" || v.category === category));
+  }, [query, category]);
+  const filtering = !!query.trim() || category !== "all";
   const viewed = ARTICLES.filter((a) => !!progress.get(`article:${a.id}`, a.version)).length;
 
   if (!isAdminArea) return <AdminLayout><p>O treinamento é destinado à administração do estabelecimento.</p></AdminLayout>;
@@ -41,7 +49,7 @@ export default function TrainingCenter() {
               <GraduationCap className="text-primary" size={30} aria-hidden />
               <h1 className="font-display text-2xl sm:text-3xl font-bold">Central de Treinamento</h1>
             </div>
-            <p className="text-muted-foreground mt-2">Aprenda a usar o Agenda Fácil 365 passo a passo. Comece pelo que precisa hoje.</p>
+            <p className="text-muted-foreground mt-2">Aprenda a usar o Agenda Fácil 365 com videoaulas e tutoriais passo a passo. Comece pelo que precisa hoje.</p>
           </div>
           <Button variant="outline" data-tour="training-overview-button" onClick={() => void startTour("overview")}>
             <PlayCircle size={18} className="mr-2" aria-hidden /> Conheça o Agenda Fácil 365
@@ -64,9 +72,14 @@ export default function TrainingCenter() {
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground" aria-live="polite">
-          {filtered.length} {filtered.length === 1 ? "tutorial" : "tutoriais"} · {viewed} de {ARTICLES.length} vistos
-        </p>
+        <TrainingVideos videos={videos} limit={filtering ? undefined : 8} />
+
+        <div>
+          <h2 className="font-display text-xl font-bold">Tutoriais passo a passo</h2>
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {filtered.length} {filtered.length === 1 ? "tutorial" : "tutoriais"} · {viewed} de {ARTICLES.length} vistos
+          </p>
+        </div>
         {filtered.length ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="training-articles">
             {filtered.map((a) => {
@@ -95,7 +108,7 @@ export default function TrainingCenter() {
             })}
           </div>
         ) : (
-          <Card><CardContent className="p-8 text-center"><p className="font-medium">Nenhum tutorial encontrado.</p><p className="text-sm text-muted-foreground mt-2">Tente uma palavra diferente, como “agenda”, “zap” ou “equipe”.</p><Button variant="ghost" className="mt-3" onClick={() => { setQuery(""); setCategory("all"); }}>Limpar busca</Button></CardContent></Card>
+          <Card><CardContent className="p-8 text-center"><p className="font-medium">Nenhum tutorial encontrado.</p><p className="text-sm text-muted-foreground mt-2">{videos.length ? "Há videoaulas sobre este assunto logo acima. " : ""}Tente uma palavra diferente, como “agenda”, “zap” ou “equipe”.</p><Button variant="ghost" className="mt-3" onClick={() => { setQuery(""); setCategory("all"); }}>Limpar busca</Button></CardContent></Card>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6" data-tour="training-support">

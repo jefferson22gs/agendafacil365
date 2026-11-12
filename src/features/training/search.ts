@@ -44,8 +44,11 @@ function expand(term: string): string[] {
   return Array.from(out);
 }
 
-/** Busca client-side, tolerante a acento e sinônimo. Retorna artigos ordenados por relevância. */
-export function searchArticles(articles: Article[], query: string): Article[] {
+/** O que a busca lê: tutoriais escritos (com passos) e videoaulas (sem passos). */
+type Searchable = Pick<Article, "title" | "summary" | "keywords"> & { steps?: { text: string }[] };
+
+/** Busca client-side, tolerante a acento e sinônimo. Retorna os itens ordenados por relevância. */
+export function searchArticles<T extends Searchable>(articles: T[], query: string): T[] {
   const q = normalize(query);
   if (!q) return [];
   const terms = q.split(" ").filter((t) => t.length >= 2);
@@ -55,7 +58,7 @@ export function searchArticles(articles: Article[], query: string): Article[] {
     const title = normalize(a.title);
     const summary = normalize(a.summary);
     const keywords = normalize((a.keywords ?? []).join(" "));
-    const body = normalize(a.steps.map((s) => s.text).join(" "));
+    const body = normalize((a.steps ?? []).map((s) => s.text).join(" "));
     let score = 0;
     for (const term of terms) {
       const variants = expand(term);
