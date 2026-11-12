@@ -31,6 +31,7 @@ import PublicBookingAdvanced from "./pages/PublicBookingAdvanced";
 // Lazy loaded Public Pages
 const PublicWaitlist = lazy(() => import("./pages/PublicWaitlist"));
 const RatingPage = lazy(() => import("./pages/RatingPage"));
+const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 
 // Lazy loaded Admin Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -93,6 +94,8 @@ const App = () => (
 
               {/* Public Salon Booking by Slug */}
               <Route path="/s/:slug" element={<PublicSalon />} />
+              {/* Área do cliente (link pessoal do WhatsApp). Vem antes de /s/:salonSlug/:professionalSlug. */}
+              <Route path="/s/:slug/meus-agendamentos" element={<Suspense fallback={<LoadingScreen />}><ClientPortal /></Suspense>} />
               {/* Public Professional Booking Page */}
               <Route path="/s/:salonSlug/:professionalSlug" element={<PublicProfessional />} />
               {/* Manage Appointment by Token */}

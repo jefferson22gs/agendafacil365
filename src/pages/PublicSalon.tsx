@@ -37,7 +37,8 @@ import {
   Download,
   Image,
   Camera,
-  Copy
+  Copy,
+  CalendarCheck
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
@@ -955,6 +956,8 @@ const PublicSalon = () => {
     return sortedDays.map(d => dayNames[d]).join(", ");
   };
 
+  // Atalho "Meus agendamentos": só se o link pessoal do WhatsApp já foi aberto neste aparelho.
+  const hasPortal = (() => { try { return !!salon?.slug && /^[0-9a-f]{48}$/.test(localStorage.getItem(`af365.portal.${salon.slug}`) ?? ""); } catch { return false; } })();
   // Cor do estabelecimento (só HEX válido; ausente/inválida cai no azul padrão)
   const primaryColor = accessibleBackground(safeHexColor(salon?.primary_color));
   const primaryForeground = textOnColor(primaryColor);
@@ -1124,6 +1127,13 @@ const PublicSalon = () => {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap justify-center gap-2">
+              {/* Área do cliente: aparece quando este aparelho já abriu o link pessoal do WhatsApp. */}
+              {hasPortal && (
+                <a href={`/s/${salon.slug}/meus-agendamentos`} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ borderColor: `${primaryColor}55`, color: primaryText }}>
+                  <CalendarCheck size={18} aria-hidden />
+                  <span>Meus agendamentos</span>
+                </a>
+              )}
               {/* WhatsApp Button */}
               {salon.whatsapp && (
                 <a

@@ -290,6 +290,16 @@ function appUrl(salon: SalonRow): string | null {
   const origin = String(env ?? "https://agendafacil365.com.br").split(",")[0].trim().replace(/\/$/, "");
   return salon.slug ? `${origin}/s/${salon.slug}` : null;
 }
+/**
+ * Link pessoal da área do cliente (/s/:slug/meus-agendamentos#t=…). A conversa vem do próprio número, então o
+ * WhatsApp já comprova a posse do telefone. O token vai no fragmento (#), que não aparece em logs de servidor.
+ */
+async function portalUrl(c: Ctx): Promise<string | null> {
+  const base = appUrl(c.salon);
+  if (!base || c.ctx.preview) return base;
+  const { data, error } = await c.ctx.db.rpc("client_portal_issue", { p_salon_id: c.ctx.salonId, p_phone: c.ctx.phone });
+  return error || typeof data !== "string" ? base : `${base}/meus-agendamentos#t=${data}`;
+}
 
 async function book(c: Ctx): Promise<Out> {
   const f = c.s.data.flow!, { ctx } = c;
@@ -313,11 +323,11 @@ async function book(c: Ctx): Promise<Out> {
   }
   const r = data as { id: string; final_price: number; status?: string };
   const confirmed = r.status === "confirmed";
-  const link = appUrl(c.salon);
+  const link = await portalUrl(c);
   const vars = { salao: c.salon.name, nome: f.name, primeiro_nome: firstName(f.name), resumo: summary, link: link ?? "" };
   const head = c.cfg.confirmation ? fillTemplate(c.cfg.confirmation, vars) : `${confirmed ? "✅ *Agendamento confirmado!*" : "✅ *Solicitação registrada!* Aguarde a confirmação do salão."}`;
   const where = [c.salon.address, c.salon.city].filter(Boolean).join(", ");
-  const done = `${head}\n\n${summary}\n💰 *Valor:* ${brl(r.final_price)}${where ? `\n📍 ${where}` : ""}${link ? `\n\n📲 Acompanhe ou altere pelo app: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
+  const done = `${head}\n\n${summary}\n💰 *Valor:* ${brl(r.final_price)}${where ? `\n📍 ${where}` : ""}${link ? `\n\n📲 Seus agendamentos e histórico: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
   c.s.step = "IDLE"; c.s.data = {};
   const out: Out = { messages: buttonsMode(c) ? quickButtons(c, done, [{ id: "menu_my_appointments", title: "📋 Meus horários" }, { id: "menu_main", title: "🏠 Menu inicial" }]) : [{ type: "text", text: done }], model: "guided_booking" };
   // PIX cadastrado: o passo de pagamento do atendente assume (QR, copia e cola, comprovante).
@@ -349,6 +359,8 @@ async function myAppointments(c: Ctx, intro = "", page = 0): Promise<Out> {
   const appts = await listAppointments(c);
   c.s.data = { appts };
   if (c.ctx.preview) return prefix(say(c, "MAIN_MENU", "(Simulação) Aqui apareceriam os agendamentos futuros do cliente, com opções de remarcar ou cancelar.\n\nDigite *0* para o menu."), intro);
+  const portal = await portalUrl(c);
+  intro = [intro, portal?.includes("#t=") ? `📲 Histórico completo e próximos horários: ${portal}` : ""].filter(Boolean).join("\n\n");
   if (!appts.length) return prefix(menu(c, "MAIN_MENU", "Agendamentos", "Você não tem agendamentos futuros por aqui.", [{ id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } }, { id: "menu_main", title: "⬅️ Menu inicial", value: { go: "menu" } }], 0, "Responda com o número."), intro);
   if (appts.length === 1) { c.s.data.target = appts[0]; return appointmentActions(c, intro); }
   return prefix(menu(c, "MY_APPOINTMENTS", "Seus agendamentos", "Seus próximos horários. Qual deles?", appts.map(a => ({ title: `${dateBR(a.date)} ${a.start}`, description: `${a.service}${a.professional ? ` · ${a.professional}` : ""}`, value: { id: a.id } })), page), intro);
