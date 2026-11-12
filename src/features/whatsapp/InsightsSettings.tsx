@@ -17,7 +17,20 @@ interface Settings {
   alert_drop_pct: number; alert_growth_pct: number; alert_cancel_rate_pct: number; alert_cooldown_days: number;
 }
 interface Recipient { id: string; phone: string; verified_at: string | null }
-interface Report { id: string; kind: string; period_start: string; status: string; error_code: string | null; created_at: string; message: string }
+interface Report { id: string; kind: string; period_start: string; status: string; error_code: string | null; created_at: string; message: string; whatsapp_outbox?: { status: string; error_code: string | null } | null }
+/** Situação real da entrega (fila do WhatsApp), não só "foi para a fila". */
+function deliveryLabel(r: Report): string {
+  if (r.status === "skipped") return "não enviado (WhatsApp não conectado)";
+  if (r.status === "failed") return "falhou";
+  const o = r.whatsapp_outbox;
+  if (!o) return "na fila";
+  if (o.status === "read") return "lido ✓✓";
+  if (o.status === "delivered") return "entregue ✓✓";
+  if (o.status === "accepted") return "enviado ✓";
+  if (o.status === "pending" || o.status === "processing") return "na fila";
+  if (o.error_code === "outside_service_window") return "não enviado: mande um \"oi\" do seu WhatsApp para o número do salão e tente de novo (regra da Meta: 24 h)";
+  return `não enviado (${o.error_code ?? o.status})`;
+}
 
 const DEFAULTS: Settings = {
   weekly_enabled: false, monthly_enabled: false, yearly_enabled: false, alerts_enabled: false,
@@ -39,12 +52,18 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
+  const [codes, setCodes] = useState<Record<string, string>>({});
+  const [channels, setChannels] = useState({ whatsapp: true, email: true });
   const [preview, setPreview] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
   const invoke = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("insights-reports", { body: { salonId, ...body } });
-    if (error || !data?.success) throw new Error(data?.error ?? "Não foi possível concluir. Tente novamente.");
+    if (error || !data?.success) {
+      let msg = data?.error as string | undefined;
+      if (!msg && error) try { msg = (await (error as { context?: Response }).context?.json())?.error; } catch { /* sem corpo */ }
+      throw new Error(msg ?? "Não foi possível concluir. Tente novamente.");
+    }
     return data;
   }, [salonId]);
 
@@ -52,11 +71,13 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
     const [cfg, rec, rep] = await Promise.all([
       table("insights_settings").select("*").eq("salon_id", salonId).maybeSingle(),
       table("insights_recipients").select("id,phone,verified_at").eq("salon_id", salonId).order("created_at"),
-      table("insights_reports").select("id,kind,period_start,status,error_code,created_at,message").eq("salon_id", salonId).order("created_at", { ascending: false }).limit(20),
+      table("insights_reports").select("id,kind,period_start,status,error_code,created_at,message,whatsapp_outbox(status,error_code)").eq("salon_id", salonId).order("created_at", { ascending: false }).limit(20),
     ]);
     if (cfg.data) setS({ ...DEFAULTS, ...(cfg.data as Partial<Settings>), send_time: String((cfg.data as Settings).send_time).slice(0, 5) });
     setRecipients((rec.data ?? []) as Recipient[]);
-    setReports((rep.data ?? []) as Report[]);
+    // Relação 1:1 (outbox_id) volta como objeto; normaliza caso venha como lista.
+    setReports(((rep.data ?? []) as unknown as (Report & { whatsapp_outbox: Report["whatsapp_outbox"] | Report["whatsapp_outbox"][] })[])
+      .map(r => ({ ...r, whatsapp_outbox: Array.isArray(r.whatsapp_outbox) ? r.whatsapp_outbox[0] ?? null : r.whatsapp_outbox })));
   }, [salonId]);
 
   useEffect(() => { void reload().finally(() => setLoading(false)); }, [reload]);
@@ -78,7 +99,27 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
     if (!normalized) throw new Error("Número inválido. Use DDD + número, ex.: (11) 99999-9999.");
     await invoke({ action: "register_phone", phone: normalized });
     setPhone("");
-    toast({ title: "Código enviado", description: "Responda no WhatsApp com o código de 6 dígitos para verificar o número." });
+    toast({ title: "Código enviado", description: "Digite abaixo o código de 6 dígitos que chegou no WhatsApp." });
+    await reload();
+  });
+
+  const verify = (id: string) => run(`verify-${id}`, async () => {
+    await invoke({ action: "verify_code", recipientId: id, code: (codes[id] ?? "").trim() });
+    setCodes(c => ({ ...c, [id]: "" }));
+    toast({ title: "Número verificado ✅", description: "Este número já pode receber os relatórios." });
+    await reload();
+  });
+
+  /** Envio manual agora: confirma o canal escolhido e mostra o resultado de cada um. */
+  const sendNow = () => run("send-now", async () => {
+    const chosen = (["whatsapp", "email"] as const).filter(c => channels[c]);
+    if (!chosen.length) throw new Error("Escolha WhatsApp, e-mail ou os dois.");
+    const r = await invoke({ action: "send_now", kind: "weekly", mode: "current", channels: chosen });
+    const wa: Record<string, string> = { queued: "enviado para a fila (chega em instantes)", no_recipient: "nenhum número verificado", instance_missing: "WhatsApp não conectado", failed: "falhou" };
+    const em: Record<string, string> = { sent: "enviado para o e-mail da conta e do salão", no_email: "nenhum e-mail cadastrado", email_unavailable: "envio de e-mail não configurado", failed: "falhou" };
+    const lines = [r.whatsapp && `WhatsApp: ${wa[r.whatsapp] ?? r.whatsapp}`, r.email && `E-mail: ${em[r.email] ?? r.email}`].filter(Boolean).join(" · ");
+    const bad = (r.whatsapp && r.whatsapp !== "queued") || (r.email && r.email !== "sent");
+    toast({ title: bad ? "Envio com pendências" : "Relatório enviado", description: lines, variant: bad ? "destructive" : undefined });
     await reload();
   });
 
@@ -103,18 +144,40 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
         <div className="space-y-3">
           <p className="text-sm font-medium">Número que recebe os relatórios</p>
           {recipients.map(r => (
-            <div key={r.id} className="flex items-center justify-between rounded-lg border p-3">
-              <span className="flex flex-wrap items-center gap-2 min-w-0"><span className="font-medium">{r.phone}</span>{r.verified_at
-                ? <Badge variant="success" className="gap-1"><CheckCircle2 size={12} aria-hidden />Verificado</Badge>
-                : <Badge variant="warning" className="gap-1"><Clock size={12} aria-hidden />Aguardando código</Badge>}</span>
-              <Button size="sm" variant="ghost" aria-label="Remover número" disabled={!!busy} onClick={() => void run(`rm-${r.id}`, async () => { await invoke({ action: "remove_phone", recipientId: r.id }); await reload(); })}><Trash2 size={14} aria-hidden /></Button>
+            <div key={r.id} className="space-y-3 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex flex-wrap items-center gap-2 min-w-0"><span className="font-medium">{r.phone}</span>{r.verified_at
+                  ? <Badge variant="success" className="gap-1"><CheckCircle2 size={12} aria-hidden />Verificado</Badge>
+                  : <Badge variant="warning" className="gap-1"><Clock size={12} aria-hidden />Aguardando código</Badge>}</span>
+                <Button size="sm" variant="ghost" className="min-h-11" aria-label="Remover número" disabled={!!busy} onClick={() => void run(`rm-${r.id}`, async () => { await invoke({ action: "remove_phone", recipientId: r.id }); await reload(); })}><Trash2 size={14} aria-hidden /></Button>
+              </div>
+              {!r.verified_at && (
+                <form className="flex flex-wrap items-end gap-2" onSubmit={e => { e.preventDefault(); void verify(r.id); }} data-tour="whatsapp-insights-code">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <Label htmlFor={`code-${r.id}`} className="text-sm">Código recebido no WhatsApp</Label>
+                    <Input id={`code-${r.id}`} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" className="tracking-[0.3em]" value={codes[r.id] ?? ""} onChange={e => setCodes(c => ({ ...c, [r.id]: e.target.value.replace(/\D/g, "").slice(0, 6) }))} />
+                  </div>
+                  <Button type="submit" className="min-h-11" disabled={!!busy || (codes[r.id] ?? "").length !== 6}>{busy === `verify-${r.id}` && <Loader2 className="animate-spin mr-2" size={14} />}Verificar</Button>
+                  <Button type="button" variant="ghost" className="min-h-11" disabled={!!busy} onClick={() => { setPhone(r.phone); void run("register", async () => { await invoke({ action: "register_phone", phone: r.phone }); toast({ title: "Novo código enviado" }); }); }}>Reenviar código</Button>
+                </form>
+              )}
             </div>
           ))}
           <div className="flex gap-2">
             <Input aria-label="Número de WhatsApp para relatórios" placeholder="(11) 99999-9999" value={phone} onChange={e => setPhone(e.target.value)} />
             <Button variant="outline" disabled={!!busy || !phone.trim()} onClick={() => void register()}>{busy === "register" && <Loader2 className="animate-spin mr-2" size={14} />}Enviar código</Button>
           </div>
-          <p className="text-xs text-muted-foreground">Por segurança, o número precisa responder o código no WhatsApp antes de receber dados financeiros.</p>
+          <p className="text-xs text-muted-foreground">Por segurança, o número precisa ser verificado com o código (digitado aqui ou respondido no WhatsApp) antes de receber dados financeiros.</p>
+        </div>
+
+        <div className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4" data-tour="whatsapp-insights-send-now">
+          <p className="text-sm font-semibold">Enviar relatório agora (teste)</p>
+          <p className="text-xs text-muted-foreground">Gera o resumo da semana até agora e envia na hora, sem esperar o horário agendado.</p>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={channels.whatsapp} onChange={e => setChannels(c => ({ ...c, whatsapp: e.target.checked }))} />WhatsApp {verified ? "" : <span className="text-xs text-muted-foreground">(verifique um número)</span>}</label>
+            <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={channels.email} onChange={e => setChannels(c => ({ ...c, email: e.target.checked }))} />E-mail (conta e salão)</label>
+          </div>
+          <Button variant="brand" className="min-h-11" disabled={!!busy} onClick={() => void sendNow()}>{busy === "send-now" ? <Loader2 className="animate-spin mr-2" size={14} /> : <Send size={14} className="mr-2" />}Enviar agora</Button>
         </div>
 
         <div className="space-y-4">
@@ -160,7 +223,7 @@ export function InsightsSettings({ salonId }: { salonId: string }) {
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
             {reports.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum relatório enviado ainda.</p> : reports.map(r => (
               <button key={r.id} className="w-full text-left rounded border p-2 text-sm hover:bg-muted" onClick={() => { setShowHistory(false); setPreview(r.message); }}>
-                <span className="font-medium">{KIND_LABEL[r.kind] ?? r.kind}</span> · {new Date(r.created_at).toLocaleString("pt-BR")} · {r.status === "queued" ? "enviado para a fila" : r.status === "skipped" ? "não enviado (WhatsApp não conectado)" : "falhou"}
+                <span className="font-medium">{KIND_LABEL[r.kind] ?? r.kind}</span> · {new Date(r.created_at).toLocaleString("pt-BR")} · {deliveryLabel(r)}
               </button>
             ))}
           </div></DialogContent>

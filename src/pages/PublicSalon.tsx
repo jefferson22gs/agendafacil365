@@ -14,6 +14,7 @@ import { SalonLogo } from '@/components/pwa/SalonLogo';
 import { useAuth } from '@/hooks/useAuth';
 import { WcagBadge } from '@/components/a11y/WcagBadge';
 import { RatingBadge, useProfessionalRatings } from '@/components/reviews/ProfessionalRating';
+import { PackagePurchase, fetchCredits, type CreditRow } from '@/components/packages/PackagePurchase';
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -197,6 +198,12 @@ const PublicSalon = () => {
   const [couponApplied, setCouponApplied] = useState<{ id: string; discount: number; message: string } | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [allowPhotos, setAllowPhotos] = useState(false);
+  const [buyPackage, setBuyPackage] = useState<ServicePackage | null>(null);
+  // Assinante de pacote: créditos do telefone informado (null = ainda não respondeu).
+  const [subscriber, setSubscriber] = useState<boolean | null>(null);
+  const [credits, setCredits] = useState<CreditRow[] | null>(null);
+  const [creditsPhone, setCreditsPhone] = useState("");
+  const [checkingCredits, setCheckingCredits] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -759,6 +766,7 @@ const PublicSalon = () => {
 
     setSubmitting(true);
     try {
+      // Crédito: o banco desconta 1 uso e zera o serviço (trigger appointments_apply_credit); aqui só o cupom.
       const discount = couponApplied?.discount || 0;
       const finalPrice = cartTotal - discount;
 
@@ -810,7 +818,8 @@ const PublicSalon = () => {
           final_price: finalPrice,
           status: 'pending',
           notes: notesArray.length > 0 ? notesArray.join(' | ') : null,
-        })
+          ...(activeCredit ? { credit_id: activeCredit.credit_id } : {}),
+        } as never)
         .select()
         .single();
 
@@ -939,9 +948,12 @@ const PublicSalon = () => {
     return false;
   };
 
+  // Crédito vale para o serviço principal e só para o mesmo telefone conferido.
+  const activeCredit = subscriber && credits && creditsPhone === clientPhone ? credits.find(c => c.service_id === cartServices[0]?.id) ?? null : null;
+  const creditValue = activeCredit ? (cartServices[0]?.price ?? 0) : 0;
   const price = cartTotal;
-  const discount = couponApplied?.discount || 0;
-  const finalPrice = price - discount;
+  const discount = (couponApplied?.discount || 0) + creditValue;
+  const finalPrice = Math.max(0, price - discount);
 
   const formatWorkingDays = () => {
     if (!salon) return "";
@@ -1389,9 +1401,10 @@ const PublicSalon = () => {
                           type="button"
                           key={pkg.id}
                           aria-pressed={isInCart(pkg.id, 'package')}
+                          aria-haspopup="dialog"
                           onClick={() => isInCart(pkg.id, 'package')
                             ? removeFromCart(pkg.id, 'package')
-                            : addToCart(pkg, 'package')
+                            : setBuyPackage(pkg)
                           }
                           className="relative flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all text-left"
                           style={{
@@ -1453,10 +1466,13 @@ const PublicSalon = () => {
                               R$ {pkg.price.toFixed(2)}
                             </p>
                           </div>
+                          {!isInCart(pkg.id, 'package') && <span className="text-sm font-semibold" style={{ color: primaryText }}>Toque para assinar →</span>}
                         </button>
                       ))}
                     </div>
                   )}
+                  <PackagePurchase open={!!buyPackage} onOpenChange={o => { if (!o) setBuyPackage(null); }} pkg={buyPackage} color={primaryColor} onColor={primaryForeground}
+                    onBookToday={() => { if (buyPackage && !isInCart(buyPackage.id, 'package')) addToCart(buyPackage, 'package'); setActiveTab('services'); }} />
                 </TabsContent>
 
                 <TabsContent value="gallery">
@@ -1813,6 +1829,32 @@ const PublicSalon = () => {
               </div>
 
 
+              {/* Assinante de pacote: confere créditos pelo WhatsApp e usa 1 no serviço principal. */}
+              {cartServices.length > 0 && (
+                <fieldset className="mb-6 space-y-3 rounded-2xl border border-border p-4">
+                  <legend className="px-1 text-sm font-semibold"><Package size={16} className="mr-1 inline" aria-hidden />Você é assinante de algum pacote?</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([[true, "Sim"], [false, "Não"]] as const).map(([v, l]) => (
+                      <button key={l} type="button" aria-pressed={subscriber === v} onClick={() => { setSubscriber(v); if (!v) setCredits(null); }}
+                        className="min-h-11 rounded-xl border-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ borderColor: subscriber === v ? primaryColor : 'hsl(var(--border))', color: subscriber === v ? primaryText : undefined }}>{l}</button>
+                    ))}
+                  </div>
+                  {subscriber && (
+                    <div className="space-y-2">
+                      <Button type="button" variant="outline" className="min-h-11 w-full" disabled={checkingCredits || clientPhone.replace(/\D/g, '').length < 10}
+                        onClick={async () => { setCheckingCredits(true); setCredits(await fetchCredits(salon!.id, clientPhone)); setCreditsPhone(clientPhone); setCheckingCredits(false); }}>
+                        {checkingCredits && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Verificar meus créditos pelo WhatsApp informado
+                      </Button>
+                      {clientPhone.replace(/\D/g, '').length < 10 && <p className="text-xs text-muted-foreground">Preencha o WhatsApp acima primeiro.</p>}
+                      {credits && (activeCredit
+                        ? <p role="status" className="rounded-xl bg-success/10 p-3 text-sm">🎁 Crédito encontrado: <strong>{activeCredit.service}</strong> ({activeCredit.remaining} {activeCredit.remaining === 1 ? 'uso restante' : 'usos restantes'}{activeCredit.package ? ` · ${activeCredit.package}` : ''}). Este serviço sai por R$ 0,00.</p>
+                        : <p role="status" className="rounded-xl bg-warning/15 p-3 text-sm">{credits.length ? `Seus créditos são para: ${credits.map(c => c.service).join(', ')}. O serviço escolhido segue com valor normal.` : 'Não encontramos pacote ativo neste WhatsApp. O agendamento segue com valor normal.'}</p>)}
+                    </div>
+                  )}
+                </fieldset>
+              )}
+
               {/* Coupon */}
               <div className="mb-6">
                 <Label className="flex items-center gap-2 mb-2">
@@ -1852,7 +1894,7 @@ const PublicSalon = () => {
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-sm" style={{ color: primaryText }}>
-                      <span>Desconto</span>
+                      <span>{creditValue > 0 ? 'Desconto (pacote/cupom)' : 'Desconto'}</span>
                       <span>- R$ {discount.toFixed(2)}</span>
                     </div>
                   )}

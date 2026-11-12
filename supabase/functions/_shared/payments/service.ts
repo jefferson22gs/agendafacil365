@@ -74,6 +74,35 @@ export async function chargeAppointment(db: SupabaseClient, salonId: string, pho
   }
 }
 
+/**
+ * Cobrança de um pedido de pacote no provedor do salão (link público). Valor vem do pedido (servidor).
+ * Mercado Pago com Pix devolve copia e cola; os demais devolvem a página segura do provedor.
+ */
+export async function chargePackageOrder(db: SupabaseClient, order: { id: string; salon_id: string; amount_cents: number; client_name: string; client_phone: string; packageName: string; slug: string | null }, method: Method, s: PaySettings, fetcher: typeof fetch = fetch): Promise<ChargeOut | null> {
+  if (s.provider === "pix_manual") return null;
+  const account = await accountOf(db, order.salon_id, s);
+  if (!account) return null;
+  const kind: Method | "link" = s.provider === "mercadopago" ? method : s.provider === "infinitepay" ? "link" : method;
+  const id = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + (kind === "pix" ? 60 : 24 * 60) * 60_000);
+  const { error } = await db.from("payment_charges").insert({ id, salon_id: order.salon_id, package_order_id: order.id, provider: s.provider, method: kind, amount_cents: order.amount_cents, expires_at: expiresAt.toISOString() });
+  if (error) throw new GatewayError("provider_unavailable", "db");
+  try {
+    const created = await createCharge(fetcher, account, {
+      id, amountCents: order.amount_cents, method, description: `Pacote ${order.packageName}`,
+      payer: { name: order.client_name, phone: order.client_phone },
+      webhookUrl: `${functionsUrl()}/payment-webhook?p=${s.provider}&c=${id}`,
+      redirectUrl: order.slug ? `${appOrigin()}/s/${order.slug}?pacote=${order.id}` : appOrigin(),
+      expiresAt,
+    });
+    await db.from("payment_charges").update({ external_id: created.externalId, checkout_url: created.checkoutUrl, pix_code: created.pixCode, provider_ref: created.ref ?? {}, updated_at: new Date().toISOString() }).eq("id", id);
+    return { id, method: kind, url: created.checkoutUrl, pixCode: created.pixCode, amountCents: order.amount_cents, reused: false };
+  } catch (e) {
+    await db.from("payment_charges").update({ status: "failed", provider_ref: { error: e instanceof GatewayError ? `${e.code}:${e.detail ?? ""}`.slice(0, 200) : "error" }, updated_at: new Date().toISOString() }).eq("id", id);
+    throw e;
+  }
+}
+
 /** Consulta o provedor e, se pago, confirma (uma vez). Retorna true quando a cobrança ficou paga. */
 export async function settleCharge(db: SupabaseClient, chargeId: string, extraRef?: Record<string, string>, fetcher: typeof fetch = fetch): Promise<boolean> {
   const { data: ch } = await db.from("payment_charges").select("id,salon_id,provider,status,external_id,provider_ref,expires_at,created_at").eq("id", chargeId).maybeSingle();

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Package, Edit2, Trash2, Percent, X } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { PackageOrdersCard } from "@/components/packages/PackageOrdersCard";
 
 interface PackageItem {
   service_id: string;
@@ -611,6 +612,7 @@ const PackagesPage = () => {
             ))}
           </div>
         )}
+        {salonId && <PackageOrdersCard salonId={salonId} />}
       </div>
     </AdminLayout>
   );

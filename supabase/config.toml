@@ -94,5 +94,8 @@ verify_jwt = false
 [functions.payment-webhook]
 verify_jwt = false
 
+[functions.package-checkout]
+verify_jwt = false
+
 [functions.meta-embedded-signup]
 verify_jwt = false
