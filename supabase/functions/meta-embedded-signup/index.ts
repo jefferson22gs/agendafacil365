@@ -85,8 +85,8 @@ serve(async req => {
       webhook_url: `${requiredEnv("SUPABASE_URL")}/functions/v1/meta-webhook`, phone_number: digits,
       meta_phone_number_id: String(phoneId), meta_waba_id: String(wabaId), meta_display_name: phone.verified_name ?? null, qrcode: null,
     };
-    // Substitui a conexão por QR code do salão (uma conexão por salão). A instância da Evolution fica para o dono excluir.
-    const { error: upsertError } = await db.from("whatsapp_instances").upsert(row, { onConflict: "salon_id" });
+    // Convive com a conexão QR Code (Disparador e Status): só cria/atualiza a conexão oficial do salão.
+    const { error: upsertError } = await db.from("whatsapp_instances").upsert(row, { onConflict: "salon_id,provider" });
     if (upsertError) throw new WhatsAppError("persistence_failed", 503);
     return jsonResponse({ success: true, phoneNumber: digits, displayName: phone.verified_name ?? null });
   } catch (error) { return errorResponse(error); }

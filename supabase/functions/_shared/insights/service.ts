@@ -40,9 +40,9 @@ export async function buildReport(ctx: SalonCtx, kind: ReportKind, mode: "closed
 }
 
 async function instanceId({ db, salonId }: SalonCtx): Promise<string | null> {
-  const { data, error } = await db.from("whatsapp_instances").select("id").eq("salon_id", salonId).maybeSingle();
+  const { data, error } = await db.rpc("whatsapp_instance_for", { p_salon_id: salonId, p_purpose: "chat" });
   if (error) throw new WhatsAppError("persistence_failed", 503);
-  return data?.id ?? null;
+  return (data as string | null) ?? null;
 }
 
 export async function verifiedRecipients({ db, salonId }: SalonCtx) {

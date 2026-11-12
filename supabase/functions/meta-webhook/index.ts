@@ -52,8 +52,11 @@ serve(async req => {
         const { error: e } = await db.from("whatsapp_messages").upsert(inbox, { onConflict: "salon_id,provider_message_id", ignoreDuplicates: true });
         if (e) throw new WhatsAppError("persistence_failed", 503);
       }
+      // Robô ligado no QR Code: a oficial só guarda as conversas na Caixa de entrada (sem resposta automática).
+      const { data: botProvider } = await db.rpc("whatsapp_bot_provider", { p_salon_id: instance.salon_id });
+      const botHere = !botProvider || botProvider === "meta";
       for (const m of change.incoming) {
-        if (m.phone === own) continue;
+        if (m.phone === own || !botHere) continue;
         const { error: e } = await db.from("whatsapp_webhook_events").upsert({
           salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
           provider_message_id: m.id, sender_phone: m.phone, whatsapp_at: m.timestamp,

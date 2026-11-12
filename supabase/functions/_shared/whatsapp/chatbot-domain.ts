@@ -52,8 +52,9 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
   if (!p) {
     const read = (cols: string) => Promise.resolve(ctx.db.from("whatsapp_automation_settings").select(cols).eq("salon_id", ctx.salonId).maybeSingle());
     // Coluna provider ausente (migração Meta pendente) = Evolution.
-    const provider = Promise.resolve(ctx.db.from("whatsapp_instances").select("provider").eq("salon_id", ctx.salonId).maybeSingle())
-      .then(r => ((r.data as { provider?: string } | null)?.provider === "meta" ? "meta" : "evolution") as AutomationRow["provider"], () => "evolution" as const);
+    // Conexão escolhida pelo dono para o robô: oficial = botões; QR Code = enquete/números.
+    const provider = Promise.resolve(ctx.db.rpc("whatsapp_bot_provider", { p_salon_id: ctx.salonId }))
+      .then(r => (r.data === "meta" ? "meta" : "evolution") as AutomationRow["provider"], () => "evolution" as const);
     p = Promise.all([read(GUIDED_COLUMNS), provider]).then(async ([r, prov]) => {
       // 42703 = coluna inexistente (migração ainda não aplicada): fallback resiliente às colunas antigas.
       if (r.error && String(r.error.code) === "42703") r = await read("chatbot_booking_enabled,interactive_enabled");

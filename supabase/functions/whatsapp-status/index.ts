@@ -9,7 +9,8 @@ serve(async (req) => {
     const body = await readRequest(req), db = serviceClient();
     const userId = await authorizeSalon(req, db, body.salonId);
     const salonId = body.salonId as string;
-    const instance = await salonInstance(db, salonId);
+    // Status só existe na conexão QR Code (a API oficial da Meta não publica Status).
+    const instance = await salonInstance(db, salonId, "status");
     if (instance.status !== "connected") throw new WhatsAppError("disconnected", 409);
     if (body.action !== "save" || !["text", "image", "video"].includes(String(body.contentType)) || typeof body.text !== "string" || body.text.length > 4096 || typeof body.localDateTime !== "string") throw new WhatsAppError("invalid_request");
     // Fuso do salão é a fonte da verdade, não o navegador de quem agendou.

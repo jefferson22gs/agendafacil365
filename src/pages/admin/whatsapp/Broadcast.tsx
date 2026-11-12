@@ -36,9 +36,13 @@ export default function Broadcast() {
   const submission = useRef<{ key: string; ids: string[]; done: number } | null>(null);
 
   const instance = useQuery({ queryKey: ["wa-instance", salonId], enabled: !!salonId, queryFn: async () => {
-    const { data, error } = await db.from("whatsapp_instances").select("status").eq("salon_id", salonId!).maybeSingle();
+    // Disparos saem pela conexão QR Code quando existir; sem ela, pela oficial (só alcança quem falou nas últimas 24 h).
+    const { data: id, error: pickError } = await db.rpc("whatsapp_instance_for", { p_salon_id: salonId!, p_purpose: "marketing" });
+    if (pickError) throw pickError;
+    if (!id) return null;
+    const { data, error } = await db.from("whatsapp_instances").select("status,provider").eq("id", id).maybeSingle();
     if (error) throw error;
-    return data as { status: string } | null;
+    return data as { status: string; provider: "evolution" | "meta" } | null;
   }});
   const suppressed = useQuery({ queryKey: ["wa-suppressed", salonId], enabled: !!salonId, queryFn: async () => {
     const [s, c] = await Promise.all([
@@ -159,6 +163,7 @@ export default function Broadcast() {
   if (!connected) return <div data-tour="broadcast-header" className="rounded-xl border border-warning/40 bg-warning/10 p-4"><h2 className="font-semibold">WhatsApp desconectado</h2><p className="text-sm">O disparo fica bloqueado até o WhatsApp do salão estar conectado. Conecte na aba Conexão; campanhas já registradas continuam na fila e retomam após reconectar.</p></div>;
   return <section className="min-w-0 space-y-4">
     <div data-tour="broadcast-header"><h2 className="text-xl font-semibold">Disparador</h2><p className="text-sm text-muted-foreground">Envie só para quem autorizou. Envio na fila, 1 mensagem a cada {3} s; quem pediu para sair é ignorado automaticamente.</p></div>
+    {instance.data?.provider === "meta" && <p role="status" className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">Sem conexão por QR Code, o disparo sai pela API oficial e só chega a quem conversou com o salão nas últimas 24 h (regra da Meta). Para enviar a todos, conecte o QR Code em Conexão &gt; Disparador e Status.</p>}
     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="min-w-0 space-y-3 rounded-xl border p-3">
         <div className="flex flex-wrap gap-2">

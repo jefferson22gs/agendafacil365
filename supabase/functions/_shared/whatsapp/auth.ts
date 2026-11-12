@@ -56,9 +56,23 @@ export function safeEqual(a: string, b: string): boolean {
   for (let i = 0; i < Math.max(aa.length, bb.length); i++) diff |= (aa[i] ?? 0) ^ (bb[i] ?? 0);
   return diff === 0;
 }
-export interface SalonInstance { id: string; salon_id: string; instance_name: string; status: string; phone_number: string | null }
-export async function salonInstance(db: SupabaseClient, salonId: string): Promise<SalonInstance> {
-  const { data, error } = await db.from("whatsapp_instances").select("id,salon_id,instance_name,status,phone_number").eq("salon_id", salonId).maybeSingle();
+export interface SalonInstance { id: string; salon_id: string; instance_name: string; status: string; phone_number: string | null; provider: "evolution" | "meta" }
+/**
+ * Conexão do salão para a finalidade (o salão pode ter API oficial + QR Code):
+ * chat = oficial se houver; marketing = QR Code se houver; status = só QR Code; evolution = a conexão QR Code (tela Conexão).
+ */
+export type InstancePurpose = "chat" | "marketing" | "status" | "evolution";
+export async function salonInstance(db: SupabaseClient, salonId: string, purpose: InstancePurpose = "chat"): Promise<SalonInstance> {
+  const cols = "id,salon_id,instance_name,status,phone_number,provider";
+  let query;
+  if (purpose === "evolution") query = db.from("whatsapp_instances").select(cols).eq("salon_id", salonId).eq("provider", "evolution").maybeSingle();
+  else {
+    const { data: id, error: pickError } = await db.rpc("whatsapp_instance_for", { p_salon_id: salonId, p_purpose: purpose });
+    if (pickError) throw new WhatsAppError("persistence_failed", 503);
+    if (!id) throw new WhatsAppError("instance_missing", 409);
+    query = db.from("whatsapp_instances").select(cols).eq("id", id).maybeSingle();
+  }
+  const { data, error } = await query;
   if (error) throw new WhatsAppError("persistence_failed", 503);
   if (!data) throw new WhatsAppError("instance_missing", 409);
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(data.instance_name)) throw new WhatsAppError("configuration_missing", 503);

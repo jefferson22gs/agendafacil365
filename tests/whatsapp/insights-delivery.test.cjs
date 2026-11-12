@@ -19,7 +19,7 @@ function memoryDb({ instance = true, recipients = [{ id: 'r1', phone: '+55119000
   const reports = [], outbox = [], metricCalls = [];
   const api = {
     reports, outbox, metricCalls,
-    rpc: async (name, args) => { if (name === 'insights_metrics') { metricCalls.push(args); return { data: { ...zero, completed: 8, revenue: 400, start: args.p_start, end_exclusive: args.p_end }, error: null }; } if (name === 'insights_dow_history') return { data: [], error: null }; return { data: null, error: null }; },
+    rpc: async (name, args) => { if (name === 'insights_metrics') { metricCalls.push(args); return { data: { ...zero, completed: 8, revenue: 400, start: args.p_start, end_exclusive: args.p_end }, error: null }; } if (name === 'insights_dow_history') return { data: [], error: null }; if (name === 'whatsapp_instance_for') return { data: instance ? 'inst' : null, error: null }; return { data: null, error: null }; },
     from(table) {
       const f = []; let mode = 'select', payload = null, opts = {};
       const rows = () => {

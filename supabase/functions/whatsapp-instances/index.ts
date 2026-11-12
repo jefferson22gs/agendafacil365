@@ -41,7 +41,8 @@ serve(async (req) => {
       if (error) throw new WhatsAppError("persistence_failed", 503);
     };
     if (action === "create") {
-      const { data: existing, error: lookupError } = await db.from("whatsapp_instances").select("id,instance_name,status").eq("salon_id", tenant).maybeSingle();
+      // A conexão QR Code convive com a oficial: procura só a Evolution do salão.
+      const { data: existing, error: lookupError } = await db.from("whatsapp_instances").select("id,instance_name,status").eq("salon_id", tenant).eq("provider", "evolution").maybeSingle();
       if (lookupError) throw new WhatsAppError("persistence_failed", 503);
       if (existing) return jsonResponse({ success: true, instance: { ...existing, salon_id: tenant, instanceName: existing.instance_name } });
       const name = `syshair_${tenant.replaceAll("-", "")}`;
@@ -54,7 +55,14 @@ serve(async (req) => {
       await api.request("create", name, { instanceName: name, integration: "WHATSAPP-BAILEYS", qrcode: false, webhook: { enabled: true, url: webhookUrl, byEvents: false, base64: false, headers: { "x-syshair-webhook-secret": secret }, events: WEBHOOK_EVENTS } });
       return jsonResponse({ success: true, instance: { id: row.id, salon_id: tenant, instance_name: name, instanceName: name, status: "disconnected" } });
     }
-    const instance = await salonInstance(db, tenant);
+    // body.provider: "evolution" (QR Code) ou "meta" (oficial). Sem informar: ações de QR/contatos usam a Evolution
+    // quando existir; status/fetch usam a conexão de atendimento (compatível com telas antigas).
+    const qrAction = ["connect", "disconnect", "delete", "contacts", "sync_webhook", "set_groups_ignore"].includes(String(action));
+    const purpose = body.provider === "evolution" || (body.provider !== "meta" && qrAction) ? "evolution" : "chat";
+    const instance = await salonInstance(db, tenant, purpose).catch(async (e) => {
+      if (purpose === "evolution" && body.provider !== "evolution") return salonInstance(db, tenant, "chat");
+      throw e;
+    });
     if (body.instanceName && body.instanceName !== instance.instance_name) throw new WhatsAppError("forbidden", 403);
     // API oficial: não há QR, webhook da Evolution nem grupos; o estado vem da Meta (número registrado e qualidade).
     const { data: prov } = await db.from("whatsapp_instances").select("provider,meta_phone_number_id,meta_display_name").eq("id", instance.id).maybeSingle();

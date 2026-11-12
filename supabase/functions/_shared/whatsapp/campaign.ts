@@ -26,7 +26,8 @@ export async function campaignHandler(req: Request): Promise<Response> {
       return jsonResponse({ success: true, broadcast: data });
     }
     if (body.action !== "create_broadcast" || !validUuid(body.submissionId) || body.confirmed !== true || body.consentAcknowledged !== true) throw new WhatsAppError("invalid_request");
-    const instance = await salonInstance(db, salonId);
+    // Disparos saem pela conexão QR Code (Evolution) quando existir; a oficial fica para o atendimento.
+    const instance = await salonInstance(db, salonId, "marketing");
     if (instance.status !== "connected") throw new WhatsAppError("disconnected", 409);
     if (typeof body.message !== "string" || !body.message.trim() || body.message.length > 4096 || !Array.isArray(body.recipients) || !body.recipients.length || body.recipients.length > 1000) throw new WhatsAppError("invalid_request");
     const recipients = Array.from(new Map(body.recipients.map((value) => {

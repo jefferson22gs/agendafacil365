@@ -22,6 +22,12 @@ export const whatsappConnectTour: TourDef = {
       body: "A aba Conexão liga o WhatsApp do salão ao sistema. Sem ela, Conversas, Disparador, Status e Chatbot não funcionam.",
     },
     {
+      target: "whatsapp-bot-provider",
+      title: "Quem atende no automático",
+      body: "Escolha UMA conexão para o robô. API oficial: botões clicáveis e sem risco de bloqueio, mas sem Status e com Disparador só para quem falou com o salão nas últimas 24 h. QR Code: atende 100% com opções numeradas (sem botões), faz Disparador e Status. Ligar uma desliga o robô na outra sozinho.",
+      fallbackBody: "Este cartão aparece depois que você conecta a API oficial ou o QR Code.",
+    },
+    {
       target: "whatsapp-official",
       title: "Conexão oficial da Meta",
       body: "Conectar WhatsApp oficial abre o cadastro da Meta. Manter o aplicativo Business depende da elegibilidade para coexistência; Usar um número novo é uma opção separada. O tour não conecta nem altera a conta. Os passos seguintes de QR Code servem apenas para Evolution.",
@@ -113,9 +119,9 @@ export const whatsappStatusTour: TourDef = {
       fallbackBody: "Excluir conexão aparece quando há uma conexão cadastrada.",
     },
     {
-      target: "whatsapp-tips",
-      title: "Manter funcionando",
-      body: "Confira o status antes de contar com automações. Se reconectar não resolver, procure o suporte sem compartilhar o QR Code.",
+      target: "whatsapp-qr-card",
+      title: "Duas conexões",
+      body: "A conexão oficial atende os clientes com botões. A conexão por QR Code faz Disparador e Status. Confira o status de cada uma antes de contar com automações; se reconectar não resolver, procure o suporte sem compartilhar o QR Code.",
     },
   ],
 };

@@ -56,6 +56,10 @@ serve(async (req) => {
       if (inboxError) throw new WhatsAppError("persistence_failed", 503);
     }
     if (event === "send.message") return jsonResponse({ accepted: inbox.length });
+    // O dono escolhe UMA conexão para o robô (WhatsApp > Conexão). Se for a oficial, mensagens no número do QR Code
+    // ficam só na Caixa de entrada para a equipe, sem resposta automática duplicada.
+    const { data: botProvider } = await db.rpc("whatsapp_bot_provider", { p_salon_id: instance.salon_id });
+    if (botProvider && botProvider !== "evolution") return jsonResponse({ accepted: 0, reason: "bot_on_official" });
     let accepted = 0;
     // Anti-loop: o próprio número do salão (dono da instância) nunca vira conversa do robô.
     const own = ownNumber(instance.phone_number, body.sender);

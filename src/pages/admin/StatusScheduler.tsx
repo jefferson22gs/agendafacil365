@@ -150,12 +150,13 @@ const StatusScheduler = () => {
             setSalonId(salon.id);
             if (salon.timezone) setTimezone(salon.timezone);
 
-            // Buscar instância WhatsApp
+            // Status só é publicado pela conexão QR Code (a API oficial da Meta não tem Status).
             const { data: instanceData } = await supabase
                 .from('whatsapp_instances')
                 .select('*')
                 .eq('salon_id', salon.id)
-                .single();
+                .eq('provider', 'evolution')
+                .maybeSingle();
 
             if (instanceData) {
                 setInstance(instanceData as WhatsAppInstance);
@@ -423,9 +424,9 @@ const StatusScheduler = () => {
                         <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
                             <AlertCircle className="w-6 h-6 text-warning shrink-0" aria-hidden />
                             <div className="flex-1">
-                                <p className="font-medium text-foreground">WhatsApp não conectado</p>
+                                <p className="font-medium text-foreground">Conexão por QR Code não conectada</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Conecte seu WhatsApp para que os posts sejam publicados automaticamente.
+                                    O Status só é publicado pela conexão por QR Code (a API oficial do WhatsApp não publica Status). Conecte em WhatsApp &gt; Conexão &gt; Disparador e Status.
                                 </p>
                             </div>
                             <Button variant="outline" onClick={() => window.location.assign("/admin/whatsapp?aba=conexao")}>Conectar WhatsApp</Button>
