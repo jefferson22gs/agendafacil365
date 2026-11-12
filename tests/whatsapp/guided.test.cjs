@@ -178,11 +178,12 @@ test('atendente: pausa com prazo, aviso no painel, silêncio até vencer, "0" li
   r = await send(d, '0'); assert.equal(r.session.step, 'MAIN_MENU'); assert.equal(r.session.takeoverUntil, null);
 });
 
-test('desligado, tabela ausente, mídia ou nota de avaliação: devolve null (caminho clássico assume)', async () => {
+test('desligado, tabela ausente ou mídia: devolve null (caminho clássico assume); nota sem pedido aberto é respondida', async () => {
   assert.equal(await send(db({ guided: false }), 'oi'), null);
   assert.equal(await send(db({ sessionTable: false }), 'oi'), null);
   assert.equal(await guided.guidedReply(ctx(db()), { text: '', media: { type: 'image' } }), null);
-  assert.equal(await guided.guidedReply(ctx(db()), { text: 'Excelente', selection: 'rate.5' }), null);
+  const r = await guided.guidedReply(ctx(db()), { text: 'Excelente', selection: 'rate.5' });
+  assert.match(r.text, /já foi respondido/); assert.equal(r.model, 'rate_closed');
 });
 
 test('modo numerado: só texto; simulador (preview) não grava nem reserva', async () => {
@@ -229,11 +230,11 @@ test('100% botões: menu paginado, serviços com Ver mais, turno → horário, n
   r = await click(d, r, 2); assert.equal(r.session.step, 'SELECT_DATE', 'Ver mais datas'); assert.match(r.messages[0].payload.body.title, /\(2\/\d\)/);
   r = await click(d, r, 0); assert.equal(r.session.step, 'SELECT_TIME');
   assert.deepEqual(labels(r), ['☀️ Manhã (1)', '🌤️ Tarde (1)', '🌙 Noite (1)']);
-  r = await click(d, r, 1); assert.ok(onlyButtons(r)); assert.deepEqual(labels(r), ['🕒 14:00', '🔄 Outro turno']);
+  r = await click(d, r, 1); assert.ok(onlyButtons(r)); assert.deepEqual(labels(r), ['🕒 14:00', '🔄 Outro turno', '🏠 Menu inicial'], 'cabe o Menu inicial no mesmo card');
   r = await click(d, r, 1); assert.match(r.messages[0].payload.body.buttons[0].displayText, /Manhã/, 'Outro turno volta à escolha');
   r = await click(d, r, 1); r = await click(d, r, 0);
   assert.equal(r.session.data.flow.start, '14:00'); assert.equal(r.session.step, 'CONFIRM_NAME'); assert.ok(onlyButtons(r));
-  assert.deepEqual(ids(r), ['use_pushname', 'name_other']); assert.match(r.messages[0].payload.body.description, /João Silva/);
+  assert.deepEqual(ids(r), ['use_pushname', 'name_other', 'menu_main']); assert.match(r.messages[0].payload.body.description, /João Silva/);
   r = await click(d, r, 0); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyButtons(r));
   assert.deepEqual(ids(r), ['confirm_yes', 'confirm_change_date', 'confirm_cancel']);
   r = await click(d, r, 0);
@@ -269,12 +270,12 @@ test('enquete: menu de 5 em um card, serviços com preço na opção, horários 
   r = await vote(d, r, /Corte/); assert.equal(r.session.step, 'SELECT_PROFESSIONAL');
   r = await vote(d, r, /Ana/); assert.equal(r.session.step, 'SELECT_DATE'); assert.ok(onlyPolls(r));
   r = await send(d, '2'); assert.equal(r.session.step, 'SELECT_TIME', 'número digitado também vale');
-  assert.deepEqual(plain(poll(r).body.values), ['1️⃣ 🕒 09:00 · Manhã', '2️⃣ 🕒 14:00 · Tarde', '3️⃣ 🕒 19:00 · Noite'], '≤ 9 horários: sem etapa de turno');
+  assert.deepEqual(plain(poll(r).body.values), ['1️⃣ 🕒 09:00 · Manhã', '2️⃣ 🕒 14:00 · Tarde', '3️⃣ 🕒 19:00 · Noite', '4️⃣ ⬅️ Voltar', '5️⃣ 🏠 Menu inicial'], '≤ 9 horários: sem etapa de turno; Voltar e Menu sempre');
   r = await vote(d, r, /14:00/); assert.equal(r.session.step, 'CONFIRM_NAME');
   r = await vote(d, r, /Sim, esse nome/); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyPolls(r));
   // Resumo cabe no título da enquete (≤ 255) ou vai em texto antes dela; nunca se perde.
   assert.match(r.messages[0].type === 'text' ? r.messages[0].text : poll(r).body.name, /Procedimento:\* Corte Degradê/);
-  assert.deepEqual(plain(poll(r).options.map(o => o.id)), ['confirm_yes', 'confirm_change_date', 'confirm_cancel']);
+  assert.deepEqual(plain(poll(r).options.map(o => o.id)), ['confirm_yes', 'confirm_change_date', 'confirm_cancel', 'nav_back', 'menu_main']);
   r = await vote(d, r, /Confirmar/);
   assert.ok(d.calls.some(c => c.name === 'whatsapp_book_appointment_v2')); assert.ok(onlyPolls(r));
 });
@@ -285,8 +286,9 @@ test('enquete: mais de 9 opções pagina com "Ver mais opções"; texto fora das
   const base = d.from; d.from = t => { const q = base.call(d, t); if (t === 'services') q.limit = () => Promise.resolve({ data: many, error: null }); return q; };
   await send(d, 'oi');
   let r = await send(d, '1');
-  assert.equal(poll(r).body.values.length, 9); assert.match(poll(r).body.values[8], /Ver mais opções/);
-  r = await vote(d, r, /Ver mais/); assert.match(poll(r).body.values[0], /Serviço 08/); assert.match(poll(r).body.values.at(-1), /Do início/);
+  assert.equal(poll(r).body.values.length, 9); assert.match(poll(r).body.values[8], /Ver mais opções/); assert.match(poll(r).body.values[7], /Menu inicial/, 'Menu fixo em toda página');
+  r = await vote(d, r, /Ver mais/); assert.match(poll(r).body.values[0], /Serviço 07/); assert.match(poll(r).body.values.at(-1), /Do início/);
+  assert.ok(poll(r).body.values.some(v => /Menu inicial/.test(v)));
   r = await send(d, 'blablabla'); assert.ok(onlyPolls(r)); assert.match(r.text, /Não entendi/);
 });
 
@@ -331,5 +333,110 @@ test('migração: aditiva, idempotente, RLS e índice por salão+telefone', () =
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.whatsapp_chatbot_sessions/);
   assert.match(sql, /ON public\.whatsapp_chatbot_sessions \(salon_id, client_phone\)/);
   assert.match(sql, /ENABLE ROW LEVEL SECURITY/); assert.match(sql, /guided_render_mode IN \('poll', 'buttons', 'hybrid', 'numbered', 'native'\)/);
-  for (const s of guided.STEPS) assert.ok(sql.includes(`'${s}'`), s);
+  // Etapas novas (avaliação, pagamento) entram pela migração de cobranças: a CHECK do banco aceita todas.
+  const latest = fs.readFileSync(path.join(root, 'supabase/migrations/20261112000200_payments_reviews.sql'), 'utf8');
+  for (const s of guided.STEPS) assert.ok(latest.includes(`'${s}'`), s);
+});
+
+// ------------------------------------------------------------------------------- navegação, avaliação e pagamento
+test('navegação: toda etapa (lista, enquete e botões) tem Menu inicial; Voltar aparece com etapa anterior e funciona', async () => {
+  for (const mode of ['hybrid', 'poll', 'buttons']) {
+    const d = db({ mode, pros: 2 });
+    let r = await send(d, 'oi'); r = await send(d, '', 'menu_book');
+    const has = (res, id) => res.messages.some(m => m.type === 'interactive' && (JSON.stringify(m.payload).includes(`"${id}"`)));
+    assert.ok(has(r, 'menu_main'), `${mode}: serviços com Menu`);
+    r = await send(d, '1'); assert.equal(r.session.step, 'SELECT_PROFESSIONAL', mode);
+    if (mode !== 'buttons') { assert.ok(has(r, 'nav_back'), `${mode}: profissional com Voltar`); r = await send(d, '', 'nav_back'); assert.equal(r.session.step, 'SELECT_SERVICE', `${mode}: Voltar regride`); }
+    r = await send(d, '', 'menu_main'); assert.equal(r.session.step, 'MAIN_MENU', `${mode}: Menu inicial`);
+  }
+  // Escolher "Menu inicial" pelo número também vale (lista numerada).
+  const d = db();
+  await send(d, 'oi'); let r = await send(d, '1');
+  const n = r.text.match(/(\d+)\. 🏠 Menu inicial/)[1];
+  r = await send(d, n); assert.equal(r.session.step, 'MAIN_MENU');
+  assert.deepEqual(plain(guided.navFor('MAIN_MENU', [], true)), [], 'menu principal não ganha navegação');
+  assert.equal(guided.navFor('SELECT_TIME', [{ id: 'menu_main', title: 'x', value: {} }], true).length, 0, 'não duplica o Menu');
+});
+
+/** Banco com pedido de avaliação aberto e atendimentos concluídos sem nota. */
+function reviewDb(opts = {}) {
+  const d = db(opts);
+  const rpc = d.rpc;
+  d.reviews = [];
+  d.rpc = async (name, args) => {
+    if (name === 'whatsapp_open_review_request') return { data: [{ appointment_id: 'apptDone', sent_at: new Date(Date.now() + 1000).toISOString(), service: 'Corte Degradê' }], error: null };
+    if (name === 'whatsapp_rate_appointment') { d.reviews.push(args); return { data: { ok: true, duplicate: false }, error: null }; }
+    if (name === 'whatsapp_review_comment') { d.comment = args.p_comment; return { data: true, error: null }; }
+    return rpc(name, args);
+  };
+  const from = d.from;
+  d.from = t => { const q = from.call(d, t); if (t === 'appointments') { q.not = () => q; q.limit = () => Promise.resolve({ data: [{ id: 'apptDone', date: '2026-11-10', start_time: '10:00:00', services: { name: 'Corte Degradê' }, professionals: { name: 'Ana' }, reviews: [] }], error: null }); } return q; };
+  return d;
+}
+
+test('avaliação: clique na nota do pedido grava e abre comentário; número logo após o pedido vale; comentário salvo', async () => {
+  let d = reviewDb();
+  let r = await send(d, '⭐⭐⭐⭐⭐ Excelente', 'rate.5');
+  assert.equal(d.reviews[0].p_appointment_id, 'apptDone'); assert.equal(d.reviews[0].p_rating, 5);
+  assert.equal(r.session.step, 'RATE_COMMENT'); assert.match(r.text, /Que bom que você gostou/);
+  r = await send(d, 'Atendimento impecável, voltarei!');
+  assert.equal(d.comment, 'Atendimento impecável, voltarei!'); assert.match(r.text, /Obrigado pelo retorno/); assert.equal(r.session.step, 'IDLE');
+  // Lista numerada do pedido: 1 = Excelente (5) … 5 = Ruim (1).
+  d = reviewDb();
+  r = await send(d, '4');
+  assert.equal(d.reviews[0].p_rating, 2); assert.match(r.text, /Obrigado pela sinceridade/);
+  r = await send(d, '', 'rate_skip'); assert.match(r.text, /Obrigado pela avaliação/);
+});
+
+test('avaliação: "Meus agendamentos" convida a avaliar o concluído sem nota; nota por botão', async () => {
+  const d = reviewDb({ mode: 'buttons' });
+  await send(d, 'oi');
+  let r = await send(d, '', 'menu_my_appointments');
+  assert.ok(JSON.stringify(r.messages).includes('menu_rate'), 'botão Avaliar atendimento');
+  r = await send(d, '', 'menu_rate');
+  assert.equal(r.session.step, 'RATE_APPOINTMENT'); assert.match(r.messages[0].payload.body.description, /Como foi seu atendimento/);
+  r = await send(d, '', ids(r)[0]); // 5 estrelas (botões paginados: 2 notas + Ver mais)
+  assert.equal(d.reviews[0].p_rating, 5); assert.equal(r.session.step, 'RATE_COMMENT');
+});
+
+/** Banco com cobrança ligada (Mercado Pago) e cobrança simulada. */
+function payDb(settings) {
+  const d = db();
+  const from = d.from;
+  d.from = t => {
+    const q = from.call(d, t);
+    if (t === 'salon_payment_settings') q.maybeSingle = async () => ({ data: settings, error: null });
+    if (t === 'appointments') q.maybeSingle = async () => ({ data: { id: 'appt', client_name: 'João Silva', client_phone: '+5511912345678', final_price: 45, price: 45, status: 'pending', services: { name: 'Corte' }, salons: { slug: 'studio-x', name: 'Studio X' } }, error: null });
+    if (t === 'payment_charges') { q.gt = () => q; q.maybeSingle = async () => ({ data: null, error: null }); q.insert = async row => { d.charge = row; return { error: null }; }; q.update = row => { d.chargeUpdate = row; return q; }; }
+    return q;
+  };
+  const rpc = d.rpc;
+  d.rpc = async (name, args) => name === 'payment_secret' ? { data: [{ secret: 'APP_USR-123456789012345678901234', webhook_token: null }], error: null } : rpc(name, args);
+  return d;
+}
+
+test('pagamento: desligado não aparece; ligado oferece Pix/cartão/no salão conforme o dono configurou', async () => {
+  const flowTo = async d => { for (const t of ['oi', '1', '1', '1', '1']) await send(d, t); await send(d, '', 'use_pushname'); return send(d, '', 'confirm_yes'); };
+  let r = await flowTo(payDb({ whatsapp_enabled: false, provider: 'mercadopago', methods: ['pix', 'card'], pay_at_salon: true, credential_ok_at: '2026-11-12' }));
+  assert.equal(r.session.step, 'IDLE'); assert.doesNotMatch(r.text, /Pagamento/);
+  r = await flowTo(payDb({ whatsapp_enabled: true, provider: 'mercadopago', methods: ['pix', 'card'], pay_at_salon: true, credential_ok_at: null }));
+  assert.doesNotMatch(r.text, /Pagamento/, 'sem conexão testada, não cobra');
+  const d = payDb({ whatsapp_enabled: true, provider: 'mercadopago', methods: ['pix', 'card'], pay_at_salon: false, credential_ok_at: '2026-11-12' });
+  r = await flowTo(d);
+  assert.equal(r.session.step, 'PAYMENT'); assert.match(r.text, /Solicitação registrada[\s\S]*Pagamento — R\$ 45,00/);
+  assert.match(r.text, /Pagar com Pix/); assert.match(r.text, /Pagar com cartão/); assert.doesNotMatch(r.text, /Pagar no salão/);
+  assert.ok(r.text.includes('Menu inicial'), 'pagamento também tem Menu');
+});
+
+test('pagamento: escolher Pix gera a cobrança no gateway do salão e manda o copia e cola + "Já paguei"', async () => {
+  const d = payDb({ whatsapp_enabled: true, provider: 'mercadopago', methods: ['pix'], pay_at_salon: true, credential_ok_at: '2026-11-12' });
+  for (const t of ['oi', '1', '1', '1', '1']) await send(d, t);
+  await send(d, '', 'use_pushname');
+  await send(d, '', 'confirm_yes');
+  // Teste sem rede (fetch do sandbox lança): a falha do gateway volta para as opções com aviso, nunca trava a conversa.
+  let r = await send(d, '', 'pay_pix');
+  assert.equal(r.session.step, 'PAYMENT'); assert.match(r.text, /Não consegui gerar a cobrança no Mercado Pago/);
+  assert.equal(d.charge.provider, 'mercadopago'); assert.equal(d.charge.amount_cents, 4500); assert.equal(d.charge.method, 'pix');
+  assert.equal(d.chargeUpdate.status, 'failed', 'cobrança que falhou fica registrada como falha');
+  r = await send(d, '', 'pay_salon'); assert.match(r.text, /pagamento fica para o dia no salão/); assert.equal(r.session.step, 'IDLE');
 });

@@ -127,7 +127,8 @@ export async function chatbotReply(ctx: BotContext, text: string, input: Omit<In
   if (!paused && !ctx.preview && pre.cfg?.enabled && !pre.flooded) ctx.typing?.();
   // Fluxo guiado (Typebot): assume a conversa quando ligado no salão. PIX/comprovante em andamento, opt-out,
   // comandos do dono (Insights) e rajadas seguem o caminho clássico. Pausa humana: o próprio fluxo decide (prazo).
-  const legacyBusy = !!flow && (flow.step === "payment" || flow.step === "proof");
+  // Comprovante (mídia) segue o caminho clássico; texto durante a espera do comprovante volta para o fluxo guiado.
+  const legacyBusy = !!flow && (flow.step === "payment" || (flow.step === "proof" && flow.menu?.step === "proof_pick"));
   if ((ctx.preview || !!pre.cfg?.enabled) && !pre.flooded && intent !== "opt_out" && !legacyBusy && !input.media) {
     if (!ctx.preview) { const admin = await adminReply(ctx, text, pre.recipient); if (admin) return admin; }
     const ai = async (t: string) => {

@@ -28,7 +28,8 @@ export const MORE = "more";
  */
 export function buildMenu(nonce: string, step: string, title: string, body: string, all: Option[], page = 0, perPage = LIST_ROWS - 1): { menu: Menu; stored: StoredMenu } {
   if (!/^[a-z0-9]{4,12}$/.test(nonce)) throw new Error("invalid_nonce");
-  const size = Math.max(1, Math.min(perPage, LIST_ROWS - 1));
+  // Padrão: 9 por página + "Ver mais". Quem já paginou (fluxo guiado) pode passar até as 10 linhas da lista.
+  const size = Math.max(1, Math.min(perPage, LIST_ROWS));
   const slice = all.slice(page * size, page * size + size);
   const hasMore = all.length > (page + 1) * size;
   const rows: MenuRow[] = slice.map((o, i) => ({ id: o.id && FIXED_ID.test(o.id) ? o.id : `${nonce}.${i + 1}`, title: clip(o.title, TITLE_MAX), ...(o.description ? { description: clip(o.description, DESC_MAX) } : {}) }));

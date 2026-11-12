@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarCheck, CalendarPlus, Clock, History, LogOut, MessageCircle, RotateCcw, Scissors, Sparkles, User } from "lucide-react";
+import { CalendarCheck, CalendarPlus, Clock, History, Loader2, LogOut, MessageCircle, RotateCcw, Scissors, Sparkles, Star, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Stars } from "@/components/reviews/ProfessionalRating";
 import { SalonLogo } from "@/components/pwa/SalonLogo";
 import { useSalonHead } from "@/components/pwa/useSalonHead";
 import { safeHexColor } from "@/config/brand";
@@ -12,7 +15,7 @@ import { accessibleBackground, textOnColor } from "../../api/_pwa";
 
 interface Salon { id: string; name: string; slug: string; primary_color: string | null; logo_url: string | null; whatsapp: string | null; phone: string | null; address: string | null; city: string | null; updated_at?: string | null; pwa_enabled?: boolean | null }
 interface Upcoming { id: string; date: string; start_time: string; end_time: string | null; status: string; service: string | null; professional: string | null; price: number | null; manage_token: string | null }
-interface Past { id: string; date: string; start_time: string; status: string; service: string | null; professional: string | null; price: number | null }
+interface Past { id: string; date: string; start_time: string; status: string; service: string | null; professional: string | null; price: number | null; rating?: number | null; can_review?: boolean }
 interface Overview { ok: boolean; reason?: string; client?: { name: string | null; since: string | null; visits: number }; upcoming?: Upcoming[]; history?: Past[]; returns?: { procedure_name: string; alert_date: string }[] }
 
 const TOKEN = /^[0-9a-f]{48}$/;
@@ -57,6 +60,8 @@ export default function ClientPortal() {
   const [data, setData] = useState<Overview | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "no-access" | "not-found">("loading");
   const [tab, setTab] = useState<"next" | "history">("next");
+  const [rating, setRating] = useState<Past | null>(null);
+  const paidReturn = useMemo(() => new URLSearchParams(window.location.search).has("pagamento"), []);
   const token = useMemo(() => readToken(slug), [slug]);
   useSalonHead(salon);
 
@@ -93,6 +98,8 @@ export default function ClientPortal() {
 
   const upcoming = data?.upcoming ?? [], history = data?.history ?? [], returns = data?.returns ?? [];
   const [next, ...later] = upcoming;
+  const toReview = history.filter(h => h.can_review);
+  const reviewed = (id: string, stars: number) => setData(d => d && { ...d, history: (d.history ?? []).map(h => h.id === id ? { ...h, rating: stars, can_review: false } : h) });
   const first = (data?.client?.name ?? "").split(" ")[0];
 
   return (
@@ -132,6 +139,8 @@ export default function ClientPortal() {
 
         {state === "ready" && (
           <>
+            {/* Volta da página de pagamento (Mercado Pago, Asaas, PagBank, InfinitePay). A confirmação real chega pelo WhatsApp. */}
+            {paidReturn && <p role="status" className="rounded-3xl border border-success/30 bg-success/10 p-4 text-sm font-medium">💳 Pagamento enviado! Assim que o provedor confirmar, seu horário fica garantido e você recebe a confirmação no WhatsApp.</p>}
             {/* Próximo horário em destaque */}
             {next ? (
               <section aria-labelledby="next-title" className="overflow-hidden rounded-3xl border border-border bg-card shadow-lg">
@@ -167,6 +176,18 @@ export default function ClientPortal() {
               </section>
             )}
 
+            {/* Atendimento concluído sem nota: convite discreto para avaliar (o mais recente). */}
+            {toReview.length > 0 && (
+              <section aria-labelledby="rate-title" className="flex items-center gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-500"><Star size={20} className="fill-current" aria-hidden /></span>
+                <div className="min-w-0 flex-1">
+                  <h2 id="rate-title" className="text-sm font-semibold">Como foi seu atendimento?</h2>
+                  <p className="truncate text-xs text-muted-foreground">{toReview[0].service ?? "Atendimento"}{toReview[0].professional ? ` com ${toReview[0].professional}` : ""} · {format(day(toReview[0].date), "dd/MM")}</p>
+                </div>
+                <Button type="button" size="sm" className="min-h-11 shrink-0 rounded-2xl" style={{ backgroundColor: color, color: onColor }} onClick={() => setRating(toReview[0])}>Avaliar</Button>
+              </section>
+            )}
+
             {/* Retorno recomendado (procedimentos com prazo) */}
             {returns.length > 0 && (
               <section className="flex items-center gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm">
@@ -188,7 +209,8 @@ export default function ClientPortal() {
             <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="space-y-2">
               {tab === "next" && (later.length ? later.map(a => <Row key={a.id} date={a.date} time={a.start_time} service={a.service} professional={a.professional} price={a.price} status={a.status} manage={a.manage_token} />)
                 : <p className="py-6 text-center text-sm text-muted-foreground">{next ? "Nenhum outro horário marcado." : "Seus próximos horários aparecem aqui."}</p>)}
-              {tab === "history" && (history.length ? history.map(a => <Row key={a.id} date={a.date} time={a.start_time} service={a.service} professional={a.professional} price={a.price} status={a.status} />)
+              {tab === "history" && (history.length ? history.map(a => <Row key={a.id} date={a.date} time={a.start_time} service={a.service} professional={a.professional} price={a.price} status={a.status}
+                  rating={a.rating ?? null} onRate={a.can_review ? () => setRating(a) : undefined} />)
                 : <p className="py-6 text-center text-sm text-muted-foreground">Seu histórico aparece aqui depois do primeiro atendimento.</p>)}
             </section>
 
@@ -209,7 +231,68 @@ export default function ClientPortal() {
           </div>
         </div>
       )}
+      {rating && token && <RateDialog appt={rating} token={token} color={color} onColor={onColor} onClose={() => setRating(null)} onDone={stars => { reviewed(rating.id, stars); setRating(null); }} />}
     </Shell>
+  );
+}
+
+const LABELS = ["", "Ruim", "Regular", "Bom", "Muito bom", "Excelente"];
+/** Nota de 1 a 5 + comentário opcional, pelo link pessoal (o token comprova o telefone). */
+function RateDialog({ appt, token, color, onColor, onClose, onDone }: { appt: Past; token: string; color: string; onColor: string; onClose: () => void; onDone: (stars: number) => void }) {
+  const [stars, setStars] = useState(0);
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const submit = async () => {
+    setBusy(true); setError(null);
+    const { data, error: e } = await supabase.rpc("client_portal_review" as never, { p_token: token, p_appointment_id: appt.id, p_rating: stars, p_comment: comment.trim() || null } as never);
+    setBusy(false);
+    const r = data as { ok?: boolean } | null;
+    if (e || !r?.ok) { setError(/expired|not_completed/.test(e?.message ?? "") ? "Este atendimento não pode mais ser avaliado." : "Não foi possível enviar agora. Tente de novo."); return; }
+    setSent(true);
+    setTimeout(() => onDone(stars), 1400);
+  };
+  return (
+    <Dialog open onOpenChange={o => { if (!o) (sent ? onDone(stars) : onClose()); }}>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-sm rounded-3xl">
+        {sent ? (
+          <div className="py-6 text-center" role="status">
+            <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success"><Star className="fill-current" aria-hidden /></span>
+            <DialogTitle>Obrigado pela avaliação!</DialogTitle>
+            <DialogDescription className="mt-1">Sua opinião ajuda o salão a melhorar sempre.</DialogDescription>
+          </div>
+        ) : (
+          <>
+            <DialogHeader className="text-left">
+              <DialogTitle>Como foi seu atendimento?</DialogTitle>
+              <DialogDescription>{appt.service ?? "Atendimento"}{appt.professional ? ` com ${appt.professional}` : ""} · {format(day(appt.date), "dd/MM")}</DialogDescription>
+            </DialogHeader>
+            <fieldset className="space-y-2">
+              <legend className="sr-only">Sua nota</legend>
+              <div className="flex justify-center gap-1">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <label key={n} className="cursor-pointer rounded-xl p-1.5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+                    <input type="radio" name="stars" value={n} checked={stars === n} onChange={() => setStars(n)} className="sr-only" />
+                    <Star size={36} className={n <= stars ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"} aria-hidden />
+                    <span className="sr-only">{n} {n === 1 ? "estrela" : "estrelas"} ({LABELS[n]})</span>
+                  </label>
+                ))}
+              </div>
+              <p className="h-5 text-center text-sm font-medium" aria-live="polite">{LABELS[stars]}</p>
+            </fieldset>
+            <div className="space-y-1.5">
+              <label htmlFor="rate-comment" className="text-sm font-medium">Comentário <span className="font-normal text-muted-foreground">(opcional)</span></label>
+              <Textarea id="rate-comment" value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} rows={3} placeholder="Conte como foi a sua experiência" />
+            </div>
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            <Button type="button" disabled={!stars || busy} onClick={() => void submit()} className="min-h-12 w-full rounded-2xl text-base font-semibold" style={stars ? { backgroundColor: color, color: onColor } : undefined}>
+              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}Enviar avaliação
+            </Button>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -217,7 +300,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen bg-background text-foreground">{children}</div>;
 }
 
-function Row({ date, time, service, professional, price, status, manage }: { date: string; time: string; service: string | null; professional: string | null; price: number | null; status: string; manage?: string | null }) {
+function Row({ date, time, service, professional, price, status, manage, rating, onRate }: { date: string; time: string; service: string | null; professional: string | null; price: number | null; status: string; manage?: string | null; rating?: number | null; onRate?: () => void }) {
   const content = (
     <>
       <div className="flex w-12 shrink-0 flex-col items-center rounded-xl bg-muted py-1.5">
@@ -227,8 +310,11 @@ function Row({ date, time, service, professional, price, status, manage }: { dat
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{service ?? "Atendimento"}</p>
         <p className="truncate text-xs text-muted-foreground"><Scissors size={12} className="mr-1 inline" aria-hidden />{time}{professional ? ` · ${professional}` : ""}{brl(price) ? ` · ${brl(price)}` : ""}</p>
+        {rating ? <Stars value={rating} size={12} className="mt-1" /> : null}
       </div>
-      <Status value={status} />
+      {onRate
+        ? <button type="button" onClick={onRate} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-amber-400/15 px-3 text-xs font-semibold text-foreground hover:bg-amber-400/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Star size={14} className="fill-amber-400 text-amber-400" aria-hidden />Avaliar</button>
+        : <Status value={status} />}
     </>
   );
   const cls = "flex items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm";

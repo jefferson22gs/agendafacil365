@@ -27,6 +27,7 @@ const MAP: Record<string, RouteContext> = {
   [`${WHATSAPP}?aba=status`]: { tours: ["status-scheduler"], category: "whatsapp" },
   [`${WHATSAPP}?aba=chatbot`]: { tours: ["chatbot-setup", "chatbot-knowledge", "chatbot-test"], category: "ai" },
   [`${WHATSAPP}?aba=fluxo`]: { tours: ["guided-flow"], category: "whatsapp" },
+  [`${WHATSAPP}?aba=cobranca`]: { tours: ["whatsapp-payments"], category: "whatsapp" },
   [`${WHATSAPP}?aba=contatos`]: { tours: ["import-contacts", "export-contacts"], category: "clients" },
   [`${WHATSAPP}?aba=contatos&contatos=exportar`]: { tours: ["export-contacts", "import-contacts"], category: "clients" },
   "/admin/advanced": { tours: ["advanced"], category: "advanced" },

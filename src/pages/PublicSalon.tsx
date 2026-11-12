@@ -13,6 +13,7 @@ import { accessibleBackground, textOnColor } from '../../api/_pwa';
 import { SalonLogo } from '@/components/pwa/SalonLogo';
 import { useAuth } from '@/hooks/useAuth';
 import { WcagBadge } from '@/components/a11y/WcagBadge';
+import { RatingBadge, useProfessionalRatings } from '@/components/reviews/ProfessionalRating';
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -166,6 +167,7 @@ const PublicSalon = () => {
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const ratings = useProfessionalRatings(salon?.id);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1550,17 +1552,22 @@ const PublicSalon = () => {
 
               <div className="grid gap-3">
                 {professionals.map((pro) => (
-                  <button
-                    type="button"
+                  // Card com botão de seleção esticado por baixo; o selo de avaliação é outro botão por cima.
+                  <div
                     key={pro.id}
-                    aria-pressed={selectedProfessional === pro.id}
-                    onClick={() => setSelectedProfessional(pro.id)}
-                    className="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left"
+                    className="relative flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-ring"
                     style={{
                       borderColor: selectedProfessional === pro.id ? primaryColor : 'hsl(var(--border))',
                       backgroundColor: selectedProfessional === pro.id ? `${primaryColor}08` : 'transparent'
                     }}
                   >
+                    <button
+                      type="button"
+                      aria-pressed={selectedProfessional === pro.id}
+                      aria-label={`Escolher ${pro.name}`}
+                      onClick={() => setSelectedProfessional(pro.id)}
+                      className="absolute inset-0 rounded-2xl focus-visible:outline-none"
+                    />
                     <div
                       className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden"
                       style={{ background: primaryColor, color: primaryForeground }}
@@ -1576,6 +1583,7 @@ const PublicSalon = () => {
                       {pro.specialty && (
                         <p className="text-sm text-muted-foreground">{pro.specialty}</p>
                       )}
+                      <RatingBadge professionalId={pro.id} name={pro.name} summary={ratings[pro.id]} />
                     </div>
                     {selectedProfessional === pro.id && (
                       <div
@@ -1585,7 +1593,7 @@ const PublicSalon = () => {
                         <Check size={14} style={{ color: primaryForeground }} aria-hidden />
                       </div>
                     )}
-                  </button>
+                  </div>
                 ))}
 
                 <button

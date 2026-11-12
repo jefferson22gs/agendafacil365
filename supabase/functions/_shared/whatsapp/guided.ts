@@ -6,21 +6,30 @@ import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 import { WhatsAppError } from "./errors.ts";
 import { automationOf, salonOf, type AutomationRow, type BotContext, type SalonRow } from "./chatbot-domain.ts";
 import { dayChunk, firstMatches } from "./latency.ts";
-import { brl, buildMenu, clip, dateBR, fullName, resolveChoice, weekday, type Option, type StoredMenu } from "./interactive.ts";
-import { freeTimes, paymentStep, professionalsFor, services, type Flow, type Input, type OutMessage } from "./attendant.ts";
+import { brl, buildMenu, clip, dateBR, fullName, LIST_ROWS, resolveChoice, weekday, type Option, type StoredMenu } from "./interactive.ts";
+import { freeTimes, professionalsFor, services, type Flow, type Input, type OutMessage } from "./attendant.ts";
+import { bookingPix } from "../pix/payment.ts";
+import { chargeAppointment, paySettings, settleCharge } from "../payments/service.ts";
+import { PROVIDER_LABEL } from "../payments/gateways.ts";
 import { renderMenu } from "./evolutionSender.ts";
 import { BUTTON_TEXT, MAX_BUTTONS, POLL_MAX, buttonPage, prependIntro, renderButtons, renderPoll } from "./evolutionButtons.ts";
 
 export type Step = "IDLE" | "MAIN_MENU" | "SELECT_SERVICE" | "SELECT_PROFESSIONAL" | "SELECT_DATE" | "SELECT_TIME" | "CONFIRM_NAME" | "CONFIRM_BOOKING"
-  | "MY_APPOINTMENTS" | "APPOINTMENT_ACTIONS" | "CONFIRM_CANCEL_APPOINTMENT" | "RESCHEDULE_SELECT_DATE" | "RESCHEDULE_SELECT_TIME" | "HUMAN_HANDOFF";
+  | "MY_APPOINTMENTS" | "APPOINTMENT_ACTIONS" | "CONFIRM_CANCEL_APPOINTMENT" | "RESCHEDULE_SELECT_DATE" | "RESCHEDULE_SELECT_TIME" | "HUMAN_HANDOFF"
+  | "RATE_APPOINTMENT" | "RATE_COMMENT" | "PAYMENT";
 export const STEPS: Step[] = ["IDLE", "MAIN_MENU", "SELECT_SERVICE", "SELECT_PROFESSIONAL", "SELECT_DATE", "SELECT_TIME", "CONFIRM_NAME", "CONFIRM_BOOKING",
-  "MY_APPOINTMENTS", "APPOINTMENT_ACTIONS", "CONFIRM_CANCEL_APPOINTMENT", "RESCHEDULE_SELECT_DATE", "RESCHEDULE_SELECT_TIME", "HUMAN_HANDOFF"];
+  "MY_APPOINTMENTS", "APPOINTMENT_ACTIONS", "CONFIRM_CANCEL_APPOINTMENT", "RESCHEDULE_SELECT_DATE", "RESCHEDULE_SELECT_TIME", "HUMAN_HANDOFF",
+  "RATE_APPOINTMENT", "RATE_COMMENT", "PAYMENT"];
 
 interface Appt { id: string; date: string; start: string; service: string; professional: string }
 export interface SessionData {
   flow?: Flow; menu?: StoredMenu | null; stack?: Step[]; appts?: Appt[]; target?: Appt | null; typingDate?: boolean;
   /** Modo botões: turno escolhido (Manhã/Tarde/Noite) antes dos horários. */
   period?: string | null;
+  /** Atendimento concluído sendo avaliado pela conversa. */
+  rate?: { id: string; label: string } | null;
+  /** Cobrança do agendamento recém-criado. */
+  pay?: { appointmentId: string; amount: number; chargeId?: string } | null;
 }
 export interface GuidedSession { step: Step; data: SessionData; name: string | null; takeoverUntil: string | null; lastAt: string | null }
 export interface GuidedReply { text: string; provider: "deterministic" | string; model: string; messages: OutMessage[]; handoff?: boolean; session: GuidedSession; flowState?: Flow | null }
@@ -108,25 +117,47 @@ async function saveSession(ctx: BotContext, s: GuidedSession): Promise<void> {
 interface Ctx { ctx: BotContext; cfg: AutomationRow; salon: SalonRow; s: GuidedSession; tz: string }
 type Out = { messages: OutMessage[]; model: string; handoff?: boolean; flowState?: Flow | null };
 
+const MENU_HOME: Option = { id: "menu_main", title: "🏠 Menu inicial", value: { go: "menu" } };
+const NAV_BACK: Option = { id: "nav_back", title: "⬅️ Voltar", value: { go: "back" } };
+/**
+ * Navegação fixa: "⬅️ Voltar" (etapa anterior, quando houver) e "🏠 Menu inicial" em toda etapa fora do menu principal.
+ * Não duplica quando o card já oferece o menu.
+ */
+export function navFor(step: Step, opts: Option[], hasHistory: boolean): Option[] {
+  if (step === "MAIN_MENU" || opts.some(o => o.id === "menu_main" || o.value?.go === "menu")) return [];
+  return hasHistory ? [NAV_BACK, MENU_HOME] : [MENU_HOME];
+}
 function menu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page = 0, footer = FOOTER): Out {
-  if (buttonsMode(c)) return buttonsMenu(c, step, title, body, opts, page);
-  const { menu, stored } = buildMenu(nonce(), step, title, body, opts, page);
+  const nav = navFor(step, opts, !!c.s.data.stack?.length);
+  if (buttonsMode(c)) return buttonsMenu(c, step, title, body, opts, page, nav);
+  // Lista/numerado (10 linhas): tudo cabe com Voltar/Menu = uma página; senão 7 por página + Voltar/Menu + "Ver mais".
+  const fits = opts.length + nav.length <= LIST_ROWS;
+  const per = fits ? opts.length : LIST_ROWS - 1 - nav.length;
+  const more = !fits && opts.length > (page + 1) * per;
+  const start = fits ? 0 : page * per;
+  const { menu, stored } = buildMenu(nonce(), step, title, body, [...opts.slice(start, start + per), ...nav], 0, LIST_ROWS);
+  if (more) { menu.rows.push({ id: `${stored.nonce}.more`, title: "Ver mais opções" }); stored.hasMore = true; }
+  stored.page = page;
   menu.footer = footer;
   c.s.step = step; c.s.data.menu = stored;
   return { messages: [renderMenu(menu, c.cfg.renderMode)], model: `guided_${step.toLowerCase()}` };
 }
 const buttonsFooter = (c: Ctx) => pollMode(c) ? `${clip(c.salon.name, 30)} • Toque em uma opção ou responda o número` : `${clip(c.salon.name, 30)} • Toque em um botão abaixo`;
-const MENU_HOME: Option = { id: "menu_main", title: "🏠 Menu inicial", value: { go: "menu" } };
 /**
  * Modos clicáveis. poll: enquete de escolha única (até 9 opções; chega em qualquer celular). buttons: até 3 botões.
  * Sobra vira "➡️ Ver mais" e a última página oferece "🔁 Do início".
+ * Navegação: na enquete, Voltar/Menu em todas as páginas; nos botões (3 por card), "Menu inicial" entra quando cabe
+ * no mesmo card (até 2 opções) ou no fim da paginação (mais de 3), sem quebrar cards de exatamente 3 (ex.: confirmação).
  */
-function buttonsMenu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page: number): Out {
+function buttonsMenu(c: Ctx, step: Step, title: string, body: string, opts: Option[], page: number, nav: Option[] = []): Out {
   const poll = pollMode(c), max = poll ? POLL_MAX : MAX_BUTTONS;
+  const fixed = poll ? nav : [];
+  const home = !poll && nav.length && opts.length !== MAX_BUTTONS ? [MENU_HOME] : [];
   // Enquete exige ao menos 2 opções: menu com uma só ganha "Menu inicial".
-  const all = poll && opts.length === 1 ? [...opts, MENU_HOME] : opts;
-  const n = nonce(), pg = buttonPage(all.length, page, max);
-  const slice = all.slice(pg.start, pg.end);
+  const base = [...opts, ...home];
+  const all = poll && base.length + fixed.length === 1 ? [...base, MENU_HOME] : base;
+  const n = nonce(), pg = buttonPage(all.length, page, max - fixed.length);
+  const slice = [...all.slice(pg.start, pg.end), ...fixed];
   // Botão tem 20 caracteres: preço, duração e nome completo vão no texto do card. Na enquete cabem na própria opção.
   const details = poll ? [] : slice.filter(o => o.description || Array.from(o.title).length > BUTTON_TEXT).map(o => `• *${o.title}*${o.description ? ` — ${o.description}` : ""}`);
   const { menu, stored } = buildMenu(n, step, pg.pages > 1 ? `${title} (${pg.page + 1}/${pg.pages})` : title, details.length ? `${body}\n\n${details.join("\n")}` : body,
@@ -149,9 +180,19 @@ function quickButtons(c: Ctx, text: string, rows: { id: string; title: string }[
   // Enquete: as opções saem por id fixo; o voto chega como seleção pelo payload.options.
   return pollMode(c) ? renderPoll(card) : [renderButtons(card)];
 }
+/**
+ * Texto da etapa. Clicável: sempre com saída por botão (Menu inicial; Voltar quando há etapa anterior).
+ * Só o modo numerado manda texto puro (o rodapé já orienta *V* e *0*).
+ */
 const say = (c: Ctx, step: Step, text: string, model = `guided_${step.toLowerCase()}`): Out => {
   c.s.step = step; c.s.data.menu = null;
-  return { messages: buttonsMode(c) ? quickButtons(c, text) : [{ type: "text", text }], model };
+  if (buttonsMode(c)) return { messages: quickButtons(c, text), model };
+  if (c.cfg.renderMode === "numbered") return { messages: [{ type: "text", text }], model };
+  const human: Option[] = /\*5\*/.test(text) ? [{ id: "menu_human", title: "💬 Falar com atendente", value: { go: "human" } }] : [];
+  const nav = step === "IDLE" || step === "MAIN_MENU" ? [...human, MENU_HOME] : [...human, ...navFor(step, [], !!c.s.data.stack?.length)];
+  const out = menu(c, step, c.salon.name, stripTypingHints(text) || text, nav, 0, "Toque em uma opção ou escreva sua resposta.");
+  out.model = model;
+  return out;
 };
 const push = (c: Ctx, from: Step) => { if (from !== "IDLE" && from !== "MAIN_MENU") c.s.data.stack = [...(c.s.data.stack ?? []).slice(-8), from]; };
 const prefix = (o: Out, intro: string): Out => { if (intro) o.messages = prependIntro(o.messages, intro); return o; };
@@ -329,20 +370,126 @@ async function book(c: Ctx): Promise<Out> {
   const where = [c.salon.address, c.salon.city].filter(Boolean).join(", ");
   const done = `${head}\n\n${summary}\n💰 *Valor:* ${brl(r.final_price)}${where ? `\n📍 ${where}` : ""}${link ? `\n\n📲 Seus agendamentos e histórico: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
   c.s.step = "IDLE"; c.s.data = {};
-  const out: Out = { messages: buttonsMode(c) ? quickButtons(c, done, [{ id: "menu_my_appointments", title: "📋 Meus horários" }, { id: "menu_main", title: "🏠 Menu inicial" }]) : [{ type: "text", text: done }], model: "guided_booking" };
-  // PIX cadastrado: o passo de pagamento do atendente assume (QR, copia e cola, comprovante).
-  if (c.salon.pix_key && Number(r.final_price) > 0) {
-    if (buttonsMode(c)) {
-      // Mesmo passo "payment" do atendente (continueFlow resolve pelo id `<nonce>.<n>`), só que em botões.
-      const { menu: m, stored } = buildMenu(nonce(), "payment", "Pagamento", "Como prefere pagar?", [{ title: "💳 Pagar agora (PIX)", value: { pay: "pix" } }, { title: "🏪 Pagar no salão", value: { pay: "salon" } }]);
-      m.footer = buttonsFooter(c);
-      out.messages.push(...(pollMode(c) ? renderPoll(m) : [renderButtons(m)])); out.flowState = { ...f, appointmentId: r.id, step: "payment", menu: stored };
-      return out;
-    }
-    const pay = await paymentStep(ctx, { ...f, appointmentId: r.id, menu: null }, c.cfg.interactive);
-    out.messages.push(...pay.messages); out.flowState = pay.state;
+  // Cobrança ligada pelo dono: o card de pagamento substitui os botões finais (o menu continua no card).
+  const offer = Number(r.final_price) > 0 ? await paymentOffer(c, r.id, Number(r.final_price)) : null;
+  if (offer) { offer.messages = prependIntro(offer.messages, done.replace("\n\nDigite *0* a qualquer momento para o menu.", "")); offer.model = "guided_booking"; return offer; }
+  c.s.step = "IDLE"; c.s.data = {};
+  return { messages: buttonsMode(c) ? quickButtons(c, done, [{ id: "menu_my_appointments", title: "📋 Meus horários" }, { id: "menu_main", title: "🏠 Menu inicial" }]) : say(c, "IDLE", done).messages, model: "guided_booking" };
+}
+
+// ----------------------------------------------------------------------------------------------- pagamento
+/** Opções de pagamento conforme o salão configurou (Cobrança no painel). Null = salão não cobra pelo WhatsApp. */
+async function paymentOffer(c: Ctx, appointmentId: string, amount: number): Promise<Out | null> {
+  const st = await paySettings(c.ctx.db, c.ctx.salonId, c.salon.pix_key);
+  if (!st.enabled || !st.ready) return null;
+  const opts: Option[] = [
+    ...(st.methods.includes("pix") ? [{ id: "pay_pix", title: "💠 Pagar com Pix", description: st.provider === "pix_manual" ? "QR Code e copia e cola" : "Confirmação automática", value: { pay: "pix" } }] : []),
+    ...(st.methods.includes("card") && st.provider !== "pix_manual" ? [{ id: "pay_card", title: "💳 Pagar com cartão", description: "Página segura de pagamento", value: { pay: "card" } }] : []),
+    ...(st.payAtSalon ? [{ id: "pay_salon", title: "🏪 Pagar no salão", description: "No dia do atendimento", value: { pay: "salon" } }] : []),
+  ];
+  if (!opts.length) return null;
+  c.s.data = { pay: { appointmentId, amount } };
+  const body = `💰 *Pagamento — ${brl(amount)}*\n${st.payAtSalon ? "Pague agora e garanta seu horário, ou pague no dia." : "Para garantir seu horário, faça o pagamento:"}`;
+  return menu(c, "PAYMENT", "Pagamento", body, opts, 0, "Responda com o número da opção.");
+}
+
+async function payNow(c: Ctx, method: "pix" | "card"): Promise<Out> {
+  const p = c.s.data.pay!, { ctx } = c;
+  if (ctx.preview) return say(c, "IDLE", `(Simulação) Aqui o cliente receberia o ${method === "pix" ? "Pix copia e cola" : "link seguro do cartão"} de ${brl(p.amount)} e a confirmação automática quando pagar.`, "pay_preview");
+  const st = await paySettings(ctx.db, ctx.salonId, c.salon.pix_key);
+  if (st.provider === "pix_manual") {
+    const pix = await bookingPix(ctx, p.appointmentId);
+    if (!pix) return say(c, "IDLE", "Não consegui gerar o Pix agora. Você pode pagar no salão no dia do atendimento.", "pix_unavailable");
+    const after = say(c, "IDLE", "Depois de pagar, envie o comprovante aqui (foto ou PDF). A equipe do salão confere e confirma.", "pix");
+    // Comprovante (mídia) segue pelo atendente clássico, que conhece o agendamento por este estado.
+    return { ...after, messages: [{ type: "image", text: pix.media.caption, media_path: pix.media.path, media_mime: pix.media.mime, media_filename: pix.media.filename }, { type: "text", text: pix.payload }, ...after.messages], flowState: { kind: "flow", step: "proof", appointmentId: p.appointmentId } };
   }
-  return out;
+  let ch;
+  try { ch = await chargeAppointment(ctx.db, ctx.salonId, ctx.phone, p.appointmentId, method, st); }
+  catch (e) { console.warn("payment_charge_failed", { salon: ctx.salonId, code: (e as { code?: string }).code, detail: (e as { detail?: string }).detail }); ch = null; }
+  if (!ch) {
+    const out = paymentOffer(c, p.appointmentId, p.amount);
+    return prefix(await out ?? await mainMenu(c, false), `Não consegui gerar a cobrança no ${PROVIDER_LABEL[st.provider as keyof typeof PROVIDER_LABEL] ?? "provedor"} agora. Tente de novo ou escolha outra forma.`);
+  }
+  c.s.data.pay = { ...p, chargeId: ch.id };
+  const head = ch.pixCode
+    ? `💠 *Pix de ${brl(ch.amountCents / 100)}*\nCopie o código da próxima mensagem e cole no app do seu banco, em *Pix copia e cola*. Vale por 1 hora.`
+    : `🔒 *Pagamento de ${brl(ch.amountCents / 100)}*\nPague com ${ch.method === "card" ? "cartão" : "Pix ou cartão"} na página segura do ${PROVIDER_LABEL[st.provider as keyof typeof PROVIDER_LABEL]}:\n${ch.url}`;
+  const card = menu(c, "PAYMENT", "Pagamento", "Assim que o pagamento cair, eu confirmo seu horário aqui automaticamente. ✅", [{ id: "pay_check", title: "🔄 Já paguei", value: { pay: "check" } }], 0, "Responda com o número da opção.");
+  card.messages = [{ type: "text", text: head }, ...(ch.pixCode ? [{ type: "text" as const, text: ch.pixCode }] : []), ...card.messages];
+  card.model = `pay_${ch.method}`;
+  return card;
+}
+
+async function payCheck(c: Ctx): Promise<Out> {
+  const p = c.s.data.pay;
+  if (!p?.chargeId || c.ctx.preview) return mainMenu(c, false);
+  let paid = false;
+  try { paid = await settleCharge(c.ctx.db, p.chargeId); } catch { paid = false; }
+  if (paid) { c.s.data = {}; return say(c, "IDLE", "✅ Pagamento confirmado! Seu horário está garantido. Obrigado!", "pay_confirmed"); }
+  return menu(c, "PAYMENT", "Pagamento", "Ainda não apareceu por aqui. O Pix costuma cair em segundos e o cartão assim que aprovado. Eu aviso automaticamente quando confirmar.", [{ id: "pay_check", title: "🔄 Já paguei", value: { pay: "check" } }], 0, "Responda com o número da opção.");
+}
+
+// ----------------------------------------------------------------------------------------------- avaliação
+async function rateable(c: Ctx): Promise<Appt[]> {
+  if (c.ctx.preview) return [];
+  const since = today(c.tz).subtract({ days: 30 }).toString();
+  const { data, error } = await c.ctx.db.from("appointments").select("id,date,start_time,services(name),professionals(name),reviews(id)").eq("salon_id", c.ctx.salonId).eq("client_phone", c.ctx.phone).eq("status", "completed").gte("date", since).not("professional_id", "is", null).order("date", { ascending: false }).limit(8);
+  if (error) fail();
+  const nameOf = (rel: unknown) => ((Array.isArray(rel) ? rel[0] : rel) as { name?: string } | null)?.name ?? "";
+  const reviewed = (rel: unknown) => (Array.isArray(rel) ? rel.length > 0 : !!rel);
+  return ((data ?? []) as Record<string, unknown>[]).filter(a => !reviewed(a.reviews)).slice(0, 5)
+    .map(a => ({ id: String(a.id), date: String(a.date), start: String(a.start_time).slice(0, 5), service: nameOf(a.services) || "Atendimento", professional: nameOf(a.professionals) }));
+}
+const RATINGS: Option[] = [
+  { id: "rate_5", title: "⭐⭐⭐⭐⭐ Excelente", value: { rating: 5 } }, { id: "rate_4", title: "⭐⭐⭐⭐ Muito bom", value: { rating: 4 } },
+  { id: "rate_3", title: "⭐⭐⭐ Bom", value: { rating: 3 } }, { id: "rate_2", title: "⭐⭐ Regular", value: { rating: 2 } }, { id: "rate_1", title: "⭐ Ruim", value: { rating: 1 } },
+];
+function rateAsk(c: Ctx, a: Appt, intro = ""): Out {
+  const label = `${a.service}${a.professional ? ` com ${a.professional}` : ""} em ${dateBR(a.date)}`;
+  c.s.data.rate = { id: a.id, label };
+  return prefix(menu(c, "RATE_APPOINTMENT", "Avaliação", `⭐ *Como foi seu atendimento?*\n${label}\n\nSua nota ajuda o ${c.salon.name} a melhorar sempre.`, RATINGS, 0, "Responda com o número da nota."), intro);
+}
+async function rateList(c: Ctx, page = 0): Promise<Out> {
+  const list = await rateable(c);
+  if (!list.length) return say(c, "MAIN_MENU", "Você não tem atendimentos para avaliar agora. Obrigado! 💜", "rate_none");
+  if (list.length === 1) return rateAsk(c, list[0]);
+  c.s.data.appts = list;
+  return menu(c, "RATE_APPOINTMENT", "Avaliar", "Qual atendimento você quer avaliar?", list.map(a => ({ title: `${dateBR(a.date)} ${a.service}`, description: a.professional || undefined, value: { appt: a.id } })), page);
+}
+async function rateSave(c: Ctx, rating: number): Promise<Out> {
+  const r = c.s.data.rate;
+  if (!r) return rateList(c);
+  const thanks = rating >= 4 ? "Que bom que você gostou! 💜" : "Obrigado pela sinceridade. Sua opinião vai direto para a equipe melhorar. 🙏";
+  if (!c.ctx.preview) {
+    if (!c.ctx.eventId) return mainMenu(c, false);
+    const { data, error } = await c.ctx.db.rpc("whatsapp_rate_appointment", { p_event_id: c.ctx.eventId, p_appointment_id: r.id, p_rating: rating });
+    if (error) {
+      const msg = String(error.message ?? "");
+      if (/appointment_not_completed|review_expired|appointment_without_professional/.test(msg)) { c.s.data = {}; return say(c, "MAIN_MENU", "Esse atendimento não pode mais ser avaliado por aqui. Obrigado mesmo assim! 💜", "rate_closed"); }
+      fail();
+    }
+    const res = data as { ok?: boolean; duplicate?: boolean } | null;
+    if (!res?.ok) { c.s.data = {}; return say(c, "MAIN_MENU", "Não encontrei esse atendimento para avaliar.", "rate_missing"); }
+    if (res.duplicate) { c.s.data = {}; return say(c, "IDLE", "Esse atendimento já estava avaliado. Obrigado! 💜", "rate_duplicate"); }
+  }
+  c.s.data = { rate: { ...r } };
+  return menu(c, "RATE_COMMENT", "Comentário", `${"⭐".repeat(rating)} ${thanks}\n\nQuer deixar um comentário? É só escrever aqui (opcional).`, [{ id: "rate_skip", title: "Pular", value: { skip: true } }], 0, "Escreva seu comentário ou responda 1 para pular.");
+}
+async function rateComment(c: Ctx, text: string): Promise<Out> {
+  if (!c.ctx.preview && c.ctx.eventId) {
+    const { error } = await c.ctx.db.rpc("whatsapp_review_comment", { p_event_id: c.ctx.eventId, p_comment: text.slice(0, 1000) });
+    if (error) fail();
+  }
+  c.s.data = {};
+  return say(c, "IDLE", "Anotado! Obrigado pelo retorno. 💜", "rate_comment");
+}
+/** Pedido de avaliação enviado (rate.N clicado ou número digitado logo depois): qual agendamento. */
+async function openRequest(c: Ctx): Promise<{ appointment_id: string; sent_at: string; service: string | null } | null> {
+  if (c.ctx.preview) return null;
+  const { data, error } = await c.ctx.db.rpc("whatsapp_open_review_request", { p_salon_id: c.ctx.salonId, p_phone: c.ctx.phone });
+  if (error) return null;
+  return (Array.isArray(data) ? data[0] : data) ?? null;
 }
 
 async function listAppointments(c: Ctx): Promise<Appt[]> {
@@ -359,11 +506,13 @@ async function myAppointments(c: Ctx, intro = "", page = 0): Promise<Out> {
   const appts = await listAppointments(c);
   c.s.data = { appts };
   if (c.ctx.preview) return prefix(say(c, "MAIN_MENU", "(Simulação) Aqui apareceriam os agendamentos futuros do cliente, com opções de remarcar ou cancelar.\n\nDigite *0* para o menu."), intro);
-  const portal = await portalUrl(c);
+  const [portal, pending] = await Promise.all([portalUrl(c), rateable(c)]);
   intro = [intro, portal?.includes("#t=") ? `📲 Histórico completo e próximos horários: ${portal}` : ""].filter(Boolean).join("\n\n");
-  if (!appts.length) return prefix(menu(c, "MAIN_MENU", "Agendamentos", "Você não tem agendamentos futuros por aqui.", [{ id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } }, { id: "menu_main", title: "⬅️ Menu inicial", value: { go: "menu" } }], 0, "Responda com o número."), intro);
-  if (appts.length === 1) { c.s.data.target = appts[0]; return appointmentActions(c, intro); }
-  return prefix(menu(c, "MY_APPOINTMENTS", "Seus agendamentos", "Seus próximos horários. Qual deles?", appts.map(a => ({ title: `${dateBR(a.date)} ${a.start}`, description: `${a.service}${a.professional ? ` · ${a.professional}` : ""}`, value: { id: a.id } })), page), intro);
+  // Atendimento concluído sem nota (até 30 dias): convite para avaliar junto da lista.
+  const rate: Option[] = pending.length ? [{ id: "menu_rate", title: `⭐ Avaliar atendimento${pending.length > 1 ? ` (${pending.length})` : ""}`, description: pending.length === 1 ? `${pending[0].service} de ${dateBR(pending[0].date)}` : "Sua nota ajuda o salão", value: { go: "rate" } }] : [];
+  if (!appts.length) return prefix(menu(c, "MAIN_MENU", "Agendamentos", "Você não tem agendamentos futuros por aqui.", [{ id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } }, ...rate, { id: "menu_main", title: "🏠 Menu inicial", value: { go: "menu" } }], 0, "Responda com o número."), intro);
+  if (appts.length === 1 && !rate.length) { c.s.data.target = appts[0]; return appointmentActions(c, intro); }
+  return prefix(menu(c, "MY_APPOINTMENTS", "Seus agendamentos", "Seus próximos horários. Qual deles?", [...appts.map(a => ({ title: `${dateBR(a.date)} ${a.start}`, description: `${a.service}${a.professional ? ` · ${a.professional}` : ""}`, value: { id: a.id } })), ...rate], page), intro);
 }
 
 function appointmentActions(c: Ctx, intro = ""): Out {
@@ -371,7 +520,7 @@ function appointmentActions(c: Ctx, intro = ""): Out {
   return prefix(menu(c, "APPOINTMENT_ACTIONS", "Agendamento", `📅 ${apptLabel(a)}\n\nO que você quer fazer?`, [
     { id: "appt_reschedule", title: "🔄 Remarcar", value: { act: "reschedule" } },
     { id: "appt_cancel", title: "❌ Cancelar", value: { act: "cancel" } },
-    { id: "appt_back", title: "⬅️ Voltar ao menu", value: { act: "menu" } },
+    { id: "appt_back", title: "🏠 Menu inicial", value: { act: "menu", go: "menu" } },
   ], 0, "Responda com o número."), intro);
 }
 
@@ -456,7 +605,9 @@ async function back(c: Ctx): Promise<Out> {
     case "SELECT_TIME": case "RESCHEDULE_SELECT_TIME": if (f) f.start = undefined; return selectTime(c);
     case "CONFIRM_NAME": return confirmName(c);
     case "MY_APPOINTMENTS": return myAppointments(c);
-    case "APPOINTMENT_ACTIONS": return appointmentActions(c);
+    case "APPOINTMENT_ACTIONS": return c.s.data.target ? appointmentActions(c) : myAppointments(c);
+    case "CONFIRM_BOOKING": return f ? confirmBooking(c) : mainMenu(c, false);
+    case "RATE_APPOINTMENT": return rateList(c);
     default: return mainMenu(c, false);
   }
 }
@@ -474,29 +625,77 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
   const { s } = c, text = input.text.trim(), step = s.step;
   const cmd = parseCommand(text);
   const sel = input.selection ?? null;
+  // Nota clicada no pedido de avaliação (rate.N, lista enviada quando o dono marca Concluído).
+  const clicked = sel?.match(/^rate\.([1-5])$/)?.[1];
+  if (clicked) {
+    const req = await openRequest(c);
+    if (!req) return say(c, "IDLE", "Esse pedido de avaliação já foi respondido. Obrigado! 💜", "rate_closed");
+    c.s.data = { rate: { id: req.appointment_id, label: req.service ?? "atendimento" } };
+    return rateSave(c, Number(clicked));
+  }
   // Comandos globais e ids fixos do menu principal valem em qualquer etapa.
   if (cmd === "human" || sel === "menu_human") return handoff(c);
   if (cmd === "menu" || sel === "menu_main") return mainMenu(c, step === "IDLE" || step === "HUMAN_HANDOFF");
-  if (cmd === "back") return back(c);
+  if (cmd === "back" || sel === "nav_back") return back(c);
   if (cmd === "book" || sel === "menu_book") { push(c, step); return selectService(c); }
   if (cmd === "mine" || cmd === "cancel" || sel === "menu_my_appointments") { push(c, step); return myAppointments(c); }
   if (cmd === "prices" || sel === "menu_services") return pricesInfo(c);
   if (sel === "menu_info") return infoMenu(c);
-  if (step === "IDLE" || step === "HUMAN_HANDOFF") return mainMenu(c);
+  if (sel === "menu_rate") { push(c, step); return rateList(c); }
+  // Número 1–5 logo depois do pedido de avaliação (lista numerada: 1 = Excelente = nota 5).
+  if ((step === "IDLE" || step === "MAIN_MENU") && /^[1-5]$/.test(text) && !sel) {
+    const req = await openRequest(c);
+    if (req && (!s.lastAt || new Date(s.lastAt) < new Date(req.sent_at))) {
+      c.s.data = { rate: { id: req.appointment_id, label: req.service ?? "atendimento" } };
+      return rateSave(c, 6 - Number(text));
+    }
+  }
+  if (step === "IDLE" || step === "HUMAN_HANDOFF") {
+    // Card final com "Falar com atendente" respondido pelo número.
+    const i = step === "IDLE" ? resolveChoice(s.data.menu, text, sel) : null;
+    if (typeof i === "number" && (s.data.menu!.options[i] as Record<string, unknown>)?.go === "human") return handoff(c);
+    return mainMenu(c);
+  }
 
   const choice = resolveChoice(s.data.menu, text, sel);
   const picked = typeof choice === "number" ? s.data.menu!.options[choice] as Record<string, unknown> : null;
   const page = s.data.menu?.page ?? 0;
   const f = s.data.flow;
   const unknown = () => unknownInput(c, text, deps);
-  // "Menu inicial" acrescentado a cards de uma opção (enquete) ou escolhido pelo número.
+  // Navegação fixa (Voltar / Menu inicial) escolhida pelo número ou clique.
   if (picked?.go === "menu") return mainMenu(c, false);
+  if (picked?.go === "back") return back(c);
+  if (picked?.go === "rate") { push(c, step); return rateList(c); }
   switch (step) {
+    case "RATE_APPOINTMENT": {
+      if (choice === "more") return rateList(c, page + 1);
+      if (picked && "appt" in picked) {
+        const a = (s.data.appts ?? []).find(x => x.id === picked.appt);
+        if (!a) return rateList(c);
+        push(c, step);
+        return rateAsk(c, a);
+      }
+      const rating = picked && "rating" in picked ? Number(picked.rating) : null;
+      if (rating) return rateSave(c, rating);
+      return unknown();
+    }
+    case "RATE_COMMENT": {
+      if (picked?.skip) { s.data = {}; return say(c, "IDLE", "Combinado! Obrigado pela avaliação. 💜", "rate_skip"); }
+      if (text.length >= 2) return rateComment(c, text);
+      return unknown();
+    }
+    case "PAYMENT": {
+      if (!s.data.pay) return mainMenu(c, false);
+      if (picked?.pay === "salon") { s.data = {}; return say(c, "IDLE", "Combinado, o pagamento fica para o dia no salão. Até lá! 💜", "pay_salon"); }
+      if (picked?.pay === "pix" || picked?.pay === "card") return payNow(c, picked.pay);
+      if (picked?.pay === "check") return payCheck(c);
+      return unknown();
+    }
     case "MAIN_MENU": {
       if (choice === "more") return mainMenu(c, false, page + 1);
       if (!picked) return unknown();
       push(c, step);
-      switch (picked.go) { case "book": return selectService(c); case "mine": return myAppointments(c); case "prices": return pricesInfo(c); case "info": return infoMenu(c); case "human": return handoff(c); default: return mainMenu(c, false); }
+      switch (picked.go) { case "book": return selectService(c); case "mine": return myAppointments(c); case "prices": return pricesInfo(c); case "info": return infoMenu(c); case "human": return handoff(c); case "rate": return rateList(c); default: return mainMenu(c, false); }
     }
     case "SELECT_SERVICE": {
       if (choice === "more") return selectService(c, "", page + 1); // lista (> 9) ou botões (> 3): próxima página
@@ -597,6 +796,9 @@ async function repeat(c: Ctx): Promise<Out> {
     case "MY_APPOINTMENTS": return myAppointments(c);
     case "APPOINTMENT_ACTIONS": return appointmentActions(c);
     case "CONFIRM_CANCEL_APPOINTMENT": return confirmCancel(c);
+    case "RATE_APPOINTMENT": { const r = c.s.data.rate; return r ? menu(c, "RATE_APPOINTMENT", "Avaliação", `⭐ *Como foi seu atendimento?*\n${r.label}`, RATINGS, 0, "Responda com o número da nota.") : rateList(c); }
+    case "RATE_COMMENT": return menu(c, "RATE_COMMENT", "Comentário", "Quer deixar um comentário? É só escrever aqui (opcional).", [{ id: "rate_skip", title: "Pular", value: { skip: true } }], 0, "Escreva seu comentário ou responda 1 para pular.");
+    case "PAYMENT": { const p = c.s.data.pay; return p ? (await paymentOffer(c, p.appointmentId, p.amount)) ?? mainMenu(c, false) : mainMenu(c, false); }
     default: return mainMenu(c, false);
   }
 }
@@ -606,7 +808,7 @@ async function repeat(c: Ctx): Promise<Out> {
  * pagamento PIX em andamento no atendente clássico): o caminho antigo assume.
  */
 export async function guidedReply(ctx: BotContext, input: Input, deps: GuidedDeps = {}, humanPaused = false): Promise<GuidedReply | null> {
-  if (input.media || (input.selection && /^rate\./.test(input.selection))) return null;
+  if (input.media) return null;
   const [cfg, loaded] = await Promise.all([automationOf(ctx), loadSession(ctx, deps)]);
   if (!cfg.guided || loaded === "unavailable") return null;
   const s = loaded;
