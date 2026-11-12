@@ -135,7 +135,7 @@ export async function chatbotReply(ctx: BotContext, text: string, input: Omit<In
       const r = await baseReply(ctx, t, pre);
       return r.provider === "deterministic" && r.startBooking === undefined ? null : { text: r.text, startBooking: r.startBooking };
     };
-    const g = await guidedReply(ctx, { text, selection: input.selection ?? null }, { ai, session: (input.session as GuidedSession | null | undefined) ?? null }, !!st?.human_takeover && !ctx.preview);
+    const g = await guidedReply(ctx, { text, selection: input.selection ?? null, quoted: input.quoted ?? null }, { ai, session: (input.session as GuidedSession | null | undefined) ?? null }, !!st?.human_takeover && !ctx.preview);
     if (g) {
       if (g.flowState !== undefined) await saveFlow(ctx, g.flowState);
       return { text: g.text, provider: g.provider, model: g.model, messages: g.messages, handoff: g.handoff, session: g.session };

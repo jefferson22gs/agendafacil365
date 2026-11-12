@@ -30,7 +30,8 @@ export interface Flow {
   excludeAppointmentId?: string;
 }
 /** `session`: só no simulador do painel (fluxo guiado sem persistência). */
-export interface Input { text: string; selection?: string | null; media?: unknown; session?: unknown }
+/** `quoted`: id da mensagem respondida (clique em botão/lista), para saber de qual pedido de avaliação é a nota. */
+export interface Input { text: string; selection?: string | null; media?: unknown; session?: unknown; quoted?: string | null }
 export interface FlowReply { messages: OutMessage[]; state: Flow | null; model: string }
 
 const FLOW_TTL_MS = 30 * 60_000, DATE_DAYS = 21;

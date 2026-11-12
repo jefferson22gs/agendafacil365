@@ -47,6 +47,24 @@ async function sendViaMeta(db: SupabaseClient, item: OutboxItem, phoneNumberId: 
  * (envio imediato pelo worker inbound). `chatbotOnly`: só conversa (dreno curto do dispatcher).
  */
 export interface ClaimFilter { sourceEvent?: string; chatbotOnly?: boolean }
+/**
+ * Drena a fila geral dentro de um orçamento de tempo. O gate libera uma mensagem a cada 3 s por conexão; quando o
+ * laço parava na primeira espera, saía 1 mensagem por minuto (cron). Aqui espera o gate reabrir enquanto houver
+ * mensagem vencida. Orçamento abaixo dos 30 s do pg_net que aciona a função.
+ */
+export async function drainOutbox(db: SupabaseClient, budgetMs = 24_000, max = 20): Promise<number> {
+  const started = Date.now();
+  let processed = 0;
+  while (processed < max) {
+    if (await processOutboxItem(db)) { processed++; continue; }
+    const { data: wait } = await db.rpc("whatsapp_outbox_wait_ms");
+    // Gate aberto mas nada saiu = outra execução está enviando por esta conexão: aguarda 1 s antes de tentar de novo.
+    const ms = typeof wait === "number" ? Math.max(wait + 100, 1_000) : null;
+    if (ms === null || Date.now() - started + ms > budgetMs) break;
+    await new Promise(r => setTimeout(r, ms));
+  }
+  return processed;
+}
 export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter): Promise<boolean> {
   const { data, error } = filter
     ? await db.rpc("whatsapp_claim_outbox_v2", { p_source_event: filter.sourceEvent ?? null, p_chatbot_only: !!filter.chatbotOnly })

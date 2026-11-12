@@ -51,7 +51,7 @@ serve(async req => {
           if(typed) return; typed=true;
           background(instanceName(event.instance_id,event.salon_id).then(name=>name?sendTyping(evolutionClient(),name,event.sender_phone,6_000):undefined).catch(()=>undefined));
         };
-        const reply=await chatbotReply({db,salonId:event.salon_id,phone:event.sender_phone,eventId:event.id,preview:false,typing,name:typeof payload.name==="string"?payload.name:undefined},String(payload.text??""),{selection:typeof payload.selection==="string"?payload.selection:null,media:payload.media??null});
+        const reply=await chatbotReply({db,salonId:event.salon_id,phone:event.sender_phone,eventId:event.id,preview:false,typing,name:typeof payload.name==="string"?payload.name:undefined},String(payload.text??""),{selection:typeof payload.selection==="string"?payload.selection:null,media:payload.media??null,quoted:typeof payload.quotedMessageId==="string"?payload.quotedMessageId:null});
         // Persistência atômica, dedup por origem. Envio só pelo outbox (claim/gate/begin_send), nunca direto.
         // Atendente: várias mensagens (menu interativo, QR do PIX, copia e cola) vão em ordem pela v2.
         const {data:finished,error:finishError}=reply.messages?.length

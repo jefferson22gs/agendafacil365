@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeWorker, serviceClient } from "../_shared/whatsapp/auth.ts";
-import { processOutboxItem } from "../_shared/whatsapp/outbox.ts";
+import { drainOutbox } from "../_shared/whatsapp/outbox.ts";
 import { evolutionClient } from "../_shared/whatsapp/evolution.ts";
 import { deliveryUpdates, messageRecords } from "../_shared/whatsapp/inbound.ts";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/whatsapp/errors.ts";
@@ -39,12 +39,8 @@ serve(async (req) => {
     if (req.method !== "POST") return jsonResponse({ error: "Método não permitido." }, 405);
     authorizeWorker(req);
     const db = serviceClient();
-    let processed = 0;
-    // Gate persistente coordena instâncias; não tenta ocupar a função por longos sleeps.
-    for (let i = 0; i < 10; i++) {
-      if (!await processOutboxItem(db)) break;
-      processed++;
-    }
+    // Gate persistente coordena instâncias; a espera pelo gate é curta (3 s) e limitada por orçamento.
+    const processed = await drainOutbox(db);
     const deliveries = await checkDeliveries(db).catch(() => 0);
     return jsonResponse({ processed, deliveries });
   } catch (error) { return errorResponse(error); }

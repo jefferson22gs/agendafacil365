@@ -620,9 +620,10 @@ async function rateComment(c: Ctx, text: string): Promise<Out> {
   return say(c, "IDLE", "Anotado! Obrigado pelo retorno. 💜", "rate_comment");
 }
 /** Pedido de avaliação enviado (rate.N clicado ou número digitado logo depois): qual agendamento. */
-async function openRequest(c: Ctx): Promise<{ appointment_id: string; sent_at: string; service: string | null } | null> {
+/** `quoted`: mensagem clicada. Com dois pedidos abertos, a nota vai para o atendimento daquela mensagem. */
+async function openRequest(c: Ctx, quoted: string | null = null): Promise<{ appointment_id: string; sent_at: string; service: string | null } | null> {
   if (c.ctx.preview) return null;
-  const { data, error } = await c.ctx.db.rpc("whatsapp_open_review_request", { p_salon_id: c.ctx.salonId, p_phone: c.ctx.phone });
+  const { data, error } = await c.ctx.db.rpc("whatsapp_open_review_request", { p_salon_id: c.ctx.salonId, p_phone: c.ctx.phone, p_message_id: quoted });
   if (error) return null;
   return (Array.isArray(data) ? data[0] : data) ?? null;
 }
@@ -766,7 +767,7 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
   // Nota clicada no pedido de avaliação (rate.N, lista enviada quando o dono marca Concluído).
   const clicked = sel?.match(/^rate\.([1-5])$/)?.[1];
   if (clicked) {
-    const req = await openRequest(c);
+    const req = await openRequest(c, input.quoted ?? null);
     if (!req) return say(c, "IDLE", "Esse pedido de avaliação já foi respondido. Obrigado! 💜", "rate_closed");
     c.s.data = { rate: { id: req.appointment_id, label: req.service ?? "atendimento" } };
     return rateSave(c, Number(clicked));
