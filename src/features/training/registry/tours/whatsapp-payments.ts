@@ -6,7 +6,7 @@ export const whatsappPaymentsTour: TourDef = {
   title: "Cobrar pelo WhatsApp",
   description: "Ligar a cobrança no robô, escolher Pix ou um provedor (Mercado Pago, Asaas, PagBank, InfinitePay) e conectar a conta.",
   category: "whatsapp",
-  route: "/admin/whatsapp?aba=cobranca",
+  route: "/admin/settings?aba=cobranca",
   steps: [
     { target: "payment-enabled", title: "Ligar ou desligar", body: "Ligado, o cliente recebe as formas de pagamento logo depois de agendar no WhatsApp. Desligado, o robô não fala de pagamento e ele paga no salão." },
     { target: "payment-provider", title: "Como você recebe", body: "Pix pela chave do salão é o mais simples (você confere o comprovante). Mercado Pago, Asaas, PagBank e InfinitePay confirmam o pagamento sozinhos e já confirmam o horário." },

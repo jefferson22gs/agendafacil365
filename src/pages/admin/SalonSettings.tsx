@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { PaymentSettingsCard } from "@/components/whatsapp/PaymentSettingsCard";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -94,7 +96,20 @@ const weekDays = [
   { value: 6, label: "Sáb" },
 ];
 
+const SETTINGS_TABS = [
+  ["dados", "Meu salão", "Nome, contatos e endereço."],
+  ["horarios", "Horários", "Dias de atendimento e intervalo para almoço."],
+  ["agendamento", "Agendamento", "Link público e confirmação dos horários."],
+  ["aparencia", "Aparência", "Cores e logotipo do salão."],
+  ["aplicativo", "Meu aplicativo", "Personalize o aplicativo instalado pelos clientes."],
+  ["cobranca", "Cobrança", "Chave Pix e pagamentos pelo WhatsApp."],
+  ["avisos", "Notificações", "Escolha quais avisos receber neste aparelho."],
+] as const;
+
 const SalonSettings = () => {
+  const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const activeTab = SETTINGS_TABS.find(([id]) => id === params.get("aba")) ?? SETTINGS_TABS[0];
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const markLinkShared = useMarkLinkShared();
@@ -205,10 +220,12 @@ const SalonSettings = () => {
     if (!user) return;
 
     if (!salon.name.trim()) {
+      setParams({ aba: "dados" });
       toast.error("Nome do estabelecimento é obrigatório");
       return;
     }
     if ([pwa.pwa_theme_color, pwa.pwa_background_color].some(c => c && !safeHexColor(c, ""))) {
+      setParams({ aba: "aplicativo" });
       toast.error("Meu aplicativo: use cores no formato #RRGGBB.");
       return;
     }
@@ -269,6 +286,8 @@ const SalonSettings = () => {
         if (error) throw error;
         toast.success("Configurações salvas com sucesso!");
       }
+      await queryClient.invalidateQueries({ queryKey: ["payment-settings"] });
+      await queryClient.invalidateQueries({ queryKey: ["whatsapp-salon"] });
     } catch (error: any) {
       console.error("Error saving salon:", error);
       toast.error(error.message || "Erro ao salvar configurações");
@@ -445,7 +464,7 @@ const SalonSettings = () => {
           <PageHeader
             className="mb-0"
             title={isNew ? "Configurar estabelecimento" : "Configurações do estabelecimento"}
-            description={isNew ? "Cadastre os dados do seu estabelecimento para começar." : "Gerencie as informações, horários e a aparência do seu estabelecimento."}
+            description={isNew ? "Cadastre os dados do seu estabelecimento para começar." : "Escolha o assunto abaixo e configure uma coisa por vez."}
             actions={
               <Button variant="brand" onClick={handleSave} disabled={saving} data-tour="settings-save">
                 <Save size={18} className="mr-2" aria-hidden />
@@ -455,6 +474,13 @@ const SalonSettings = () => {
           />
         </div>
 
+        <Tabs value={activeTab[0]} onValueChange={aba => { stopCamera(); setParams({ aba }); }} className="min-w-0 space-y-5">
+          <TabsList aria-label="Categorias de configurações" data-tour="settings-tabs" className="grid h-auto w-full grid-cols-2 gap-1 bg-muted p-1 sm:grid-cols-4 xl:grid-cols-7">
+            {SETTINGS_TABS.map(([id, label]) => <TabsTrigger key={id} value={id} data-tour={`settings-tab-${id}`} className="min-h-11 whitespace-normal px-2 text-sm">{label}</TabsTrigger>)}
+          </TabsList>
+          <p className="text-sm text-muted-foreground">{activeTab[2]} {activeTab[0] !== "cobranca" && "As alterações são mantidas ao trocar de aba. Use Salvar para gravar."}</p>
+          <TabsContent value="agendamento" className="space-y-5">
+            {isNew && <p className="rounded-xl border p-4 text-sm">Salve os dados do salão primeiro para gerar seu link de agendamento.</p>}
         {/* Link Público - Card em destaque */}
         {!isNew && salon.slug && (
           <Card className="border-primary/30 bg-primary/5" data-tour="settings-public-link">
@@ -529,7 +555,8 @@ const SalonSettings = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          </TabsContent>
+          <TabsContent value="dados" className="grid grid-cols-1 gap-5 data-[state=inactive]:hidden lg:grid-cols-2">
           {/* Informações Básicas */}
           <Card data-tour="settings-info">
             <CardHeader>
@@ -620,18 +647,6 @@ const SalonSettings = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2" data-tour="settings-pix">
-                <Label htmlFor="pix_key">Chave PIX</Label>
-                <Input
-                  id="pix_key"
-                  value={salon.pix_key || ''}
-                  onChange={(e) => setSalon({ ...salon, pix_key: e.target.value })}
-                  placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Será exibida na confirmação de agendamento para pagamento
-                </p>
-              </div>
               <div className="space-y-2" data-tour="settings-email">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
@@ -694,6 +709,8 @@ const SalonSettings = () => {
             </CardContent>
           </Card>
 
+          </TabsContent>
+          <TabsContent value="horarios" className="max-w-3xl">
           {/* Horário de Funcionamento */}
           <Card data-tour="settings-hours">
             <CardHeader>
@@ -702,7 +719,7 @@ const SalonSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
-                <div className="flex justify-between items-center pb-2 border-b border-border">
+                <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-border">
                   <Label>Configuração Semanal</Label>
                   <Button
                     variant="ghost"
@@ -728,9 +745,10 @@ const SalonSettings = () => {
                   {weekDays.map((day) => {
                     const dayConfig = salon.working_hours?.[day.value] || { isOpen: false, start: "09:00", end: "19:00" };
                     return (
-                      <div key={day.value} className="flex items-center gap-4 p-2 rounded-lg hover:bg-secondary/20 transition-colors">
+                      <div key={day.value} className="flex flex-wrap items-center gap-3 p-2 rounded-lg hover:bg-secondary/20 transition-colors">
                         <div className="w-24 flex items-center gap-2">
                           <Switch
+                            aria-label={`Atender ${day.label}`}
                             checked={dayConfig.isOpen}
                             onCheckedChange={(checked) => {
                               const newHours = { ...salon.working_hours };
@@ -747,7 +765,8 @@ const SalonSettings = () => {
                           <div className="flex items-center gap-2 flex-1 animate-in fade-in slide-in-from-left-2">
                             <Input
                               type="time"
-                              className="w-24 h-8"
+                              className="w-28 min-h-11"
+                              aria-label={`Abertura ${day.label}`}
                               value={dayConfig.start}
                               onChange={(e) => {
                                 const newHours = { ...salon.working_hours };
@@ -758,7 +777,8 @@ const SalonSettings = () => {
                             <span className="text-muted-foreground">às</span>
                             <Input
                               type="time"
-                              className="w-24 h-8"
+                              className="w-28 min-h-11"
+                              aria-label={`Fechamento ${day.label}`}
                               value={dayConfig.end}
                               onChange={(e) => {
                                 const newHours = { ...salon.working_hours };
@@ -856,6 +876,8 @@ const SalonSettings = () => {
             </CardContent>
           </Card>
 
+          </TabsContent>
+          <TabsContent value="aparencia" className="max-w-3xl">
           {/* Personalização */}
           <Card data-tour="settings-branding">
             <CardHeader>
@@ -948,6 +970,8 @@ const SalonSettings = () => {
             </CardContent>
           </Card>
 
+          </TabsContent>
+          <TabsContent value="aplicativo" className="space-y-5">
           {/* Meu aplicativo (app instalável do salão) */}
           <MyAppCard
             salonId={salon.id}
@@ -960,6 +984,19 @@ const SalonSettings = () => {
             onChange={(patch) => setPwa(prev => ({ ...prev, ...patch }))}
           />
 
+          </TabsContent>
+          <TabsContent value="cobranca" forceMount className="space-y-5 data-[state=inactive]:hidden">
+            <Card data-tour="settings-pix">
+              <CardHeader><CardTitle>Pix do salão</CardTitle><CardDescription>Para receber diretamente e conferir o comprovante manualmente.</CardDescription></CardHeader>
+              <CardContent className="space-y-3">
+                <Label htmlFor="pix_key">Chave Pix</Label>
+                <Input id="pix_key" value={salon.pix_key || ""} onChange={e => setSalon({ ...salon, pix_key: e.target.value })} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
+                <Button onClick={handleSave} disabled={saving}>Salvar chave Pix</Button>
+              </CardContent>
+            </Card>
+            {salon.id ? <PaymentSettingsCard /> : <p className="rounded-xl border p-4 text-sm">Salve o cadastro do salão para conectar sua conta de cobrança.</p>}
+          </TabsContent>
+          <TabsContent value="avisos" className="space-y-5">
           {/* Notificações Push do dono */}
           <Card className="md:col-span-2" data-tour="settings-notifications">
             <CardHeader>
@@ -975,7 +1012,8 @@ const SalonSettings = () => {
               <NotificationSettings salonId={salon.id} />
             </CardContent>
           </Card>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );

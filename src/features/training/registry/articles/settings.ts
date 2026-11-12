@@ -39,11 +39,11 @@ export const settingsArticles: Article[] = [
     category: "settings",
     difficulty: "fácil",
     minutes: 4,
-    route: "/admin/settings",
+    route: "/admin/settings?aba=horarios",
     tourId: "settings-hours",
     steps: [
       {
-        text: "Abra Configurações e encontre Horário de Funcionamento. Confira a linha de cada dia, de domingo a sábado.",
+        text: "Abra Configurações > Horários e encontre Horário de Funcionamento. Confira a linha de cada dia, de domingo a sábado.",
         image: { src: "/training/settings/weekly-hours.webp", alt: "Configuração semanal com dias abertos e horários de início e fim", pending: true },
       },
       { text: "Ative os dias em que o salão atende. Preencha início e fim nas linhas abertas; os dias desligados aparecem como Fechado." },
@@ -68,10 +68,10 @@ export const settingsArticles: Article[] = [
     category: "start",
     difficulty: "fácil",
     minutes: 3,
-    route: "/admin/settings",
+    route: "/admin/settings?aba=agendamento",
     tourId: "settings-public-link",
     steps: [
-      { text: "Abra Configurações e preencha Slug do Link Público. Salve o salão: o cartão Link Público de Agendamento só aparece quando o salão está salvo e esse campo está preenchido." },
+      { text: "Em Configurações > Meu salão, preencha Slug do Link Público. Salve e abra a aba Agendamento: o cartão Link Público de Agendamento só aparece quando o salão está salvo e esse campo está preenchido." },
       {
         text: "No cartão do link, confira Agendamento Online Ativo. Se mudar a opção, clique em Salvar no topo para gravar a alteração.",
         image: { src: "/training/settings/public-link.webp", alt: "Cartão do link público com botões de copiar, abrir e opção de agendamento online", pending: false },
@@ -97,11 +97,11 @@ export const settingsArticles: Article[] = [
     category: "settings",
     difficulty: "fácil",
     minutes: 4,
-    route: "/admin/settings",
+    route: "/admin/settings?aba=aparencia",
     tourId: "settings-branding",
     steps: [
       {
-        text: "Abra Configurações e encontre Personalização. Escolha a Cor Principal pelo quadrado colorido ou pelo código da cor ao lado.",
+        text: "Abra Configurações > Aparência e encontre Personalização. Escolha a Cor Principal pelo quadrado colorido ou pelo código da cor ao lado.",
         image: { src: "/training/settings/branding.webp", alt: "Personalização com cor principal e opções de imagem do logo", pending: true },
       },
       { text: "Para usar uma imagem que já está na internet, abra Link URL e informe o endereço completo da imagem. Quando ela carrega, uma prévia aparece abaixo." },
@@ -123,11 +123,11 @@ export const settingsArticles: Article[] = [
     category: "settings",
     difficulty: "fácil",
     minutes: 4,
-    route: "/admin/settings",
+    route: "/admin/settings?aba=avisos",
     tourId: "settings-notifications",
     steps: [
       {
-        text: "Abra Configurações e vá até Notificações Push. Confira se o navegador mostra Ativadas, Desativadas, Notificações bloqueadas ou uma mensagem de falta de suporte.",
+        text: "Abra Configurações > Notificações. Confira se o navegador mostra Ativadas, Desativadas, Notificações bloqueadas ou uma mensagem de falta de suporte.",
         image: { src: "/training/settings/browser-notifications.webp", alt: "Seção de notificações com situação e botão de ativação", pending: true },
       },
       { text: "Clique em Ativar e autorize o navegador quando ele pedir. A partir daí este aparelho recebe os avisos do salão. Se estiverem bloqueadas, libere a permissão nas configurações do próprio navegador." },
@@ -153,10 +153,10 @@ export const settingsArticles: Article[] = [
     category: "settings",
     difficulty: "fácil",
     minutes: 4,
-    route: "/admin/settings",
+    route: "/admin/settings?aba=aplicativo",
     tourId: "settings-myapp",
     steps: [
-      { text: "Abra Configurações e encontre o card Meu aplicativo. Deixe App próprio ativo ligado para a página pública oferecer Instalar app e Ativar notificações." },
+      { text: "Abra Configurações > Meu aplicativo. Deixe App próprio ativo ligado para a página pública oferecer Instalar app e Ativar notificações." },
       { text: "Preencha Nome do app e Nome curto (até 12 caracteres cabem inteiros embaixo do ícone). Em branco, usamos o nome do salão." },
       { text: "Escolha a Cor do app e a Cor da abertura, ou deixe em branco para usar a Cor Principal. Os textos ficam em preto ou branco automaticamente para manter a leitura." },
       { text: "Em Ícone do app, clique em Enviar ícone e escolha uma imagem PNG, JPG ou WebP quadrada (ideal 512×512, até 1 MB). Confira a prévia da tela inicial e da abertura." },
@@ -178,10 +178,10 @@ export const settingsArticles: Article[] = [
     category: "settings",
     difficulty: "fácil",
     minutes: 2,
-    route: "/admin/settings",
+    route: "/admin/settings?aba=cobranca",
     tourId: "settings-pix",
     steps: [
-      { text: "Em Configurações, Informações Básicas inclui o campo Chave PIX. Ele guarda a informação de pagamento do salão para o fluxo de confirmação de agendamento." },
+      { text: "Em Configurações > Cobrança, o cartão Pix do salão inclui o campo Chave Pix. Ele guarda a informação de pagamento do salão para o fluxo de confirmação de agendamento." },
       { text: "Só preencha e confira dados de pagamento reais quando estiver configurando seu salão. Não use chaves reais em demonstrações, capturas ou materiais de treinamento." },
       { text: "Se alterar esse campo, clique em Salvar para gravar. Cadastrar a chave não efetua uma cobrança nem confirma o recebimento do pagamento." },
       { text: "Na confirmação do agendamento público, a área de PIX depende de haver uma chave cadastrada e um valor final maior que zero. Confira o pagamento pelo seu procedimento habitual." },

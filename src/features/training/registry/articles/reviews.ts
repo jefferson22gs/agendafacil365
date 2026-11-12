@@ -11,7 +11,7 @@ export const reviewsArticles: Article[] = [
       { text: "Em uma avaliação sem resposta, clique em Responder. Escreva com respeito e revise antes de Enviar; Cancelar fecha sem gravar o texto.", image: { src: "/training/reviews/reply.webp", alt: "Campo de resposta de uma avaliação", pending: true } },
       { text: "Enviar grava a resposta e a data. O cartão passa a mostrar Sua resposta; não há opção de editar ou excluir essa resposta aqui." },
     ],
-    notes: ["Esta tela não oferece controle de visibilidade, apesar de existir o campo is_public nos registros.", "O formulário do cliente grava avaliações como públicas, mas as páginas públicas atuais não exibem uma lista dessas avaliações nem as respostas. Enviar resposta aqui não envia WhatsApp ou notificação ao cliente."],
+    notes: ["Esta tela não oferece controle de visibilidade, apesar de existir o campo is_public nos registros.", "Avaliações públicas e respostas aparecem ao tocar nas estrelas do profissional durante o agendamento. O nome do cliente é abreviado. Responder não envia WhatsApp ao cliente.", "No portal Meus agendamentos, o histórico oferece Avaliar para atendimentos concluídos sem nota nos últimos 30 dias. Após avaliar, mostra as estrelas. No WhatsApp, Meus agendamentos também oferece a avaliação.", "Para enviar o convite automático 15 minutos após concluir, ative Pedir avaliação nas automações do WhatsApp. A API oficial só envia mensagens livres dentro da janela de atendimento permitida pela Meta."],
     keywords: ["avaliação", "nota", "estrelas", "comentário", "responder", "reclamação", "público", "Google"],
   },
 ];

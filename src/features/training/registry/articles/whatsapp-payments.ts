@@ -9,10 +9,10 @@ export const whatsappPaymentArticles: Article[] = [
     category: "whatsapp",
     difficulty: "fácil",
     minutes: 5,
-    route: "/admin/whatsapp?aba=cobranca",
+    route: "/admin/settings?aba=cobranca",
     tourId: "whatsapp-payments",
     steps: [
-      { text: "Abra WhatsApp no menu e escolha a aba Cobrança." },
+      { text: "Abra Configurações no menu e escolha a aba Cobrança." },
       { text: "Ligue Cobrar pelo WhatsApp. Desligado, o robô não oferece pagamento e o cliente paga no salão." },
       { text: "Escolha como recebe. Pix pela chave do salão usa a Chave PIX de Configurações e você confere o comprovante." },
       { text: "Para confirmar sozinho, escolha Mercado Pago, Asaas, PagBank ou InfinitePay e siga o passo a passo da tela para pegar a chave." },

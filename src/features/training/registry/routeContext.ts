@@ -59,6 +59,13 @@ export function contextForRoute(pathname: string, search = ""): RouteContext | u
     const sub = tab === "contatos" && params.get("contatos") === "exportar" ? "&contatos=exportar" : "";
     return MAP[`${WHATSAPP}?aba=${tab}${sub}`] ?? MAP[`${WHATSAPP}?aba=conversas`];
   }
+  if (clean === "/admin/settings") {
+    const tabs: Record<string, string[]> = {
+      dados: ["settings-info"], horarios: ["settings-hours"], agendamento: ["settings-public-link"],
+      aparencia: ["settings-branding"], aplicativo: ["settings-myapp"], cobranca: ["whatsapp-payments", "settings-pix"], avisos: ["settings-notifications"],
+    };
+    return { tours: tabs[new URLSearchParams(search).get("aba") ?? "dados"] ?? tabs.dados, category: "settings" };
+  }
   if (MAP[clean]) return MAP[clean];
   if (clean.startsWith("/admin/training/")) return { tours: ["training-article"], category: "start" };
   return undefined;

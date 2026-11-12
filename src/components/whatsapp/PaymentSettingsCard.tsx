@@ -19,7 +19,7 @@ const DEFAULTS: Settings = { whatsapp_enabled: false, provider: "pix_manual", me
 /** Tutorial de cada provedor: onde pegar a chave, em linguagem de quem não é técnico. */
 export const PROVIDERS: { id: Provider; name: string; tagline: string; auto: boolean; pix: string; card: boolean; keyLabel?: string; keyPlaceholder?: string; link?: string; steps: string[]; tip?: string }[] = [
   { id: "pix_manual", name: "Pix pela chave do salão", tagline: "Sem cadastro em provedor. O cliente recebe QR Code e copia e cola; a equipe confere o comprovante.", auto: false, pix: "QR Code + copia e cola", card: false,
-    steps: ["Abra Configurações > Dados do salão e preencha a Chave PIX.", "Volte aqui, ligue Cobrar pelo WhatsApp e salve.", "Quando o cliente enviar o comprovante, ele aparece em WhatsApp > Conversas > Comprovantes para você conferir."],
+    steps: ["No cartão Pix do salão desta aba, preencha a chave e clique em Salvar chave Pix.", "Volte aqui, ligue Cobrar pelo WhatsApp e salve.", "Quando o cliente enviar o comprovante, ele aparece em WhatsApp > Conversas > Comprovantes para você conferir."],
     tip: "Simples, mas a confirmação é manual. Para confirmar sozinho, use um dos provedores abaixo." },
   { id: "mercadopago", name: "Mercado Pago", tagline: "Pix copia e cola direto no WhatsApp e cartão em página segura. Confirma sozinho.", auto: true, pix: "Copia e cola no chat", card: true,
     keyLabel: "Access Token de produção", keyPlaceholder: "APP_USR-…", link: "https://www.mercadopago.com.br/developers/panel/app",

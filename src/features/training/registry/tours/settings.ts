@@ -6,8 +6,13 @@ export const settingsInfoTour: TourDef = {
   title: "Dados do estabelecimento",
   description: "Preencha nome, endereço e formas de contato do estabelecimento.",
   category: "settings",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=dados",
   steps: [
+    {
+      target: "settings-tabs",
+      title: "Uma configuração por vez",
+      body: "Escolha a aba: Meu salão, Horários, Agendamento, Aparência, Meu aplicativo, Cobrança ou Notificações. No celular as abas se organizam em linhas. O botão Ajuda oferece o tour da aba aberta. Trocar de aba mantém os dados que você digitou; Salvar grava o cadastro. Cobrança e preferências de notificações têm controles de gravação próprios.",
+    },
     {
       target: "settings-header",
       title: "Configure seu estabelecimento",
@@ -62,7 +67,7 @@ export const settingsHoursTour: TourDef = {
   title: "Horários de funcionamento",
   description: "Defina os dias de atendimento e a pausa para almoço.",
   category: "settings",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=horarios",
   steps: [
     {
       target: "settings-hours",
@@ -103,7 +108,7 @@ export const settingsPublicLinkTour: TourDef = {
   title: "Link público de agendamento",
   description: "Encontre seu link, confira o agendamento online e copie ou abra a página.",
   category: "start",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=agendamento",
   steps: [
     {
       target: "settings-header",
@@ -112,6 +117,7 @@ export const settingsPublicLinkTour: TourDef = {
     },
     {
       target: "settings-slug",
+      route: "/admin/settings?aba=dados",
       title: "Defina o endereço",
       body: "Preencha o campo Slug do Link Público e salve o salão. O cartão com o link aparece somente depois que o salão está salvo e esse campo está preenchido.",
     },
@@ -154,7 +160,7 @@ export const settingsBrandingTour: TourDef = {
   title: "Personalização do salão",
   description: "Escolha a cor e conheça as opções para colocar o logo do salão.",
   category: "settings",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=aparencia",
   steps: [
     {
       target: "settings-branding",
@@ -200,7 +206,7 @@ export const settingsNotificationsTour: TourDef = {
   title: "Notificações push",
   description: "Ative os avisos neste aparelho, escolha os tipos de aviso e acompanhe os envios.",
   category: "settings",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=avisos",
   steps: [
     {
       target: "settings-notifications",
@@ -258,7 +264,7 @@ export const settingsMyAppTour: TourDef = {
   title: "Meu aplicativo",
   description: "Personalize o app do salão que seus clientes instalam pelo link e acompanhe quem ativou as notificações.",
   category: "settings",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=aplicativo",
   steps: [
     {
       target: "settings-myapp",
@@ -315,12 +321,12 @@ export const settingsPixTour: TourDef = {
   title: "Dados de PIX do salão",
   description: "Conheça o campo de PIX sem expor dados reais durante o treinamento.",
   category: "settings",
-  route: "/admin/settings",
+  route: "/admin/settings?aba=cobranca",
   steps: [
     {
       target: "settings-header",
-      title: "PIX nas configurações",
-      body: "A tela tem um campo Chave PIX em Informações Básicas. Ele guarda a informação de pagamento do salão; não é uma configuração de cobrança automática.",
+      title: "Pix e cobrança",
+      body: "A aba Cobrança reúne a chave Pix manual e a conexão com provedores. Chave Pix exige conferência manual; a cobrança automática usa a conta do provedor.",
     },
     {
       target: "settings-save",

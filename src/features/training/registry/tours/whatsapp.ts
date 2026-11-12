@@ -22,6 +22,12 @@ export const whatsappConnectTour: TourDef = {
       body: "A aba Conexão liga o WhatsApp do salão ao sistema. Sem ela, Conversas, Disparador, Status e Chatbot não funcionam.",
     },
     {
+      target: "whatsapp-official",
+      title: "Conexão oficial da Meta",
+      body: "Conectar WhatsApp oficial abre o cadastro da Meta. Manter o aplicativo Business depende da elegibilidade para coexistência; Usar um número novo é uma opção separada. O tour não conecta nem altera a conta. Os passos seguintes de QR Code servem apenas para Evolution.",
+      fallbackBody: "A conexão oficial usa o cadastro da Meta, não o QR Code da Evolution. Confira com o suporte a disponibilidade para sua conta.",
+    },
+    {
       title: "Qual número usar?",
       body: "Use o número de atendimento do salão, com o celular em mãos. Evite número pessoal: os clientes recebem as mensagens pelo número conectado.",
     },

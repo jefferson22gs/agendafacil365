@@ -23,7 +23,7 @@ test('item ativo: rotas, abas do WhatsApp e rotas antigas', () => {
 test('menu: WhatsApp único com abas na ordem pedida; barra inferior com 4 destinos + Menu', () => {
   const labels = nav.NAV_ITEMS.map(i => i.label);
   for (const old of ['Chatbot IA', 'Disparador', 'Agendador Status', 'Importar Contatos']) assert(!labels.includes(old), old);
-  assert.deepEqual([...nav.WHATSAPP_TABS.map(t => t.aba)], ['conversas', 'disparador', 'status', 'chatbot', 'fluxo', 'cobranca', 'contatos', 'conexao']);
+  assert.deepEqual([...nav.WHATSAPP_TABS.map(t => t.aba)], ['conversas', 'disparador', 'status', 'chatbot', 'fluxo', 'contatos', 'conexao']);
   assert(labels.includes('Marketing'));
   assert.deepEqual([...nav.BOTTOM_NAV.map(i => i.label)], ['Início', 'Agenda', 'Clientes', 'WhatsApp']);
   assert.equal(nav.whatsappTabHref('status'), '/admin/whatsapp?aba=status');
