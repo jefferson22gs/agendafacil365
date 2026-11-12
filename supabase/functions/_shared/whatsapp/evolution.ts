@@ -45,7 +45,8 @@ export class EvolutionClient {
     let response: Response;
     try {
       response = await this.transport(this.base + prefix + (op === "create" ? "" : encodeURIComponent(instance)), {
-        method, redirect: "error", signal: AbortSignal.timeout(20_000),
+        // Status: a Evolution publica em lotes de 10 contatos e só responde no fim (~40 s para poucos clientes).
+        method, redirect: "error", signal: AbortSignal.timeout(op === "status" ? 120_000 : 20_000),
         headers: { apikey: this.key, "Content-Type": "application/json" },
         body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
       });

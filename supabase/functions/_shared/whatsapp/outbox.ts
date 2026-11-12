@@ -121,8 +121,18 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
     if (beginError || !started) throw new WhatsAppError("persistence_failed", 503);
     sendStarted = true;
     const isStatus = item.content_type.startsWith("status_");
+    // Status: `allContacts` faz a Evolution varrer todos os contatos do celular (grupos inclusos) e estourar o tempo (524).
+    // Vai só para os clientes do salão que aceitam marketing; texto exige backgroundColor (400 "Background color is required").
+    let statusJidList: string[] = [];
+    if (isStatus) {
+      const { data: audience, error: audienceError } = await db.rpc("whatsapp_status_audience", { p_salon_id: item.salon_id });
+      if (audienceError) throw new WhatsAppError("persistence_failed", 503);
+      statusJidList = (audience as string[] | null ?? []).map(n => `${n.replace(/^\+/, "")}@s.whatsapp.net`);
+      if (!statusJidList.length) { await finish("cancelled", "no_audience"); return true; }
+    }
     const response = await api.request(isStatus ? "status" : item.content_type === "text" ? "text" : "media", instance.instance_name,
-      isStatus ? { type: item.content_type.replace("status_", ""), content: media ?? item.text_content, caption: media ? item.text_content : undefined, allContacts: true }
+      isStatus ? { type: item.content_type.replace("status_", ""), content: media ?? item.text_content, caption: media ? item.text_content : undefined, statusJidList,
+        ...(item.content_type === "status_text" ? { backgroundColor: "#2563EB", font: 1 } : {}) }
       : item.content_type === "text" ? { number: item.recipient_phone.replace(/^\+/, ""), text: item.text_content }
       : { number: item.recipient_phone.replace(/^\+/, ""), mediatype: item.content_type, media, mimetype: item.media_mime, caption: item.text_content, fileName: item.media_filename });
     const result = objectValue(response), key = result.key && typeof result.key === "object" ? objectValue(result.key) : null;
