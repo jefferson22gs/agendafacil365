@@ -142,11 +142,15 @@ test('fluxo completo: oi → menu → agendar (1) → serviço → pula profissi
   r = await send(d, '14:00');
   assert.equal(r.session.step, 'CONFIRM_NAME'); assert.equal(r.session.data.flow.start, '14:00'); assert.match(r.text, /Usar "João Silva"/);
   r = await send(d, '', 'use_pushname');
+  assert.equal(r.session.step, 'CONFIRM_EMAIL'); assert.match(r.text, /Qual é o seu e-mail/);
+  r = await send(d, 'joao arroba gmail'); assert.equal(r.session.step, 'CONFIRM_EMAIL', 'e-mail inválido pergunta de novo');
+  r = await send(d, 'Joao.Silva@Gmail.com');
+  assert.match(r.text, /E-mail:\* joao\.silva@gmail\.com/);
   assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.match(r.text, /Procedimento:\* Corte Degradê \(R\$ 45,00\)/); assert.match(r.text, /Cliente:\* João Silva/); assert.match(r.text, /1\. ✅ Confirmar/);
   assert.ok(!d.calls.some(c => c.name === 'whatsapp_book_appointment_v2'), 'nada reservado antes de confirmar');
   r = await send(d, '', 'confirm_yes');
   const call = d.calls.find(c => c.name === 'whatsapp_book_appointment_v2');
-  assert.equal(call.args.p_client_name, 'João Silva'); assert.equal(call.args.p_professional_id, PRO); assert.equal(call.args.p_start, '14:00'); assert.equal(call.args.p_event_id, 'ev');
+  assert.equal(call.args.p_client_name, 'João Silva'); assert.equal(call.args.p_email, 'joao.silva@gmail.com'); assert.equal(call.args.p_professional_id, PRO); assert.equal(call.args.p_start, '14:00'); assert.equal(call.args.p_event_id, 'ev');
   assert.match(r.text, /Solicitação registrada/); assert.match(r.text, /agendafacil365\.com\.br\/s\/studio-x/); assert.equal(r.session.step, 'IDLE');
   assert.ok(d.upserts.every(u => u.table !== 'whatsapp_chatbot_sessions' || u.row.salon_id === SALON), 'sessão sempre do salão do evento');
 });
@@ -193,7 +197,7 @@ test('modo numerado: só texto; simulador (preview) não grava nem reserva', asy
   const r = await send(d, 'oi'); assert.equal(r.messages[0].type, 'text');
   const p = db();
   let s = null;
-  for (const t of ['oi', '1', '1', '1', '1', 'Maria Souza', '1']) { const x = await guided.guidedReply(ctx(p, { preview: true, eventId: undefined }), { text: t }, { session: s }); s = x.session; }
+  for (const t of ['oi', '1', '1', '1', '1', 'Maria Souza', '1', '1']) { const x = await guided.guidedReply(ctx(p, { preview: true, eventId: undefined }), { text: t }, { session: s }); s = x.session; }
   assert.equal(s.step, 'IDLE'); assert.ok(!p.calls.some(c => c.name === 'whatsapp_book_appointment_v2')); assert.equal(p.upserts.length, 0);
 });
 
@@ -237,6 +241,7 @@ test('100% botões: menu paginado, serviços com Ver mais, turno → horário, n
   r = await click(d, r, 1); r = await click(d, r, 0);
   assert.equal(r.session.data.flow.start, '14:00'); assert.equal(r.session.step, 'CONFIRM_NAME'); assert.ok(onlyButtons(r));
   assert.deepEqual(ids(r), ['use_pushname', 'name_other', 'menu_main']); assert.match(r.messages[0].payload.body.description, /João Silva/);
+  r = await click(d, r, 0); assert.equal(r.session.step, 'CONFIRM_EMAIL'); assert.deepEqual(ids(r), ['email_skip', 'menu_main']);
   r = await click(d, r, 0); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyButtons(r));
   assert.deepEqual(ids(r), ['confirm_yes', 'confirm_change_date', 'confirm_cancel']);
   r = await click(d, r, 0);
@@ -274,7 +279,8 @@ test('enquete: menu de 5 em um card, serviços com preço na opção, horários 
   r = await send(d, '2'); assert.equal(r.session.step, 'SELECT_TIME', 'número digitado também vale');
   assert.deepEqual(plain(poll(r).body.values), ['1️⃣ 🕒 09:00 · Manhã', '2️⃣ 🕒 14:00 · Tarde', '3️⃣ 🕒 19:00 · Noite', '4️⃣ ⬅️ Voltar', '5️⃣ 🏠 Menu inicial'], '≤ 9 horários: sem etapa de turno; Voltar e Menu sempre');
   r = await vote(d, r, /14:00/); assert.equal(r.session.step, 'CONFIRM_NAME');
-  r = await vote(d, r, /Sim, esse nome/); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyPolls(r));
+  r = await vote(d, r, /Sim, esse nome/); assert.equal(r.session.step, 'CONFIRM_EMAIL');
+  r = await vote(d, r, /Não tenho e-mail/); assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.ok(onlyPolls(r));
   // Resumo cabe no título da enquete (≤ 255) ou vai em texto antes dela; nunca se perde.
   assert.match(r.messages[0].type === 'text' ? r.messages[0].text : poll(r).body.name, /Procedimento:\* Corte Degradê/);
   assert.deepEqual(plain(poll(r).options.map(o => o.id)), ['confirm_yes', 'confirm_change_date', 'confirm_cancel', 'nav_back', 'menu_main']);
@@ -335,8 +341,8 @@ test('migração: aditiva, idempotente, RLS e índice por salão+telefone', () =
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.whatsapp_chatbot_sessions/);
   assert.match(sql, /ON public\.whatsapp_chatbot_sessions \(salon_id, client_phone\)/);
   assert.match(sql, /ENABLE ROW LEVEL SECURITY/); assert.match(sql, /guided_render_mode IN \('poll', 'buttons', 'hybrid', 'numbered', 'native'\)/);
-  // Etapas novas (avaliação, pagamento) entram pela migração de cobranças: a CHECK do banco aceita todas.
-  const latest = fs.readFileSync(path.join(root, 'supabase/migrations/20261112000200_payments_reviews.sql'), 'utf8');
+  // Etapas novas (avaliação, pagamento, e-mail, pacotes): a CHECK mais recente do banco aceita todas.
+  const latest = fs.readFileSync(path.join(root, 'supabase/migrations/20261113000400_bot_packages_client_email.sql'), 'utf8');
   for (const s of guided.STEPS) assert.ok(latest.includes(`'${s}'`), s);
 });
 
@@ -418,7 +424,7 @@ function payDb(settings) {
 }
 
 test('pagamento: desligado não aparece; ligado oferece Pix/cartão/no salão conforme o dono configurou', async () => {
-  const flowTo = async d => { for (const t of ['oi', '1', '1', '1', '1']) await send(d, t); await send(d, '', 'use_pushname'); return send(d, '', 'confirm_yes'); };
+  const flowTo = async d => { for (const t of ['oi', '1', '1', '1', '1']) await send(d, t); await send(d, '', 'use_pushname'); await send(d, '', 'email_skip'); return send(d, '', 'confirm_yes'); };
   let r = await flowTo(payDb({ whatsapp_enabled: false, provider: 'mercadopago', methods: ['pix', 'card'], pay_at_salon: true, credential_ok_at: '2026-11-12' }));
   assert.equal(r.session.step, 'IDLE'); assert.doesNotMatch(r.text, /Pagamento/);
   r = await flowTo(payDb({ whatsapp_enabled: true, provider: 'mercadopago', methods: ['pix', 'card'], pay_at_salon: true, credential_ok_at: null }));
@@ -434,6 +440,7 @@ test('pagamento: escolher Pix gera a cobrança no gateway do salão e manda o co
   const d = payDb({ whatsapp_enabled: true, provider: 'mercadopago', methods: ['pix'], pay_at_salon: true, credential_ok_at: '2026-11-12' });
   for (const t of ['oi', '1', '1', '1', '1']) await send(d, t);
   await send(d, '', 'use_pushname');
+  await send(d, '', 'email_skip');
   await send(d, '', 'confirm_yes');
   // Teste sem rede (fetch do sandbox lança): a falha do gateway volta para as opções com aviso, nunca trava a conversa.
   let r = await send(d, '', 'pay_pix');

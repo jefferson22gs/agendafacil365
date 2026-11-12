@@ -21,6 +21,8 @@ export interface Flow {
   step: "service" | "professional" | "date" | "time" | "name" | "phone_confirm" | "phone" | "birth" | "coupon" | "review" | "payment" | "proof";
   serviceId?: string; professionalId?: string | null; date?: string; start?: string;
   name?: string; phone?: string; birth?: string | null; coupon?: string | null;
+  /** Fluxo guiado: e-mail informado (null = cliente não tem/pulou; undefined = ainda não perguntado). */
+  email?: string | null;
   known?: { name: boolean; birth: boolean };
   appointmentId?: string; requestKey?: string;
   menu?: StoredMenu | null;

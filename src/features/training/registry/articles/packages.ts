@@ -38,7 +38,7 @@ export const packagesArticles: Article[] = [
   },
   {
     id: "packages-sell-and-use",
-    version: 1,
+    version: 2,
     title: "Como o cliente assina um pacote e usa os créditos",
     summary: "Venda pelo link do salão, pagamento por Pix ou provedor, liberação dos créditos e uso ao agendar.",
     category: "sales",
@@ -53,6 +53,8 @@ export const packagesArticles: Article[] = [
       { text: "Com provedor, ao pagar os créditos são liberados sozinhos: você recebe o aviso Pacote vendido e o cliente recebe a confirmação no WhatsApp." },
       { text: "Com Pix pela chave do salão, confira o extrato e, em Pacotes > Pedidos de pacotes, clique em Confirmar pagamento. Isso libera os créditos e avisa o cliente." },
       { text: "Para usar: ao agendar, na etapa de confirmação, o cliente responde Sim em Você é assinante de algum pacote? e toca em Verificar meus créditos. Se o serviço escolhido estiver no pacote, ele sai por R$ 0,00 e 1 sessão é descontada." },
+      { text: "Pelo WhatsApp (fluxo guiado): o menu mostra 🎁 Pacotes quando há pacote ativo. O cliente escolhe o pacote e responde se quer agendar hoje. Sim: escolhe o horário e recebe o pagamento do pacote; pago, aquele horário já usa 1 crédito. Não: recebe direto o Pix copia e cola ou o link de pagamento do provedor configurado." },
+      { text: "Assinante que agenda pelo WhatsApp não precisa avisar: o robô reconhece o número, mostra o serviço como incluso no pacote e desconta 1 crédito sozinho." },
       { text: "Se o agendamento for cancelado, a sessão volta para o saldo do cliente." },
     ],
     notes: [
@@ -60,6 +62,6 @@ export const packagesArticles: Article[] = [
       "O preço do pacote sempre vem do cadastro do salão, nunca do navegador do cliente.",
       "O crédito vale para o serviço principal do agendamento; serviços extras seguem com valor normal.",
     ],
-    keywords: ["assinante", "assinatura", "pacote", "créditos", "sessões", "pix", "pagamento", "comprar", "vender", "saldo", "confirmar pagamento"],
+    keywords: ["assinante", "assinatura", "pacote", "créditos", "sessões", "pix", "pagamento", "comprar", "vender", "saldo", "confirmar pagamento", "whatsapp", "robô"],
   },
 ];

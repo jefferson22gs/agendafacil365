@@ -60,14 +60,20 @@ export function emailLogo(url: string | null | undefined): string {
   return u.href;
 }
 
-export interface EmailInput { from: string; to: string; salon: string; color?: string | null; logo?: string | null; message: string; url: string; procedure: string; replyTo?: string }
+export interface EmailInput {
+  from: string; to: string; salon: string; color?: string | null; logo?: string | null; message: string; url: string; procedure: string; replyTo?: string;
+  /** Outros avisos com a mesma marca do salão (ex.: agendamento confirmado). Padrão: lembrete de retorno. */
+  subject?: string; cta?: string; footer?: string;
+}
 /** Payload do Resend com logo/cores do salão. Null quando faltam dados (nunca envia link/e-mail inválido). */
 export function emailPayload(i: EmailInput) {
   const link = safeHttps(i.url);
   if (!i.from || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(i.to) || !link) return null;
   const color = HEX.test(i.color ?? "") ? i.color! : "#2563EB", fg = onColor(color);
   const logo = emailLogo(i.logo);
-  const subject = `${i.salon}: hora do seu retorno (${i.procedure})`.replace(/[\r\n]+/g, " ").slice(0, 180);
+  const subject = (i.subject ?? `${i.salon}: hora do seu retorno (${i.procedure})`).replace(/[\r\n]+/g, " ").slice(0, 180);
+  const cta = i.cta ?? "Agendar meu retorno";
+  const footer = i.footer ?? `Recebeu por engano ou não quer mais lembretes? Responda a este e-mail ou avise ${i.salon}.`;
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
 <body style="margin:0;background:#F4F8FF;font-family:Arial,Helvetica,sans-serif;color:#0F172A">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
@@ -76,10 +82,10 @@ export function emailPayload(i: EmailInput) {
 ${logo ? `<img src="${esc(logo)}" alt="Logo de ${esc(i.salon)}" width="72" height="72" style="border-radius:16px;background:#FFFFFF;display:block;margin:0 auto 12px;object-fit:contain">` : ""}
 <h1 style="margin:0;font-size:22px;line-height:1.3;color:${fg}">${esc(i.salon)}</h1></td></tr>
 <tr><td style="padding:24px;font-size:16px;line-height:1.6;color:#0F172A"><p style="margin:0 0 20px;white-space:pre-line">${esc(i.message)}</p>
-<p style="margin:0 0 24px;text-align:center"><a href="${esc(link)}" style="display:inline-block;background:${color};color:${fg};padding:14px 28px;border-radius:10px;font-weight:bold;text-decoration:none;min-height:24px">Agendar meu retorno</a></p>
-<p style="margin:0;font-size:13px;color:#475569">Recebeu por engano ou não quer mais lembretes? Responda a este e-mail ou avise ${esc(i.salon)}.</p></td></tr>
+<p style="margin:0 0 24px;text-align:center"><a href="${esc(link)}" style="display:inline-block;background:${color};color:${fg};padding:14px 28px;border-radius:10px;font-weight:bold;text-decoration:none;min-height:24px">${esc(cta)}</a></p>
+<p style="margin:0;font-size:13px;color:#475569">${esc(footer)}</p></td></tr>
 </table></td></tr></table></body></html>`;
-  return { from: i.from, to: [i.to], subject, html, text: `${i.message}\n\nAgendar: ${link}`, ...(i.replyTo ? { reply_to: i.replyTo } : {}) };
+  return { from: i.from, to: [i.to], subject, html, text: `${i.message}\n\n${i.cta ? `${cta}: ` : "Agendar: "}${link}`, ...(i.replyTo ? { reply_to: i.replyTo } : {}) };
 }
 
 /** accepted = Resend aceitou (não é entrega). retry só com a mesma Idempotency-Key, dentro da janela. */

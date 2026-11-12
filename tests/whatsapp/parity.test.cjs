@@ -89,7 +89,8 @@ test('QR Code × oficial: fluxo completo até o Pix copia e cola e o link do car
     r = await send(d, optionNumber(r, /Ana/));                    assert.equal(r.session.step, 'SELECT_DATE');
     r = await send(d, optionNumber(r, /Amanhã/));                 assert.equal(r.session.step, 'SELECT_TIME');
     r = await send(d, optionNumber(r, /14:00/));                  assert.equal(r.session.step, 'CONFIRM_NAME');
-    r = await send(d, optionNumber(r, /João Silva/));             assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.match(r.text, /Corte Degradê/);
+    r = await send(d, optionNumber(r, /João Silva/));             assert.equal(r.session.step, 'CONFIRM_EMAIL'); assert.ok(isText(r));
+    r = await send(d, 'joao@exemplo.com');                        assert.equal(r.session.step, 'CONFIRM_BOOKING'); assert.match(r.text, /Corte Degradê/); assert.match(r.text, /joao@exemplo\.com/);
     r = await send(d, optionNumber(r, /Confirmar/));
     assert.ok(d.calls.some(c => c.name === 'whatsapp_book_appointment_v2'), 'reservou');
     assert.equal(r.session.step, 'PAYMENT'); assert.ok(isText(r)); assert.match(r.text, /Pagamento — R\$ 45,00/);
@@ -106,7 +107,7 @@ test('QR Code × oficial: fluxo completo até o Pix copia e cola e o link do car
   assert.equal(r.messages[0].type, 'interactive');
   for (const sel of ['menu_book']) r = await send(m, '', sel);
   for (const t of ['1', '2', '2', '2']) r = await send(m, t);
-  r = await send(m, '', 'use_pushname'); r = await send(m, '', 'confirm_yes');
+  r = await send(m, '', 'use_pushname'); r = await send(m, '', 'email_skip'); r = await send(m, '', 'confirm_yes');
   assert.equal(r.session.step, 'PAYMENT'); r = await send(m, '', 'pay_pix');
   assert.match(r.text, /00020126PIXQRCODE/);
 });
@@ -118,7 +119,7 @@ test('QR Code: navegação por número (Voltar e Menu inicial) e pagar no salão
   r = await send(d, optionNumber(r, /Voltar/)); assert.equal(r.session.step, 'SELECT_SERVICE');
   r = await send(d, optionNumber(r, /Menu inicial/)); assert.equal(r.session.step, 'MAIN_MENU');
   for (const t of ['1', '1', '1', '2', '2']) r = await send(d, t);
-  r = await send(d, optionNumber(r, /João Silva/)); r = await send(d, optionNumber(r, /Confirmar/));
+  r = await send(d, optionNumber(r, /João Silva/)); r = await send(d, optionNumber(r, /Não tenho e-mail/)); r = await send(d, optionNumber(r, /Confirmar/));
   r = await send(d, optionNumber(r, /no salão/));
   assert.equal(r.session.step, 'IDLE'); assert.match(r.text, /pagamento fica para o dia no salão/); assert.match(r.text, /Menu inicial/, 'texto final com saída numerada');
 });

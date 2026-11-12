@@ -9,17 +9,18 @@ import { dayChunk, firstMatches } from "./latency.ts";
 import { brl, buildMenu, clip, dateBR, fullName, LIST_ROWS, resolveChoice, weekday, type Option, type StoredMenu } from "./interactive.ts";
 import { freeTimes, professionalsFor, services, type Flow, type Input, type OutMessage } from "./attendant.ts";
 import { bookingPix } from "../pix/payment.ts";
-import { chargeAppointment, paySettings, settleCharge } from "../payments/service.ts";
+import { chargeAppointment, createPackageOrder, paySettings, settleCharge } from "../payments/service.ts";
+import { pixBRCode } from "../pix/brcode.ts";
 import { PROVIDER_LABEL } from "../payments/gateways.ts";
 import { renderMenu } from "./evolutionSender.ts";
 import { BUTTON_TEXT, MAX_BUTTONS, POLL_MAX, buttonPage, prependIntro, renderButtons, renderPoll } from "./evolutionButtons.ts";
 
 export type Step = "IDLE" | "MAIN_MENU" | "SELECT_SERVICE" | "SELECT_PROFESSIONAL" | "SELECT_DATE" | "SELECT_TIME" | "CONFIRM_NAME" | "CONFIRM_BOOKING"
   | "MY_APPOINTMENTS" | "APPOINTMENT_ACTIONS" | "CONFIRM_CANCEL_APPOINTMENT" | "RESCHEDULE_SELECT_DATE" | "RESCHEDULE_SELECT_TIME" | "HUMAN_HANDOFF"
-  | "RATE_APPOINTMENT" | "RATE_COMMENT" | "PAYMENT";
+  | "RATE_APPOINTMENT" | "RATE_COMMENT" | "PAYMENT" | "CONFIRM_EMAIL" | "PACKAGES" | "PACKAGE_BUY";
 export const STEPS: Step[] = ["IDLE", "MAIN_MENU", "SELECT_SERVICE", "SELECT_PROFESSIONAL", "SELECT_DATE", "SELECT_TIME", "CONFIRM_NAME", "CONFIRM_BOOKING",
   "MY_APPOINTMENTS", "APPOINTMENT_ACTIONS", "CONFIRM_CANCEL_APPOINTMENT", "RESCHEDULE_SELECT_DATE", "RESCHEDULE_SELECT_TIME", "HUMAN_HANDOFF",
-  "RATE_APPOINTMENT", "RATE_COMMENT", "PAYMENT"];
+  "RATE_APPOINTMENT", "RATE_COMMENT", "PAYMENT", "CONFIRM_EMAIL", "PACKAGES", "PACKAGE_BUY"];
 
 interface Appt { id: string; date: string; start: string; service: string; professional: string }
 export interface SessionData {
@@ -30,6 +31,8 @@ export interface SessionData {
   rate?: { id: string; label: string } | null;
   /** Cobrança do agendamento recém-criado. */
   pay?: { appointmentId: string; amount: number; chargeId?: string } | null;
+  /** Pacote sendo assinado. `services`: serviços do pacote (agendar hoje); `appointmentId`: horário que usa 1 crédito ao pagar. */
+  pkg?: { id: string; name: string; price: number; services?: string[]; appointmentId?: string; orderId?: string; chargeId?: string; askName?: boolean } | null;
 }
 export interface GuidedSession { step: Step; data: SessionData; name: string | null; takeoverUntil: string | null; lastAt: string | null }
 export interface GuidedReply { text: string; provider: "deterministic" | string; model: string; messages: OutMessage[]; handoff?: boolean; session: GuidedSession; flowState?: Flow | null }
@@ -49,9 +52,10 @@ const emptySession = (): GuidedSession => ({ step: "IDLE", data: {}, name: null,
 const today = (tz: string) => Temporal.Now.plainDateISO(tz);
 
 /** Comandos rápidos reconhecidos em qualquer etapa (`#agendar`, `0`, `menu`, `v`, `atendente`…). */
-export type Command = "menu" | "book" | "mine" | "cancel" | "prices" | "back" | "human" | null;
+export type Command = "menu" | "book" | "mine" | "cancel" | "prices" | "back" | "human" | "packages" | null;
 export function parseCommand(text: string): Command {
   const t = fold(text).replace(/[!.?]+$/, "");
+  if (/^(#?pacotes?|assinar pacote|quero um pacote|assinatura)$/.test(t)) return "packages";
   if (/^(0|menu|inicio|início|oi|ola|olá|bom dia|boa tarde|boa noite|começar|comecar|start)$/.test(t)) return "menu";
   if (/^(#?agendar|agendar horario|quero agendar|marcar|#marcar)$/.test(t)) return "book";
   if (/^(#?meushorarios|#?meus horarios|meus agendamentos|#?agendamentos)$/.test(t)) return "mine";
@@ -87,6 +91,11 @@ export const parseTypedTime = (text: string): string | null => {
 };
 const period = (t: string) => (t < "12:00" ? "Manhã" : t < "18:00" ? "Tarde" : "Noite");
 const firstName = (n: string | null | undefined) => (n ?? "").trim().split(" ")[0];
+/** E-mail digitado → minúsculo e válido, ou null. */
+export const validEmail = (v: unknown): string | null => {
+  const e = String(v ?? "").trim().toLowerCase();
+  return e.length <= 254 && /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/.test(e) ? e : null;
+};
 
 /** Template do salão com {nome}, {salao} e {primeiro_nome}. */
 export function fillTemplate(tpl: string, vars: Record<string, string>): string {
@@ -114,7 +123,7 @@ async function saveSession(ctx: BotContext, s: GuidedSession): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------------------------- render
-interface Ctx { ctx: BotContext; cfg: AutomationRow; salon: SalonRow; s: GuidedSession; tz: string }
+interface Ctx { ctx: BotContext; cfg: AutomationRow; salon: SalonRow; s: GuidedSession; tz: string; pkgs?: Pkg[] }
 type Out = { messages: OutMessage[]; model: string; handoff?: boolean; flowState?: Flow | null };
 
 const MENU_HOME: Option = { id: "menu_main", title: "🏠 Menu inicial", value: { go: "menu" } };
@@ -206,23 +215,49 @@ async function knownClient(c: Ctx): Promise<string | null> {
   return fullName(data?.name) ?? null;
 }
 
+interface Pkg { id: string; name: string; price: number; validity: number; items: { service: string; name: string; qty: number }[] }
+/** Pacotes ativos do salão com os serviços incluídos (uma leitura por mensagem). */
+async function activePackages(c: Ctx): Promise<Pkg[]> {
+  if (c.pkgs) return c.pkgs;
+  const { data, error } = await c.ctx.db.from("service_packages").select("id,name,price,validity_days,service_package_items(service_id,quantity,services(name))").eq("salon_id", c.ctx.salonId).eq("is_active", true).order("name").limit(10);
+  if (error) fail();
+  const one = (v: unknown) => (Array.isArray(v) ? v[0] : v) as { name?: string } | null;
+  return c.pkgs = ((data ?? []) as Record<string, unknown>[]).filter(p => Number(p.price) >= 1).map(p => ({
+    id: String(p.id), name: String(p.name), price: Number(p.price), validity: Number(p.validity_days ?? 0),
+    items: ((p.service_package_items ?? []) as Record<string, unknown>[]).map(i => ({ service: String(i.service_id), name: one(i.services)?.name ?? "Serviço", qty: Number(i.quantity ?? 1) })),
+  }));
+}
+interface Credit { service_id: string; service: string; remaining: number; package: string | null }
+/** Créditos de pacote deste número (o telefone da conversa é a identidade do assinante). */
+async function creditsOf(c: Ctx): Promise<Credit[]> {
+  if (c.ctx.preview) return [];
+  const { data, error } = await c.ctx.db.rpc("public_client_credits", { p_salon_id: c.ctx.salonId, p_phone: c.ctx.phone });
+  return error || !Array.isArray(data) ? [] : data as Credit[];
+}
+
 async function mainMenu(c: Ctx, greet = true, page = 0): Promise<Out> {
   c.s.data = {};
-  const name = c.s.name ?? (c.s.name = await knownClient(c));
+  const [known, pkgs] = await Promise.all([c.s.name ? Promise.resolve(c.s.name) : knownClient(c), activePackages(c)]);
+  const name = c.s.name = known;
   const vars = { salao: c.salon.name, nome: name ?? "", primeiro_nome: firstName(name) };
   const hello = c.cfg.welcome ? fillTemplate(c.cfg.welcome, vars) : `Olá${name ? `, ${firstName(name)}` : ""}! 👋 Bem-vindo(a) ao *${c.salon.name}*.`;
   const body = greet ? `${hello}\nComo posso ajudar?` : "O que você quer fazer?";
+  // "Pacotes" só aparece quando o salão tem pacote ativo.
+  const pack: Option[] = pkgs.length ? [{ id: "menu_packages", title: "🎁 Pacotes", description: "Assine e use seus créditos", value: { go: "packages" } }] : [];
+  const bare = (o: Option[]) => o.map(x => ({ ...x, description: undefined }));
   if (pollMode(c)) return menu(c, "MAIN_MENU", "Menu principal", body, [
     { id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } },
     { id: "menu_my_appointments", title: "📋 Meus agendamentos", value: { go: "mine" } },
     { id: "menu_services", title: "💈 Serviços e valores", value: { go: "prices" } },
     { id: "menu_info", title: "📍 Endereço e horários", value: { go: "info" } },
     { id: "menu_human", title: "💬 Falar com atendente", value: { go: "human" } },
+    ...bare(pack), // no fim: 1–5 continuam os mesmos números de sempre
   ], page);
   // Botões: 2 por card + "Ver mais" (Serviços e Atendente na 2ª página, Endereço na 3ª). Títulos cabem em 20 caracteres.
   if (buttonsMode(c)) return menu(c, "MAIN_MENU", "Menu principal", body, [
     { id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } },
     { id: "menu_my_appointments", title: "📋 Meus horários", value: { go: "mine" } },
+    ...bare(pack),
     { id: "menu_services", title: "💈 Serviços/valores", value: { go: "prices" } },
     { id: "menu_human", title: "💬 Atendente", value: { go: "human" } },
     { id: "menu_info", title: "📍 Endereço/horário", value: { go: "info" } },
@@ -233,14 +268,21 @@ async function mainMenu(c: Ctx, greet = true, page = 0): Promise<Out> {
     { id: "menu_services", title: "💈 Serviços e valores", description: "Tabela de preços e duração", value: { go: "prices" } },
     { id: "menu_info", title: "📍 Endereço e horários", description: "Onde estamos e quando abrimos", value: { go: "info" } },
     { id: "menu_human", title: "💬 Falar com atendente", description: "Uma pessoa da equipe assume", value: { go: "human" } },
+    ...pack,
   ], 0, "Responda com o número da opção.");
 }
 
 async function selectService(c: Ctx, intro = "", page = 0): Promise<Out> {
-  const list = await services(c.ctx);
+  const [all, credits] = await Promise.all([services(c.ctx), creditsOf(c)]);
+  // Assinando um pacote e agendando hoje: só os serviços do pacote.
+  const only = c.s.data.pkg?.services;
+  const list = only?.length ? all.filter(s => only.includes(s.id)) : all;
   if (!list.length) return say(c, "MAIN_MENU", "Ainda não temos serviços disponíveis para agendar por aqui. Digite *5* para falar com a equipe.", "guided_no_services");
   c.s.data.flow ??= { kind: "flow", step: "service", requestKey: crypto.randomUUID() };
-  return prefix(menu(c, "SELECT_SERVICE", "Serviços", "Qual serviço você quer agendar?", list.map(s => ({ title: s.name, description: `${brl(s.price)} (${s.duration_minutes} min)`, value: { id: s.id, name: s.name, price: s.price, duration: s.duration_minutes } })), page), intro);
+  // Assinante (créditos neste número): o serviço do pacote aparece como incluso.
+  const left = (id: string) => credits.filter(k => k.service_id === id).reduce((n, k) => n + Number(k.remaining), 0);
+  const body = credits.length ? "Qual serviço você quer agendar?\n🎁 Você é assinante: os serviços do seu pacote saem sem custo." : "Qual serviço você quer agendar?";
+  return prefix(menu(c, "SELECT_SERVICE", "Serviços", body, list.map(s => ({ title: s.name, description: left(s.id) ? `🎁 No seu pacote (${left(s.id)} ${left(s.id) === 1 ? "crédito" : "créditos"}) · ${s.duration_minutes} min` : `${brl(s.price)} (${s.duration_minutes} min)`, value: { id: s.id, name: s.name, price: s.price, duration: s.duration_minutes } })), page), intro);
 }
 
 async function selectProfessional(c: Ctx, intro = "", page = 0): Promise<Out> {
@@ -296,7 +338,7 @@ async function selectTime(c: Ctx, intro = "", page = 0): Promise<Out> {
 async function confirmName(c: Ctx, intro = ""): Promise<Out> {
   const f = c.s.data.flow!;
   const known = c.s.name ?? (c.s.name = await knownClient(c));
-  if (known) { f.name = known; return confirmBooking(c, intro); }
+  if (known) { f.name = known; return confirmEmail(c, intro); }
   const suggested = fullName(c.ctx.name);
   if (suggested && buttonsMode(c)) return prefix(menu(c, "CONFIRM_NAME", "Seu nome", `Para finalizar, o agendamento fica no nome de *${suggested}*?`, [
     { id: "use_pushname", title: "✅ Sim, esse nome", value: { name: suggested } }, { id: "name_other", title: "✏️ Outro nome", value: { other: true } },
@@ -305,13 +347,28 @@ async function confirmName(c: Ctx, intro = ""): Promise<Out> {
   return prefix(say(c, "CONFIRM_NAME", "Para finalizar, qual é o seu nome completo?"), intro);
 }
 
+/**
+ * E-mail do cliente (identificador junto do telefone): já cadastrado não pergunta de novo. Serve para a confirmação
+ * do agendamento e os lembretes de retorno. Quem não tem e-mail segue sem (o WhatsApp continua avisando).
+ */
+async function confirmEmail(c: Ctx, intro = ""): Promise<Out> {
+  const f = c.s.data.flow!;
+  if (f.email === undefined) {
+    const { data, error } = await c.ctx.db.from("clients").select("email").eq("salon_id", c.ctx.salonId).eq("phone_normalized", c.ctx.phone).order("created_at").limit(1).maybeSingle();
+    if (error) fail();
+    f.email = validEmail(data?.email) ?? undefined;
+  }
+  if (f.email !== undefined) return confirmBooking(c, intro);
+  return prefix(menu(c, "CONFIRM_EMAIL", "Seu e-mail", "📧 Qual é o seu e-mail?\nEnviamos a confirmação do agendamento e os lembretes por lá.", [{ id: "email_skip", title: "Não tenho e-mail", value: { skip: true } }], 0, "Digite seu e-mail ou responda 1 para seguir sem."), intro);
+}
+
 async function summaryOf(c: Ctx, f: Flow): Promise<string> {
   const [{ data: service, error: se }, pro] = await Promise.all([
     c.ctx.db.from("services").select("name,price").eq("id", f.serviceId!).eq("salon_id", c.ctx.salonId).maybeSingle(),
     f.professionalId ? c.ctx.db.from("professionals").select("name").eq("id", f.professionalId).eq("salon_id", c.ctx.salonId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   if (se || pro.error || !service) return fail();
-  return `🏢 *Local:* ${c.salon.name}\n✂️ *Procedimento:* ${service.name} (${brl(service.price)})\n👤 *Profissional:* ${pro.data?.name ?? "qualquer profissional disponível"}\n📅 *Data:* ${dateBR(f.date!)}/${f.date!.slice(0, 4)} (${weekday(f.date!)}) às *${f.start}*\n🙋 *Cliente:* ${f.name}`;
+  return `🏢 *Local:* ${c.salon.name}\n✂️ *Procedimento:* ${service.name} (${brl(service.price)})\n👤 *Profissional:* ${pro.data?.name ?? "qualquer profissional disponível"}\n📅 *Data:* ${dateBR(f.date!)}/${f.date!.slice(0, 4)} (${weekday(f.date!)}) às *${f.start}*\n🙋 *Cliente:* ${f.name}${f.email ? `\n📧 *E-mail:* ${f.email}` : ""}`;
 }
 
 async function confirmBooking(c: Ctx, intro = ""): Promise<Out> {
@@ -351,6 +408,7 @@ async function book(c: Ctx): Promise<Out> {
   const { data, error } = await ctx.db.rpc("whatsapp_book_appointment_v2", {
     p_event_id: ctx.eventId, p_service_id: f.serviceId, p_professional_id: f.professionalId ?? null, p_date: f.date, p_start: f.start,
     p_client_name: f.name, p_client_phone: ctx.phone, p_birth_date: null, p_coupon_code: null, p_request_key: f.requestKey ?? crypto.randomUUID(),
+    p_email: f.email ?? null,
   });
   if (error) {
     const msg = String(error.message ?? "");
@@ -362,14 +420,27 @@ async function book(c: Ctx): Promise<Out> {
     retry.model = "booking_failed";
     return retry;
   }
-  const r = data as { id: string; final_price: number; status?: string };
+  const r = data as { id: string; final_price: number; status?: string; credit?: boolean; credit_left?: number | null };
   const confirmed = r.status === "confirmed";
   const link = await portalUrl(c);
   const vars = { salao: c.salon.name, nome: f.name, primeiro_nome: firstName(f.name), resumo: summary, link: link ?? "" };
   const head = c.cfg.confirmation ? fillTemplate(c.cfg.confirmation, vars) : `${confirmed ? "✅ *Agendamento confirmado!*" : "✅ *Solicitação registrada!* Aguarde a confirmação do salão."}`;
   const where = [c.salon.address, c.salon.city].filter(Boolean).join(", ");
-  const done = `${head}\n\n${summary}\n💰 *Valor:* ${brl(r.final_price)}${where ? `\n📍 ${where}` : ""}${link ? `\n\n📲 Seus agendamentos e histórico: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
+  // Assinante: o crédito do pacote entra sozinho (mesmo número, mesmo serviço).
+  const value = r.credit ? `🎁 *Pacote:* 1 crédito usado${typeof r.credit_left === "number" ? ` (${r.credit_left === 1 ? "resta 1" : `restam ${r.credit_left}`})` : ""}` : `💰 *Valor:* ${brl(r.final_price)}`;
+  const mail = f.email ? `\n📧 ${confirmed ? "Enviamos" : "Quando o salão confirmar, enviamos"} a confirmação para ${f.email}.` : "";
+  const done = `${head}\n\n${summary}\n${value}${where ? `\n📍 ${where}` : ""}${mail}${link ? `\n\n📲 Seus agendamentos e histórico: ${link}` : ""}\n\nDigite *0* a qualquer momento para o menu.`;
+  const pkg = c.s.data.pkg;
   c.s.step = "IDLE"; c.s.data = {};
+  // Assinando um pacote e agendando hoje: paga o pacote; pago, este horário usa 1 crédito e fica confirmado.
+  if (pkg) {
+    c.s.name = f.name;
+    c.s.data = { pkg: { id: pkg.id, name: pkg.name, price: pkg.price, ...(r.credit ? {} : { appointmentId: r.id }) } };
+    const pay = await packagePay(c);
+    pay.messages = prependIntro(pay.messages, done.replace("\n\nDigite *0* a qualquer momento para o menu.", ""));
+    pay.model = "guided_booking";
+    return pay;
+  }
   // Cobrança ligada pelo dono: o card de pagamento substitui os botões finais (o menu continua no card).
   const offer = Number(r.final_price) > 0 ? await paymentOffer(c, r.id, Number(r.final_price)) : null;
   if (offer) { offer.messages = prependIntro(offer.messages, done.replace("\n\nDigite *0* a qualquer momento para o menu.", "")); offer.model = "guided_booking"; return offer; }
@@ -428,6 +499,70 @@ async function payCheck(c: Ctx): Promise<Out> {
   try { paid = await settleCharge(c.ctx.db, p.chargeId); } catch { paid = false; }
   if (paid) { c.s.data = {}; return say(c, "IDLE", "✅ Pagamento confirmado! Seu horário está garantido. Obrigado!", "pay_confirmed"); }
   return menu(c, "PAYMENT", "Pagamento", "Ainda não apareceu por aqui. O Pix costuma cair em segundos e o cartão assim que aprovado. Eu aviso automaticamente quando confirmar.", [{ id: "pay_check", title: "🔄 Já paguei", value: { pay: "check" } }], 0, "Responda com o número da opção.");
+}
+
+// ----------------------------------------------------------------------------------------------- pacotes
+/** Pacotes à venda + saldo de créditos deste número. */
+async function packagesMenu(c: Ctx, intro = "", page = 0): Promise<Out> {
+  const [pkgs, credits] = await Promise.all([activePackages(c), creditsOf(c)]);
+  c.s.data.pkg = null;
+  const mine = credits.length ? `🎁 *Seus créditos:*\n${credits.map(k => `• ${k.service}: ${k.remaining}`).join("\n")}\nAo agendar por aqui eles entram sozinhos.\n\n` : "";
+  if (!pkgs.length) return say(c, "MAIN_MENU", `${mine}No momento não há pacotes à venda por aqui. Digite *5* para falar com a equipe.`, "packages_none");
+  const book: Option[] = credits.length ? [{ id: "menu_book", title: "📅 Agendar com crédito", value: { go: "book" } }] : [];
+  return prefix(menu(c, "PACKAGES", "Pacotes", `${mine}Qual pacote você quer assinar?`, [
+    ...pkgs.map(p => ({ title: p.name, description: `${brl(p.price)} · ${p.items.map(i => `${i.qty}x ${i.name}`).join(" + ")}${p.validity ? ` · ${p.validity} dias` : ""}`, value: { pkg: p.id } })), ...book,
+  ], page), intro);
+}
+const PKG_WAIT: Option[] = [{ id: "pkg_check", title: "🔄 Já paguei", value: { pkg: "check" } }];
+/** Mesma pergunta do link público: quer agendar hoje? Sim = agenda e paga o pacote; não = direto ao pagamento. */
+function packageAsk(c: Ctx, p: Pkg): Out {
+  c.s.data.pkg = { id: p.id, name: p.name, price: p.price, services: p.items.map(i => i.service) };
+  return menu(c, "PACKAGE_BUY", "Pacote", `🎁 *${p.name}* — ${brl(p.price)}\n${p.items.map(i => `• ${i.qty}x ${i.name}`).join("\n")}${p.validity ? `\nValidade: ${p.validity} dias` : ""}\n\nQuer agendar um horário hoje?`, [
+    { id: "pkg_book", title: "📅 Sim, agendar", description: "Escolha o horário e pague o pacote", value: { pkg: "book" } },
+    { id: "pkg_only", title: "💳 Só assinar", description: "Ir direto para o pagamento", value: { pkg: "pay" } },
+  ], 0, "Responda com o número da opção.");
+}
+/** Pedido + cobrança do pacote: Pix copia e cola ou link do provedor configurado; sem provedor, Pix da chave do salão. */
+async function packagePay(c: Ctx): Promise<Out> {
+  const p = c.s.data.pkg!, { ctx } = c;
+  if (ctx.preview) { c.s.data = {}; return say(c, "IDLE", `(Simulação) Aqui o cliente receberia o Pix ou o link de pagamento do pacote *${p.name}* (${brl(p.price)}) e os créditos seriam liberados ao pagar.`, "package_preview"); }
+  const name = fullName(c.s.name) ?? (c.s.name = await knownClient(c));
+  if (!name) { c.s.data.pkg = { ...p, askName: true }; return say(c, "PACKAGE_BUY", "Para assinar, qual é o seu nome completo?", "package_name"); }
+  const st = await paySettings(ctx.db, ctx.salonId, c.salon.pix_key);
+  // ponytail: sem pergunta "Pix ou cartão" — Pix quando o salão aceita, senão a página do cartão. Perguntar se pedirem.
+  const r = await createPackageOrder(ctx.db, { packageId: p.id, name, phone: ctx.phone, method: st.methods.includes("pix") ? "pix" : "card", salonId: ctx.salonId, appointmentId: p.appointmentId ?? null }, pixBRCode);
+  if (!r.ok) { c.s.data = {}; return say(c, "MAIN_MENU", `${r.message} Digite *5* para falar com a equipe.`, `package_${r.error}`); }
+  c.s.data = { pkg: { id: p.id, name: p.name, price: p.price, orderId: r.orderId, chargeId: r.chargeId } };
+  const amount = brl(r.amountCents / 100), copy = "Copie o código da próxima mensagem e cole no app do seu banco, em *Pix copia e cola*.";
+  const head = r.mode === "pix_manual" ? `💠 *Pix de ${amount} — pacote ${r.packageName}*\n${r.pixCode ? copy : `Chave Pix do salão: ${r.pixKey}`}`
+    : r.pixCode ? `💠 *Pix de ${amount} — pacote ${r.packageName}*\n${copy} Vale por 1 hora.`
+    : `🔒 *Pagamento de ${amount} — pacote ${r.packageName}*\nPague na página segura do ${r.provider}:\n${r.url}`;
+  const after = `${r.mode === "gateway" ? "Assim que o pagamento cair, seus créditos são liberados automaticamente. ✅" : "Depois de pagar, o salão confere e libera seus créditos. Eu aviso por aqui."}${p.appointmentId ? "\nSeu horário de hoje já usa 1 crédito do pacote." : ""}`;
+  const card = menu(c, "PACKAGE_BUY", "Pacote", after, PKG_WAIT, 0, "Responda com o número da opção.");
+  card.messages = [{ type: "text", text: head }, ...(r.pixCode ? [{ type: "text" as const, text: r.pixCode }] : []), ...card.messages];
+  card.model = `package_${r.mode}`;
+  return card;
+}
+async function packageCheck(c: Ctx): Promise<Out> {
+  const p = c.s.data.pkg;
+  if (!p?.orderId || c.ctx.preview) return mainMenu(c, false);
+  if (p.chargeId) { try { await settleCharge(c.ctx.db, p.chargeId); } catch { /* o cron consulta de novo */ } }
+  const { data, error } = await c.ctx.db.from("package_orders").select("status").eq("id", p.orderId).eq("salon_id", c.ctx.salonId).maybeSingle();
+  if (error) fail();
+  if (data?.status !== "paid") return menu(c, "PACKAGE_BUY", "Pacote", "Ainda não apareceu por aqui. O Pix costuma cair em segundos; pela chave do salão, depende da conferência da equipe. Eu aviso quando liberar.", PKG_WAIT, 0, "Responda com o número da opção.");
+  c.s.data = {};
+  return menu(c, "MAIN_MENU", "Pacote", `🎁 *Pacote ${p.name} liberado!*\nSeus créditos já valem: ao agendar por aqui eles entram sozinhos.`, [
+    { id: "menu_book", title: "📅 Agendar horário", value: { go: "book" } }, { id: "menu_main", title: "🏠 Menu inicial", value: { go: "menu" } },
+  ], 0, "Responda com o número.");
+}
+/** Reapresenta a etapa de pacote em que o cliente está. */
+async function packageRepeat(c: Ctx): Promise<Out> {
+  const p = c.s.data.pkg;
+  if (!p) return packagesMenu(c);
+  if (p.orderId) return menu(c, "PACKAGE_BUY", "Pacote", `Pagamento do pacote *${p.name}* em aberto.`, PKG_WAIT, 0, "Responda com o número da opção.");
+  if (p.askName) return say(c, "PACKAGE_BUY", "Para assinar, qual é o seu nome completo?", "package_name");
+  const full = (await activePackages(c)).find(x => x.id === p.id);
+  return full ? packageAsk(c, full) : packagesMenu(c);
 }
 
 // ----------------------------------------------------------------------------------------------- avaliação
@@ -604,10 +739,13 @@ async function back(c: Ctx): Promise<Out> {
     case "SELECT_DATE": case "RESCHEDULE_SELECT_DATE": if (f) { f.date = undefined; f.start = undefined; } c.s.data.period = null; return selectDate(c);
     case "SELECT_TIME": case "RESCHEDULE_SELECT_TIME": if (f) f.start = undefined; return selectTime(c);
     case "CONFIRM_NAME": return confirmName(c);
+    case "CONFIRM_EMAIL": if (!f) return mainMenu(c, false); f.email = undefined; return confirmEmail(c);
     case "MY_APPOINTMENTS": return myAppointments(c);
     case "APPOINTMENT_ACTIONS": return c.s.data.target ? appointmentActions(c) : myAppointments(c);
     case "CONFIRM_BOOKING": return f ? confirmBooking(c) : mainMenu(c, false);
     case "RATE_APPOINTMENT": return rateList(c);
+    case "PACKAGES": return packagesMenu(c);
+    case "PACKAGE_BUY": return packageRepeat(c);
     default: return mainMenu(c, false);
   }
 }
@@ -637,7 +775,8 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
   if (cmd === "human" || sel === "menu_human") return handoff(c);
   if (cmd === "menu" || sel === "menu_main") return mainMenu(c, step === "IDLE" || step === "HUMAN_HANDOFF");
   if (cmd === "back" || sel === "nav_back") return back(c);
-  if (cmd === "book" || sel === "menu_book") { push(c, step); return selectService(c); }
+  if (cmd === "book" || sel === "menu_book") { push(c, step); s.data.pkg = null; return selectService(c); }
+  if (cmd === "packages" || sel === "menu_packages") { push(c, step); return packagesMenu(c); }
   if (cmd === "mine" || cmd === "cancel" || sel === "menu_my_appointments") { push(c, step); return myAppointments(c); }
   if (cmd === "prices" || sel === "menu_services") return pricesInfo(c);
   if (sel === "menu_info") return infoMenu(c);
@@ -666,7 +805,38 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
   if (picked?.go === "menu") return mainMenu(c, false);
   if (picked?.go === "back") return back(c);
   if (picked?.go === "rate") { push(c, step); return rateList(c); }
+  if (picked?.go === "packages") { push(c, step); return packagesMenu(c); }
+  if (picked?.go === "book") { push(c, step); s.data.pkg = null; return selectService(c); }
   switch (step) {
+    case "PACKAGES": {
+      if (choice === "more") return packagesMenu(c, "", page + 1);
+      const p = picked?.pkg ? (await activePackages(c)).find(x => x.id === picked.pkg) : null;
+      if (!p) return unknown();
+      push(c, step);
+      return packageAsk(c, p);
+    }
+    case "PACKAGE_BUY": {
+      const p = s.data.pkg;
+      if (!p) return packagesMenu(c);
+      if (p.askName) {
+        const name = fullName(text);
+        if (!name) return say(c, step, "Preciso do nome e sobrenome, por favor (ex.: Maria Souza).", "package_name");
+        s.name = name; s.data.pkg = { ...p, askName: false };
+        return packagePay(c);
+      }
+      if (picked?.pkg === "check") return packageCheck(c);
+      if (picked?.pkg === "pay") return packagePay(c);
+      if (picked?.pkg === "book") { push(c, step); s.data.flow = undefined; return selectService(c, `Vamos agendar seu horário do pacote *${p.name}*.`); }
+      return unknown();
+    }
+    case "CONFIRM_EMAIL": {
+      if (!f) return mainMenu(c, false);
+      if (picked?.skip || /^(nao tenho|nao|pular|sem e-?mail)$/.test(fold(text))) { push(c, step); f.email = null; return confirmBooking(c); }
+      const email = validEmail(text);
+      if (!email) return prefix(await confirmEmail(c), "Não reconheci esse e-mail. Confira e envie de novo (ex.: nome@gmail.com).");
+      push(c, step); f.email = email;
+      return confirmBooking(c);
+    }
     case "RATE_APPOINTMENT": {
       if (choice === "more") return rateList(c, page + 1);
       if (picked && "appt" in picked) {
@@ -695,7 +865,7 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
       if (choice === "more") return mainMenu(c, false, page + 1);
       if (!picked) return unknown();
       push(c, step);
-      switch (picked.go) { case "book": return selectService(c); case "mine": return myAppointments(c); case "prices": return pricesInfo(c); case "info": return infoMenu(c); case "human": return handoff(c); case "rate": return rateList(c); default: return mainMenu(c, false); }
+      switch (picked.go) { case "mine": return myAppointments(c); case "prices": return pricesInfo(c); case "info": return infoMenu(c); case "human": return handoff(c); case "rate": return rateList(c); default: return mainMenu(c, false); }
     }
     case "SELECT_SERVICE": {
       if (choice === "more") return selectService(c, "", page + 1); // lista (> 9) ou botões (> 3): próxima página
@@ -736,7 +906,7 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
       const name = picked ? String(picked.name) : fullName(text);
       if (!name) return say(c, step, "Preciso do nome e sobrenome, por favor (ex.: Maria Souza).");
       push(c, step); f.name = name; s.name = name;
-      return confirmBooking(c);
+      return confirmEmail(c);
     }
     case "CONFIRM_BOOKING": {
       const ok = picked ? picked.ok : /^(confirmar|confirmo|sim|ok)$/i.test(text) ? true : null;
@@ -792,6 +962,9 @@ async function repeat(c: Ctx): Promise<Out> {
     case "SELECT_DATE": case "RESCHEDULE_SELECT_DATE": return selectDate(c, "", page);
     case "SELECT_TIME": case "RESCHEDULE_SELECT_TIME": return selectTime(c, "", page);
     case "CONFIRM_NAME": return confirmName(c);
+    case "CONFIRM_EMAIL": return c.s.data.flow ? confirmEmail(c) : mainMenu(c, false);
+    case "PACKAGES": return packagesMenu(c, "", page);
+    case "PACKAGE_BUY": return packageRepeat(c);
     case "CONFIRM_BOOKING": return confirmBooking(c);
     case "MY_APPOINTMENTS": return myAppointments(c);
     case "APPOINTMENT_ACTIONS": return appointmentActions(c);

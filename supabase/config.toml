@@ -99,3 +99,6 @@ verify_jwt = false
 
 [functions.meta-embedded-signup]
 verify_jwt = false
+
+[functions.client-emails]
+verify_jwt = false

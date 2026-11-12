@@ -188,6 +188,9 @@ const PublicSalon = () => {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientBirthday, setClientBirthday] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  // E-mail identifica o cliente junto do telefone e recebe a confirmação e os lembretes de retorno.
+  const emailOk = /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(clientEmail.trim());
   const { profile } = useAuth();
   useEffect(() => {
     if (profile?.full_name) setClientName(value => value || profile.full_name || '');
@@ -753,6 +756,10 @@ const PublicSalon = () => {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
+    if (!emailOk) {
+      toast.error("Informe um e-mail válido");
+      return;
+    }
 
     let finalProfessionalId = selectedProfessional;
     if (selectedProfessional === "any" || !selectedProfessional) {
@@ -812,6 +819,7 @@ const PublicSalon = () => {
           end_time: endTime,
           client_name: clientName.trim(),
           client_phone: clientPhone.trim(),
+          client_email: clientEmail.trim().toLowerCase(),
           coupon_id: couponApplied?.id || null,
           price: cartTotal,
           discount,
@@ -1759,6 +1767,23 @@ const PublicSalon = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="clientEmail">E-mail *</Label>
+                  <Input
+                    id="clientEmail"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="nome@email.com"
+                    aria-describedby="clientEmailHint"
+                    aria-invalid={clientEmail.trim() !== "" && !emailOk}
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                  />
+                  <p id="clientEmailHint" className="text-xs text-muted-foreground">
+                    Enviamos a confirmação do agendamento e os lembretes de retorno para este e-mail.
+                  </p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="clientBirthday">Data de nascimento (Opcional)</Label>
                   <Input
                     id="clientBirthday"
@@ -1977,7 +2002,7 @@ const PublicSalon = () => {
               <Button
                 size="lg"
                 onClick={handleConfirmBooking}
-                disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
+                disabled={submitting || !clientName.trim() || !clientPhone.trim() || !emailOk || !clientBirthday}
                 style={{
                   backgroundColor: primaryColor,
                   color: primaryForeground

@@ -6,8 +6,7 @@ import { serviceClient, validUuid } from "../_shared/whatsapp/auth.ts";
 import { corsHeaders } from "../_shared/whatsapp/errors.ts";
 import { brazilPhone, fullName } from "../_shared/whatsapp/interactive.ts";
 import { pixBRCode } from "../_shared/pix/brcode.ts";
-import { chargePackageOrder, paySettings, settleCharge } from "../_shared/payments/service.ts";
-import { PROVIDER_LABEL } from "../_shared/payments/gateways.ts";
+import { createPackageOrder, settleCharge } from "../_shared/payments/service.ts";
 
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
@@ -34,35 +33,7 @@ serve(async (req) => {
   const phone = brazilPhone(body.phone);
   if (!name) return json({ success: false, error: "invalid_name", message: "Informe nome e sobrenome." }, 400);
   if (!phone) return json({ success: false, error: "invalid_phone", message: "Informe o WhatsApp com DDD." }, 400);
-  const method = body.method === "card" ? "card" : "pix";
-
-  const { data: pkg } = await db.from("service_packages").select("id,salon_id,name,price,is_active,salons(name,slug,city,pix_key,is_active)").eq("id", body.packageId).maybeSingle();
-  const salon = (Array.isArray(pkg?.salons) ? pkg?.salons[0] : pkg?.salons) as { name: string; slug: string | null; city: string | null; pix_key: string | null; is_active: boolean | null } | null;
-  if (!pkg || !pkg.is_active || !salon || salon.is_active === false) return json({ success: false, error: "not_found", message: "Pacote indisponível." }, 404);
-  const cents = Math.round(Number(pkg.price) * 100);
-  if (!(cents >= 100)) return json({ success: false, error: "invalid_price", message: "Pacote sem preço. Fale com o salão." }, 400);
-
-  // Anti-abuso simples: no máximo 5 pedidos pendentes por telefone/salão nas últimas 24 h.
-  const { count } = await db.from("package_orders").select("id", { count: "exact", head: true }).eq("salon_id", pkg.salon_id).eq("client_phone", phone).eq("status", "pending").gt("created_at", new Date(Date.now() - 86_400_000).toISOString());
-  if ((count ?? 0) >= 5) return json({ success: false, error: "too_many", message: "Você já tem pedidos em aberto. Conclua o pagamento ou fale com o salão." }, 429);
-
-  const st = await paySettings(db, pkg.salon_id, salon.pix_key);
-  const gateway = st.provider !== "pix_manual" && st.ready && st.methods.includes(method);
-  if (!gateway && !salon.pix_key) return json({ success: false, error: "no_payment", message: "Este salão ainda não configurou pagamento online. Fale com o salão." }, 409);
-
-  const { data: order, error } = await db.from("package_orders").insert({ salon_id: pkg.salon_id, package_id: pkg.id, client_name: name, client_phone: phone, amount_cents: cents, method: gateway ? method : "pix_manual" }).select("id").single();
-  if (error || !order) return json({ success: false, error: "persistence_failed" }, 503);
-
-  if (gateway) {
-    try {
-      const ch = await chargePackageOrder(db, { id: order.id, salon_id: pkg.salon_id, amount_cents: cents, client_name: name, client_phone: phone, packageName: pkg.name, slug: salon.slug }, method, st);
-      if (ch) return json({ success: true, orderId: order.id, mode: "gateway", provider: PROVIDER_LABEL[st.provider as keyof typeof PROVIDER_LABEL], pixCode: ch.pixCode, url: ch.url, amountCents: cents });
-    } catch (e) { console.warn("package_charge_failed", (e as { code?: string }).code); }
-    if (!salon.pix_key) return json({ success: false, error: "provider_unavailable", message: "Não foi possível gerar a cobrança agora. Tente de novo em instantes." }, 502);
-    await db.from("package_orders").update({ method: "pix_manual" }).eq("id", order.id);
-  }
-  // Pix manual: copia e cola com a chave do salão (txid = pedido). O dono confere e libera os créditos.
-  let pixCode: string | null = null;
-  try { pixCode = pixBRCode({ key: String(salon.pix_key).trim(), name: salon.name || "Salao", city: salon.city || "Brasil", amount: cents / 100, txid: order.id.replace(/-/g, "").slice(0, 25) }); } catch { pixCode = null; }
-  return json({ success: true, orderId: order.id, mode: "pix_manual", pixKey: salon.pix_key, pixCode, amountCents: cents });
+  const r = await createPackageOrder(db, { packageId: String(body.packageId), name, phone, method: body.method === "card" ? "card" : "pix" }, pixBRCode);
+  if (!r.ok) return json({ success: false, error: r.error, message: r.message }, r.status);
+  return json({ success: true, orderId: r.orderId, mode: r.mode, provider: r.provider, pixCode: r.pixCode, url: r.url, pixKey: r.pixKey, amountCents: r.amountCents });
 });

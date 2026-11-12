@@ -1,6 +1,6 @@
 // Ponte banco ↔ gateways: configuração do salão, credencial (schema privado) e ciclo da cobrança.
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { checkCharge, createCharge, GatewayError, type Account, type Method, type Provider } from "./gateways.ts";
+import { checkCharge, createCharge, GatewayError, PROVIDER_LABEL, type Account, type Method, type Provider } from "./gateways.ts";
 
 export interface PaySettings { enabled: boolean; provider: "pix_manual" | Provider; methods: Method[]; payAtSalon: boolean; sandbox: boolean; handle: string | null; ready: boolean }
 
@@ -101,6 +101,43 @@ export async function chargePackageOrder(db: SupabaseClient, order: { id: string
     await db.from("payment_charges").update({ status: "failed", provider_ref: { error: e instanceof GatewayError ? `${e.code}:${e.detail ?? ""}`.slice(0, 200) : "error" }, updated_at: new Date().toISOString() }).eq("id", id);
     throw e;
   }
+}
+
+export type PackageCheckout =
+  | { ok: false; status: number; error: string; message: string }
+  | { ok: true; orderId: string; mode: "gateway" | "pix_manual"; provider?: string; chargeId?: string; pixCode: string | null; url: string | null; pixKey?: string; amountCents: number; packageName: string };
+/**
+ * Pedido de pacote + cobrança (link público e bot do WhatsApp). O preço vem do banco. Provedor conectado: copia e
+ * cola (Mercado Pago) ou página segura, com liberação automática; senão Pix pela chave do salão (o dono confirma).
+ * `salonId`: o pacote precisa ser deste salão (bot). `appointmentId`: agendamento que usa 1 crédito quando pagar.
+ */
+export async function createPackageOrder(db: SupabaseClient, i: { packageId: string; name: string; phone: string; method: Method; salonId?: string; appointmentId?: string | null }, pixCode: (p: { key: string; name: string; city: string; amount: number; txid: string }) => string, fetcher: typeof fetch = fetch): Promise<PackageCheckout> {
+  const no = (status: number, error: string, message: string): PackageCheckout => ({ ok: false, status, error, message });
+  const { data: pkg } = await db.from("service_packages").select("id,salon_id,name,price,is_active,salons(name,slug,city,pix_key,is_active)").eq("id", i.packageId).maybeSingle();
+  const salon = (Array.isArray(pkg?.salons) ? pkg?.salons[0] : pkg?.salons) as { name: string; slug: string | null; city: string | null; pix_key: string | null; is_active: boolean | null } | null;
+  if (!pkg || !pkg.is_active || !salon || salon.is_active === false || (i.salonId && pkg.salon_id !== i.salonId)) return no(404, "not_found", "Pacote indisponível.");
+  const cents = Math.round(Number(pkg.price) * 100);
+  if (!(cents >= 100)) return no(400, "invalid_price", "Pacote sem preço. Fale com o salão.");
+  // Anti-abuso simples: no máximo 5 pedidos pendentes por telefone/salão nas últimas 24 h.
+  const { count } = await db.from("package_orders").select("id", { count: "exact", head: true }).eq("salon_id", pkg.salon_id).eq("client_phone", i.phone).eq("status", "pending").gt("created_at", new Date(Date.now() - 86_400_000).toISOString());
+  if ((count ?? 0) >= 5) return no(429, "too_many", "Você já tem pedidos em aberto. Conclua o pagamento ou fale com o salão.");
+  const st = await paySettings(db, pkg.salon_id, salon.pix_key);
+  const gateway = st.provider !== "pix_manual" && st.ready && st.methods.includes(i.method);
+  if (!gateway && !salon.pix_key) return no(409, "no_payment", "Este salão ainda não configurou pagamento online. Fale com o salão.");
+  const { data: order, error } = await db.from("package_orders").insert({ salon_id: pkg.salon_id, package_id: pkg.id, client_name: i.name, client_phone: i.phone, amount_cents: cents, method: gateway ? i.method : "pix_manual", ...(i.appointmentId ? { appointment_id: i.appointmentId } : {}) }).select("id").single();
+  if (error || !order) return no(503, "persistence_failed", "Não foi possível registrar o pedido agora. Tente de novo em instantes.");
+  if (gateway) {
+    try {
+      const ch = await chargePackageOrder(db, { id: order.id, salon_id: pkg.salon_id, amount_cents: cents, client_name: i.name, client_phone: i.phone, packageName: pkg.name, slug: salon.slug }, i.method, st, fetcher);
+      if (ch) return { ok: true, orderId: order.id, mode: "gateway", provider: PROVIDER_LABEL[st.provider as Provider], chargeId: ch.id, pixCode: ch.pixCode, url: ch.url, amountCents: cents, packageName: pkg.name };
+    } catch (e) { console.warn("package_charge_failed", (e as { code?: string }).code); }
+    if (!salon.pix_key) return no(502, "provider_unavailable", "Não foi possível gerar a cobrança agora. Tente de novo em instantes.");
+    await db.from("package_orders").update({ method: "pix_manual" }).eq("id", order.id);
+  }
+  // Pix manual: copia e cola com a chave do salão (txid = pedido). O dono confere e libera os créditos.
+  let code: string | null = null;
+  try { code = pixCode({ key: String(salon.pix_key).trim(), name: salon.name || "Salao", city: salon.city || "Brasil", amount: cents / 100, txid: order.id.replace(/-/g, "").slice(0, 25) }); } catch { code = null; }
+  return { ok: true, orderId: order.id, mode: "pix_manual", pixKey: String(salon.pix_key), pixCode: code, url: null, amountCents: cents, packageName: pkg.name };
 }
 
 /** Consulta o provedor e, se pago, confirma (uma vez). Retorna true quando a cobrança ficou paga. */
