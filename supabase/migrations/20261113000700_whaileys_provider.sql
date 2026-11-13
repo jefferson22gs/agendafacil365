@@ -1,7 +1,8 @@
 -- Terceira conexão: QR Code com botões (serviço whaileys, mesmo contrato HTTP da Evolution).
 --  meta      = API oficial: botões e listas; sem Status.
 --  evolution = QR Code: texto numerado/enquete; Disparador e Status.
---  whaileys  = QR Code com botões e listas (recurso não oficial; pode parar se o WhatsApp mudar); Disparador e Status.
+--  whaileys  = QR Code com botões e listas pela Whaileys API própria (recurso não oficial; pode parar se o WhatsApp mudar).
+--              Envia texto, botões e listas; Disparador e Status continuam na Evolution.
 -- O robô continua em UMA conexão por vez (whatsapp_set_bot_provider). Aditiva: nada existente muda de comportamento.
 BEGIN;
 
@@ -11,17 +12,15 @@ ALTER TABLE public.whatsapp_automation_settings DROP CONSTRAINT IF EXISTS whatsa
 ALTER TABLE public.whatsapp_automation_settings ADD CONSTRAINT whatsapp_automation_settings_bot_provider_check
   CHECK (bot_provider IS NULL OR bot_provider IN ('meta', 'evolution', 'whaileys'));
 
--- Conexões por QR Code (Evolution ou botões) publicam Status e fazem Disparador; a oficial não.
+-- Status e Disparador: só a Evolution (a Whaileys API não envia mídia nem publica Status). 'chat' segue a escolha do dono.
 CREATE OR REPLACE FUNCTION public.whatsapp_instance_for(p_salon_id uuid, p_purpose text DEFAULT 'chat')
 RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT id FROM whatsapp_instances
-  WHERE salon_id = p_salon_id AND (p_purpose <> 'status' OR provider IN ('evolution', 'whaileys'))
+  WHERE salon_id = p_salon_id AND (p_purpose NOT IN ('status', 'marketing') OR provider <> 'whaileys') AND (p_purpose <> 'status' OR provider = 'evolution')
   ORDER BY
     CASE WHEN p_purpose = 'chat' THEN (provider = public.whatsapp_bot_provider(p_salon_id)) ELSE false END DESC,
     (status = 'connected') DESC,
-    CASE WHEN p_purpose = 'chat' THEN (provider = 'meta') ELSE (provider IN ('evolution', 'whaileys')) END DESC,
-    -- Entre os dois QR Code, a Evolution (estável) vem antes para Disparador e Status.
-    (provider = 'evolution') DESC,
+    CASE WHEN p_purpose = 'chat' THEN (provider = 'meta') ELSE (provider = 'evolution') END DESC,
     created_at
   LIMIT 1;
 $$;
@@ -41,7 +40,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.whatsapp_set_bot_provider(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.whatsapp_set_bot_provider(uuid, text) TO authenticated;
 
--- Consulta ativa de entrega: vale para as duas conexões por QR Code e diz qual delas consultar (`provider`).
+-- Consulta ativa de entrega: só Evolution (a Whaileys API não tem consulta); devolve o provedor para o envio saber.
 DROP FUNCTION IF EXISTS public.whatsapp_delivery_candidates(integer);
 CREATE FUNCTION public.whatsapp_delivery_candidates(p_limit integer DEFAULT 20)
 RETURNS TABLE(salon_id uuid, instance_id uuid, instance_name text, provider_message_id text, provider text)
@@ -62,10 +61,13 @@ BEGIN
  SELECT u.salon_id, w.id, w.instance_name, u.provider_message_id, w.provider FROM u
  LEFT JOIN whatsapp_outbox o ON o.id = u.outbox_id
  JOIN whatsapp_instances w ON w.id = coalesce(o.instance_id, public.whatsapp_instance_for(u.salon_id, 'marketing'))
- WHERE w.status = 'connected' AND w.provider IN ('evolution', 'whaileys');
+ WHERE w.status = 'connected' AND w.provider = 'evolution';
 END $$;
 REVOKE ALL ON FUNCTION public.whatsapp_delivery_candidates(integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.whatsapp_delivery_candidates(integer) TO service_role;
+
+-- Whaileys API: a instância do motor é uma só por sistema (WHAILEYS_INSTANCE); fica com um salão por vez.
+CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_instances_whaileys_once ON public.whatsapp_instances (instance_name) WHERE provider = 'whaileys';
 
 COMMIT;
 

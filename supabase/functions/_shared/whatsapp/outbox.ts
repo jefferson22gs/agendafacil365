@@ -3,6 +3,7 @@ import { evolutionClient, privateNumber } from "./evolution.ts";
 import { objectValue, WhatsAppError } from "./errors.ts";
 import { providerMessageId, sendWithFallback, typingPulse } from "./evolutionSender.ts";
 import { metaClient, toMetaInteractive } from "./meta.ts";
+import { whaileysCard, whaileysClient } from "./whaileys.ts";
 
 type OutboxItem = { id: string; salon_id: string; category: string; content_type: string; recipient_phone: string; text_content: string; payload: unknown; media_path: string | null; media_mime: string | null; media_filename: string | null; source_event_id: string | null };
 /**
@@ -109,8 +110,20 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
       await finish("accepted", undefined, r.id);
       return true;
     }
-    // Evolution ou QR Code com botões (whaileys): mesmo contrato, servidor e chave de cada um.
-    const api = evolutionClient(instance.provider);
+    if (instance.provider === "whaileys") {
+      // Whaileys API: texto, botões (até 3) ou lista, sempre com o texto numerado junto. Sem mídia nem Status:
+      // esses envios saem pela Evolution (whatsapp_instance_for nunca escolhe a whaileys para Status/Disparador).
+      if (item.content_type !== "text" && item.content_type !== "interactive") { await finish("cancelled", "unsupported_on_whaileys"); return true; }
+      const wa = whaileysClient();
+      const { data: started, error: beginError } = await db.rpc("whatsapp_begin_send", { p_id: item.id, p_claim: item.claim_token });
+      if (beginError || !started) throw new WhatsAppError("persistence_failed", 503);
+      sendStarted = true;
+      const payload = item.payload && typeof item.payload === "object" ? item.payload as Record<string, unknown> : null;
+      const id = await wa.send(item.recipient_phone.replace(/^\+/, ""), item.content_type === "interactive" ? whaileysCard(payload, item.text_content) : { text: item.text_content });
+      await finish("accepted", undefined, id);
+      return true;
+    }
+    const api = evolutionClient();
     const remote = objectValue(await api.request("state", instance.instance_name));
     const inner = remote.instance && typeof remote.instance === "object" ? objectValue(remote.instance) : remote;
     if ((inner.state ?? remote.state) !== "open") { await finish("pending", "disconnected"); return true; }

@@ -24,10 +24,10 @@ const COPY: Record<QrProvider, { title: string; badge: string; uses: string; bot
   },
   whaileys: {
     title: "QR Code com botões", badge: "Botões (experimental)", uses: "botões e listas",
-    botOn: "Atende os clientes com botões e listas clicáveis; os números ficam no texto como reserva. Também faz Disparador e Status.",
+    botOn: "Atende os clientes com botões e listas clicáveis; os números ficam no texto como reserva. Status e Disparador continuam no QR Code.",
     botOff: "Conectada, mas o robô está em outra conexão. Escolha esta em \"Quem atende os clientes no automático\" para usar os botões.",
     create: "Conectar QR Code com botões",
-    createHelp: "Cria uma conexão por QR Code que mostra botões e listas no WhatsApp do cliente. Pode ser o mesmo número das outras conexões (o WhatsApp aceita até 4 aparelhos conectados). Nenhuma mensagem é enviada neste cadastro.",
+    createHelp: "Cria uma conexão por QR Code que mostra botões e listas no WhatsApp do cliente. Use um número próprio para ela, diferente do QR Code comum. Nenhuma mensagem é enviada neste cadastro.",
     tip: "Botões pelo QR Code são um recurso não oficial: o WhatsApp pode deixar de exibi-los sem aviso. Por isso cada menu também leva os números no texto, e o cliente sempre consegue responder digitando.",
     tour: "whatsapp-buttons-card",
   },

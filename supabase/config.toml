@@ -102,3 +102,6 @@ verify_jwt = false
 
 [functions.client-emails]
 verify_jwt = false
+
+[functions.whaileys-webhook]
+verify_jwt = false

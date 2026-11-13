@@ -20,8 +20,8 @@ const OPTIONS: { id: BotProvider; title: string; subtitle: string; yes: string[]
   },
   {
     id: "whaileys", title: "QR Code com botões", subtitle: "Botões e listas pelo QR Code (experimental)",
-    yes: ["Botões e listas clicáveis, com os números no texto como reserva", "Mesmo fluxo, regras e cobranças do robô", "Disparador e Status pelo QR Code"],
-    no: ["Recurso não oficial: o WhatsApp pode deixar de mostrar os botões a qualquer momento", "Risco de bloqueio do número em envios em massa"],
+    yes: ["Botões e listas clicáveis, com os números no texto como reserva", "Mesmo fluxo, regras, pacotes e cobranças do robô"],
+    no: ["Não publica Status nem faz Disparador (use o QR Code para isso)", "Recurso não oficial: o WhatsApp pode deixar de mostrar os botões a qualquer momento"],
   },
 ];
 
@@ -74,7 +74,7 @@ export function BotProviderChoice({ salonId, current, available, onChange }: { s
             );
           })}
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Disparador e Status usam a conexão por QR Code quando ela existe (a Evolution primeiro, se houver as duas), independentemente desta escolha.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Disparador e Status sempre usam a conexão QR Code (sem botões) quando ela existe, independentemente desta escolha.</p>
       </CardContent>
     </Card>
   );

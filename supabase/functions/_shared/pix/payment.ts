@@ -125,10 +125,18 @@ export async function receivePaymentProof(ctx: PixContext, appointmentId: string
     if (file.bytes.byteLength > PROOF_MAX_BYTES) return { ok: false, reason: "too_large" };
     downloaded = file.bytes;
     result.fileName = (event.payload as { media?: { name?: unknown } } | null)?.media?.name;
+  } else if (instance.provider === "whaileys") {
+    // Whaileys API: o motor manda o arquivo junto com a mensagem; o webhook já gravou no Storage privado.
+    const stored = (event.payload as { mediaPath?: unknown } | null)?.mediaPath;
+    if (typeof stored !== "string" || !stored.startsWith(`${salonId}/whaileys-inbound/`)) return { ok: false, reason: "download_failed" };
+    const { data: blob, error: dlError } = await db.storage.from("payment-proofs").download(stored);
+    if (dlError || !blob) return { ok: false, reason: "download_failed" };
+    if (blob.size > PROOF_MAX_BYTES) return { ok: false, reason: "too_large" };
+    downloaded = new Uint8Array(await blob.arrayBuffer());
   } else {
     try {
       // ponytail: op "mediaBase64" adicionada em evolution.ts pelo atendente; cast cai fora quando estiver no union.
-      result = await evolutionClient(instance.provider).request("mediaBase64" as EvolutionOperation, instance.instance_name, {
+      result = await evolutionClient().request("mediaBase64" as EvolutionOperation, instance.instance_name, {
         message: { key: { id: messageId, remoteJid: `${phone.slice(1)}@s.whatsapp.net`, fromMe: false } }, convertToMp4: false,
       }) as typeof result;
     } catch { return { ok: false, reason: "download_failed" }; }

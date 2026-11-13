@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeSalon, salonInstance, serviceClient, validUuid } from "../_shared/whatsapp/auth.ts";
 import { evolutionClient } from "../_shared/whatsapp/evolution.ts";
+import { whaileysClient } from "../_shared/whatsapp/whaileys.ts";
 import { metaClient } from "../_shared/whatsapp/meta.ts";
 import { corsHeaders, errorResponse, jsonResponse, objectValue, readRequest, WhatsAppError } from "../_shared/whatsapp/errors.ts";
 import { messageRecords, parseInboxMessage } from "../_shared/whatsapp/inbound.ts";
@@ -45,11 +46,14 @@ serve(async (req) => {
     const meta = prov?.provider === "meta" ? String(prov.meta_phone_number_id ?? "") : null;
     // API oficial: o histórico chega todo pelo webhook (não há "buscar mensagens"); sincronizar não importa nada.
     if (action === "sync" && meta !== null) return jsonResponse({ success: true, imported: 0 });
-    const api = evolutionClient(prov?.provider === "whaileys" ? "whaileys" : "evolution");
+    if (prov?.provider === "whaileys" && action === "sync") return jsonResponse({ success: true, imported: 0 });
+    const whaileys = prov?.provider === "whaileys";
+    // Evolution só quando a conexão é dela (oficial e Whaileys não precisam do secret da Evolution).
+    const evo = () => evolutionClient();
 
     if (action === "sync") {
       // Puxa as mensagens recentes desta conversa (Evolution v2 /chat/findMessages). Não aciona o chatbot.
-      const remote = await api.request("messages", instance.instance_name, { where: { key: { remoteJid: `${phone.slice(1)}@s.whatsapp.net` } }, page: 1, offset: 100 });
+      const remote = await evo().request("messages", instance.instance_name, { where: { key: { remoteJid: `${phone.slice(1)}@s.whatsapp.net` } }, page: 1, offset: 100 });
       const rows = messageRecords(remote).slice(0, 100).map(parseInboxMessage).filter((m): m is NonNullable<typeof m> => !!m && m.phone === phone)
         .map((m) => ({ ...inboxRow(salonId, m), source: m.direction === "in" ? "contact" : "sync" }));
       if (rows.length) {
@@ -91,8 +95,10 @@ serve(async (req) => {
         if (winError) throw new WhatsAppError("persistence_failed", 503);
         if (!open) throw new WhatsAppError("outside_service_window", 409);
         providerId = await metaClient().send(meta, { to: phone.slice(1), type: "text", text: { body: text, preview_url: true } });
+      } else if (whaileys) {
+        providerId = await whaileysClient().send(phone.slice(1), { text });
       } else {
-        const result = objectValue(await api.request("text", instance.instance_name, { number: phone.slice(1), text }));
+        const result = objectValue(await evo().request("text", instance.instance_name, { number: phone.slice(1), text }));
         const key = result.key && typeof result.key === "object" ? objectValue(result.key) : null;
         providerId = typeof key?.id === "string" && key.id ? key.id : undefined;
       }

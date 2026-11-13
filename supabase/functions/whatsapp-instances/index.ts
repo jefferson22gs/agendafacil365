@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { authorizeSalon, serviceClient, salonInstance, requiredEnv } from "../_shared/whatsapp/auth.ts";
-import { evolutionClient, whaileysConfigured } from "../_shared/whatsapp/evolution.ts";
+import { evolutionClient } from "../_shared/whatsapp/evolution.ts";
+import { whaileysClient, whaileysConfigured, whaileysInstance, whaileysPhone, whaileysStatusOf } from "../_shared/whatsapp/whaileys.ts";
 import { evolutionContacts } from "../_shared/whatsapp/inbound.ts";
 import { corsHeaders, errorResponse, jsonResponse, readRequest, objectValue, WhatsAppError } from "../_shared/whatsapp/errors.ts";
 
@@ -26,7 +27,7 @@ serve(async (req) => {
     const db = serviceClient();
     const action = body.action;
     if (!["create", "connect", "status", "fetch", "disconnect", "delete", "contacts", "sync_webhook", "set_groups_ignore", "retry_message", "capabilities"].includes(String(action))) throw new WhatsAppError("invalid_request");
-    // QR Code com botões (whaileys): mesmo contrato da Evolution, em outro servidor e com outra chave.
+    // QR Code com botões: Whaileys API própria (uma instância do motor para o sistema = um salão por vez).
     const qrProvider = body.provider === "whaileys" ? "whaileys" : "evolution";
     // Compatibilidade com chamadas antigas: resolve nome no servidor e depois autoriza o salão real.
     let salonId = body.salonId;
@@ -39,22 +40,34 @@ serve(async (req) => {
     const tenant = salonId as string;
     // Painel: só oferece a conexão com botões quando o serviço está instalado (secrets configurados).
     if (action === "capabilities") return jsonResponse({ success: true, whaileysConfigured: whaileysConfigured() });
-    const api = evolutionClient(qrProvider);
+    // Cliente da Evolution só quando a conexão é dela (oficial e Whaileys não dependem do secret da Evolution).
+    let evo: ReturnType<typeof evolutionClient> | null = null;
+    const api = new Proxy({} as ReturnType<typeof evolutionClient>, { get: (_t, p) => { evo ??= evolutionClient(); return (evo as unknown as Record<string | symbol, unknown>)[p]; } });
     const persist = async (id: string, changes: Record<string, unknown>) => {
       const { error } = await db.from("whatsapp_instances").update({ ...changes, updated_at: new Date().toISOString() }).eq("id", id).eq("salon_id", tenant);
       if (error) throw new WhatsAppError("persistence_failed", 503);
     };
+    if (action === "create" && qrProvider === "whaileys") {
+      if (!whaileysConfigured()) throw new WhatsAppError("configuration_missing", 503);
+      const name = whaileysInstance();
+      const { data: taken, error: takenError } = await db.from("whatsapp_instances").select("id,salon_id,status").eq("provider", "whaileys").eq("instance_name", name).maybeSingle();
+      if (takenError) throw new WhatsAppError("persistence_failed", 503);
+      if (taken && taken.salon_id !== tenant) throw new WhatsAppError("whaileys_in_use", 409);
+      if (taken) return jsonResponse({ success: true, instance: { id: taken.id, salon_id: tenant, instance_name: name, instanceName: name, status: taken.status } });
+      const { data: row, error } = await db.from("whatsapp_instances").insert({ salon_id: tenant, instance_name: name, provider: "whaileys", api_url: requiredEnv("WHAILEYS_API_URL"), webhook_url: `${requiredEnv("SUPABASE_URL")}/functions/v1/whaileys-webhook`, status: "disconnected" }).select("id").single();
+      if (error || !row) throw new WhatsAppError(error?.code === "23505" ? "whaileys_in_use" : "persistence_failed", error?.code === "23505" ? 409 : 503);
+      return jsonResponse({ success: true, instance: { id: row.id, salon_id: tenant, instance_name: name, instanceName: name, status: "disconnected" } });
+    }
     if (action === "create") {
       // Cada conexão por QR Code convive com a oficial: procura só a do tipo pedido.
       const { data: existing, error: lookupError } = await db.from("whatsapp_instances").select("id,instance_name,status").eq("salon_id", tenant).eq("provider", qrProvider).maybeSingle();
       if (lookupError) throw new WhatsAppError("persistence_failed", 503);
       if (existing) return jsonResponse({ success: true, instance: { ...existing, salon_id: tenant, instanceName: existing.instance_name } });
       // Evolution mantém o nome de sempre (instâncias já conectadas); a conexão com botões ganha prefixo próprio.
-      const base = `syshair_${tenant.replaceAll("-", "")}`;
-      const name = qrProvider === "whaileys" ? base.replace("syshair_", "syshairbtn_") : base;
+      const name = `syshair_${tenant.replaceAll("-", "")}`;
       const webhookUrl = `${requiredEnv("SUPABASE_URL")}/functions/v1/evolution-webhook`;
       // Cadastro persistente anterior à chamada remota; nome determinístico permite reconciliação.
-      const { data: row, error } = await db.from("whatsapp_instances").insert({ salon_id: tenant, instance_name: name, provider: qrProvider, api_url: requiredEnv(qrProvider === "whaileys" ? "WHAILEYS_API_URL" : "EVOLUTION_API_URL"), webhook_url: webhookUrl, status: "disconnected" }).select("id").single();
+      const { data: row, error } = await db.from("whatsapp_instances").insert({ salon_id: tenant, instance_name: name, provider: "evolution", api_url: requiredEnv("EVOLUTION_API_URL"), webhook_url: webhookUrl, status: "disconnected" }).select("id").single();
       if (error || !row) throw new WhatsAppError("persistence_failed", 503);
       const { data: secret, error: secretError } = await db.rpc("whatsapp_ensure_instance_secret", { p_instance_id: row.id });
       if (secretError || typeof secret !== "string") throw new WhatsAppError("configuration_missing", 503);
@@ -70,7 +83,36 @@ serve(async (req) => {
       throw e;
     });
     if (body.instanceName && body.instanceName !== instance.instance_name) throw new WhatsAppError("forbidden", 403);
-    const remote = instance.provider === "whaileys" ? evolutionClient("whaileys") : api;
+    const remote = api;
+    if (instance.provider === "whaileys") {
+      // Whaileys API: QR/estado/logout pelas rotas /sessions. Webhook, contatos e grupos não existem no motor.
+      const wa = whaileysClient();
+      if (action === "retry_message") {
+        const { data: ok, error } = await db.rpc("whatsapp_retry_outbox", { p_salon_id: tenant, p_message_id: body.messageId });
+        if (error) throw new WhatsAppError("persistence_failed", 503);
+        return jsonResponse({ success: true, requeued: ok === true });
+      }
+      if (action === "connect") {
+        const st = await wa.connect();
+        const status = whaileysStatusOf(st);
+        await persist(instance.id, { status, phone_number: whaileysPhone(st) ?? instance.phone_number, qrcode: null });
+        const qrcode = typeof st.qr === "string" && st.qr.length < 250_000 ? st.qr : null;
+        return jsonResponse({ success: true, qrcode, status });
+      }
+      if (action === "delete" || action === "disconnect") {
+        await wa.logout().catch(() => null);
+        if (action === "delete") {
+          const { error } = await db.from("whatsapp_instances").delete().eq("id", instance.id).eq("salon_id", tenant);
+          if (error) throw new WhatsAppError("persistence_failed", 503);
+        } else await persist(instance.id, { status: "disconnected", phone_number: null, qrcode: null });
+        return jsonResponse({ success: true });
+      }
+      if (action !== "status" && action !== "fetch") throw new WhatsAppError("invalid_request", 409);
+      const st = await wa.status();
+      const status = whaileysStatusOf(st), phoneNumber = whaileysPhone(st) ?? (status === "connected" ? instance.phone_number : null);
+      await persist(instance.id, { status, phone_number: phoneNumber, qrcode: null });
+      return jsonResponse({ success: true, state: st.state, status, phoneNumber, qrcode: status === "qrcode" ? st.qr : null, instance: { instanceName: instance.instance_name, owner: phoneNumber ? `${phoneNumber}@s.whatsapp.net` : null } });
+    }
     // API oficial: não há QR, webhook da Evolution nem grupos; o estado vem da Meta (número registrado e qualidade).
     const { data: prov } = await db.from("whatsapp_instances").select("provider,meta_phone_number_id,meta_display_name").eq("id", instance.id).maybeSingle();
     if (prov?.provider === "meta") {

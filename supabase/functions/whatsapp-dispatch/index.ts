@@ -23,7 +23,8 @@ export async function checkDeliveries(db: SupabaseClient, api?: ReturnType<typeo
     if (row.provider_message_id.startsWith("wamid.")) continue;
     try {
       // A conexão que enviou (Evolution ou QR Code com botões) responde pelo próprio servidor.
-      const client = api ?? evolutionClient(row.provider ?? "evolution");
+      if (row.provider && row.provider !== "evolution") continue; // Whaileys API: sem consulta de entrega
+      const client = api ?? evolutionClient();
       const remote = await client.request("messages", row.instance_name, { where: { key: { id: row.provider_message_id } }, page: 1, offset: 5 });
       for (const u of deliveryUpdates(messageRecords(remote))) {
         if (u.id !== row.provider_message_id || u.status === "sent") continue;

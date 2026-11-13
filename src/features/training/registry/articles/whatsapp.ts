@@ -101,10 +101,10 @@ export const whatsappArticles: Article[] = [
       { text: "Em WhatsApp > Conexão, você pode ter a API oficial (Meta), o QR Code e, quando disponível no seu plano, o QR Code com botões. Pode usar mais de uma ao mesmo tempo." },
       { text: "API oficial: botões e menus clicáveis, número verificado e sem risco de bloqueio. Limitação da Meta: não publica Status e só envia mensagens livres para quem conversou com o salão nas últimas 24 h." },
       { text: "QR Code: atende o fluxo inteiro com opções numeradas ou enquete (sem botões), faz Disparador para toda a lista e publica Status. Limitação: envios em massa têm risco de bloqueio do número." },
-      { text: "QR Code com botões (experimental): o robô manda botões e listas clicáveis pelo QR Code, com o mesmo fluxo, regras, pacotes e cobranças. Cada menu também leva os números no texto, então o cliente sempre consegue responder digitando. Limitação: é um recurso não oficial; o WhatsApp pode deixar de mostrar os botões sem aviso, e envios em massa têm risco de bloqueio." },
+      { text: "QR Code com botões (experimental): o robô manda botões e listas clicáveis pelo QR Code, com o mesmo fluxo, regras, pacotes e cobranças. Cada menu também leva os números no texto, então o cliente sempre consegue responder digitando. Limitações: é um recurso não oficial, e o WhatsApp pode deixar de mostrar os botões sem aviso; não publica Status nem faz Disparador; use um número próprio, diferente do QR Code comum." },
       { text: "Em todas as conexões o robô se apresenta com o nome do seu estabelecimento (cadastrado em Configurações), nunca com o nome de outra pessoa ou empresa." },
       { text: "No cartão Quem atende os clientes no automático, toque em Usar no atendimento na conexão escolhida e confirme. O robô nas outras é desligado sozinho: as mensagens delas continuam chegando na Caixa de entrada, sem resposta automática." },
-      { text: "Disparador e Status usam uma conexão por QR Code quando ela existe (a QR Code comum primeiro, se houver as duas), mesmo com o robô na oficial." },
+      { text: "Disparador e Status sempre usam a conexão QR Code (sem botões) quando ela existe, mesmo com o robô em outra conexão." },
     ],
     notes: [
       "Ao trocar, conversas em andamento recomeçam no menu da nova conexão.",

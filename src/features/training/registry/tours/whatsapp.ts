@@ -24,7 +24,7 @@ export const whatsappConnectTour: TourDef = {
     {
       target: "whatsapp-bot-provider",
       title: "Quem atende no automático",
-      body: "Escolha UMA conexão para o robô. API oficial: botões clicáveis e sem risco de bloqueio, mas sem Status e com Disparador só para quem falou com o salão nas últimas 24 h. QR Code: atende 100% com opções numeradas (sem botões), faz Disparador e Status. QR Code com botões (experimental, quando disponível): botões e listas pelo QR Code, com os números no texto como reserva. Ligar uma desliga o robô nas outras sozinho.",
+      body: "Escolha UMA conexão para o robô. API oficial: botões clicáveis e sem risco de bloqueio, mas sem Status e com Disparador só para quem falou com o salão nas últimas 24 h. QR Code: atende 100% com opções numeradas (sem botões), faz Disparador e Status. QR Code com botões (experimental, quando disponível): botões e listas pelo QR Code, com os números no texto como reserva; não faz Status nem Disparador. Ligar uma desliga o robô nas outras sozinho.",
       fallbackBody: "Este cartão aparece depois que você conecta pelo menos uma conexão.",
     },
     {
@@ -121,7 +121,7 @@ export const whatsappStatusTour: TourDef = {
     {
       target: "whatsapp-qr-card",
       title: "Conexões",
-      body: "A conexão oficial atende os clientes com botões. A conexão por QR Code faz Disparador e Status. A QR Code com botões, quando disponível, aparece logo abaixo e funciona igual, com botões e listas no robô. Confira o status de cada uma antes de contar com automações; se reconectar não resolver, procure o suporte sem compartilhar o QR Code.",
+      body: "A conexão oficial atende os clientes com botões. A conexão por QR Code faz Disparador e Status. A QR Code com botões, quando disponível, aparece logo abaixo: atende o robô com botões e listas, mas Status e Disparador continuam no QR Code comum. Confira o status de cada uma antes de contar com automações; se reconectar não resolver, procure o suporte sem compartilhar o QR Code.",
     },
   ],
 };
