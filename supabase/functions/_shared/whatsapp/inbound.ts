@@ -9,7 +9,7 @@ export interface IncomingMessage {
   /** Id da linha/botão clicado (lista, botões, template). Só o servidor interpreta. */
   selection?: string | null;
   /** Imagem/documento recebido (comprovante de PIX). Sem URL: o servidor baixa via getBase64FromMediaMessage. */
-  media?: { type: "image" | "document"; mime: string | null; name: string | null; url: string | null } | null;
+  media?: { type: "image" | "document" | "audio"; mime: string | null; name: string | null; url: string | null } | null;
 }
 export function recordOf(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -53,7 +53,9 @@ export function parseIncoming(data: unknown): IncomingMessage | null {
   const base = { id, jid, phone: `+${jid.split("@")[0]}`, name: typeof row.pushName === "string" ? row.pushName.slice(0, 120) : "Cliente" };
   // Atendente: resposta de lista/botão chega como id selecionado; o texto visível vai junto como fallback.
   const choice = selectionOf(message);
-  if (choice) return { ...base, text: choice.text || choice.id, quotedMessageId: null, selection: choice.id, media: null };
+  // Id da mensagem com o botão: o assistente do gestor só aceita o clique no cartão de confirmação vigente.
+  const replied = ["listResponseMessage", "buttonsResponseMessage", "templateButtonReplyMessage", "interactiveResponseMessage"].map(k => recordOf(recordOf(message[k])?.contextInfo)?.stanzaId).find(v => typeof v === "string");
+  if (choice) return { ...base, text: choice.text || choice.id, quotedMessageId: typeof replied === "string" ? replied.slice(0, 200) : null, selection: choice.id, media: null };
   const media = mediaOf(message);
   if (media) return { ...base, text: media.caption, quotedMessageId: null, selection: null, media: media.media };
   const text = message.conversation ?? extended?.text;
@@ -78,14 +80,14 @@ export function selectionOf(message: Record<string, unknown>): { id: string; tex
 }
 function mediaOf(message: Record<string, unknown>): { caption: string; media: NonNullable<IncomingMessage["media"]> } | null {
   const doc = recordOf(message.documentMessage) ?? recordOf(recordOf(recordOf(message.documentWithCaptionMessage)?.message)?.documentMessage);
-  const img = recordOf(message.imageMessage);
-  const m = img ?? doc;
+  const img = recordOf(message.imageMessage), audio = recordOf(message.audioMessage);
+  const m = img ?? doc ?? audio;
   if (!m) return null;
   const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n) : null);
   const url = str(m.url, 2000);
   return {
     caption: (str(m.caption, 1000) ?? "").trim(),
-    media: { type: img ? "image" : "document", mime: str(m.mimetype, 100), name: str(m.fileName, 200), url: url && /^https:\/\//.test(url) && !/whatsapp\.net/.test(new URL(url).hostname) ? url : null },
+    media: { type: img ? "image" : doc ? "document" : "audio", mime: str(m.mimetype, 100), name: str(m.fileName, 200), url: url && /^https:\/\//.test(url) && !/whatsapp\.net/.test(new URL(url).hostname) ? url : null },
   };
 }
 /** Mensagem para a caixa de entrada (Conversas): entrada e saída, texto e mídia. Só contatos individuais com número. */

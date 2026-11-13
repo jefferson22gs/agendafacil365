@@ -10,6 +10,7 @@ import { continueFlow, flowExpired, flowExpiry, handleProof, menuMessage, startF
 import { buildMenu, resolveChoice } from "./interactive.ts";
 import { receivePaymentProof } from "../pix/payment.ts";
 import { guidedReply, type GuidedSession } from "./guided.ts";
+import { managerLevel, managerReply } from "./managerAssistant.ts";
 
 async function sha256(v: string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)))).map(b => b.toString(16).padStart(2, "0")).join("");
@@ -112,6 +113,18 @@ async function sequential<T, R>(items: T[], fn: (item: T) => Promise<R>): Promis
  * Depois da IA, se ela chamou start_booking, envia o primeiro menu do fluxo.
  */
 export async function chatbotReply(ctx: BotContext, text: string, input: Omit<Input, "text"> = {}): Promise<ChatbotReply> {
+  // Gestor: só número autorizado no próprio salão (telefone do perfil ou lista), sempre com nível relido no banco.
+  // "#gestor" não concede acesso; quem não está autorizado segue o atendimento normal do cliente.
+  if (!ctx.preview && ctx.eventId) {
+    const manager = { db: ctx.db, salonId: ctx.salonId, actor: ctx.phone, channel: "whatsapp" as const, requestId: ctx.eventId, eventId: ctx.eventId };
+    const level = await managerLevel(manager);
+    if (level) {
+      const r = await managerReply(manager, { text, selection: input.selection ?? null, quoted: input.quoted ?? null, media: input.media ?? null }, level);
+      return { text: r.text, provider: r.provider, model: r.model, messages: r.messages ?? [{ type: "text", text: r.text }] };
+    }
+  }
+  // Áudio de cliente continua sem resposta automática, como antes (não é comprovante nem texto).
+  if ((input.media as { type?: unknown } | null | undefined)?.type === "audio") return { text: "", provider: "deterministic", model: "audio_ignored" };
   const pre = await preload(ctx);
   const st = pre.st;
   const paused = !!st?.human_takeover && !ctx.preview;

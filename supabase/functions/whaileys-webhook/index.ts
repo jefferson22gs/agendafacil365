@@ -66,17 +66,20 @@ serve(async (req) => {
     // Comprovante (imagem/PDF): o motor já manda o arquivo. Vai para o Storage privado por id da mensagem
     // (idempotente) e o evento guarda só o caminho; o comprovante é lido de lá depois.
     let mediaPath: string | null = null;
-    if (message.media && typeof body.media?.data === "string" && body.media.data.length <= 11_200_000) {
+    // Áudio (assistente do gestor) não usa o bucket de comprovantes; fica em bucket privado próprio.
+    const mediaBucket = message.media?.type === "audio" ? "manager-media" : "payment-proofs";
+    if (message.media && typeof body.media?.data === "string" && body.media.data.length <= 7_000_000) {
       const bytes = Uint8Array.from(atob(body.media.data), c => c.charCodeAt(0));
       const path = `${instance.salon_id}/whaileys-inbound/${message.id.replace(/[^A-Za-z0-9_-]/g, "_")}`;
-      const { error: upErr } = await db.storage.from("payment-proofs").upload(path, bytes, { contentType: String(body.media.mimetype ?? "application/octet-stream").slice(0, 100), upsert: true });
-      if (upErr) throw new WhatsAppError("persistence_failed", 503);
-      mediaPath = path;
+      const { error: upErr } = await db.storage.from(mediaBucket).upload(path, bytes, { contentType: String(body.media.mimetype ?? "application/octet-stream").split(";")[0].slice(0, 100), upsert: true });
+      // Arquivo recusado pelo bucket (tipo/tamanho) não derruba o webhook: o evento segue sem caminho.
+      if (upErr && !/mime|size|payload|too large|invalid/i.test(String(upErr.message))) throw new WhatsAppError("persistence_failed", 503);
+      if (!upErr) mediaPath = path;
     }
     const { error: insertError } = await db.from("whatsapp_webhook_events").upsert({
       salon_id: instance.salon_id, instance_id: instance.id, event_type: "messages.upsert",
       provider_message_id: message.id, sender_phone: message.phone, whatsapp_at: new Date(arrived).toISOString(),
-      payload: { text: message.text, name: message.name, quotedMessageId: message.quotedMessageId, selection: message.selection ?? null, media: message.media ?? null, provider: "whaileys", ...(mediaPath ? { mediaPath } : {}) },
+      payload: { text: message.text, name: message.name, quotedMessageId: message.quotedMessageId, selection: message.selection ?? null, media: message.media ?? null, provider: "whaileys", ...(mediaPath ? { mediaPath, mediaBucket } : {}) },
     }, { onConflict: "instance_id,event_type,provider_message_id", ignoreDuplicates: true });
     if (insertError) throw new WhatsAppError("persistence_failed", 503);
     return jsonResponse({ accepted: 1 });

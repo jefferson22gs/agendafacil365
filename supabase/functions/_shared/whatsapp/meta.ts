@@ -153,7 +153,7 @@ export function parseMetaWebhook(body: unknown): MetaChange[] {
           selection = SELECTION.test(rid) ? rid : null;
           text = str(reply?.title, 200); kind = "interactive"; mtype = it?.list_reply ? "list_reply" : "buttons_reply";
         } else if (type === "button") { text = str(rec(m!.button)?.text, 200); const p = str(rec(m!.button)?.payload, 256); selection = SELECTION.test(p) ? p : null; kind = "interactive"; mtype = "buttons_reply"; }
-        else if (type === "image" || type === "document") {
+        else if (type === "image" || type === "document" || type === "audio") {
           const md = rec(m![type]);
           mediaId = str(md?.id, 40) || null;
           text = str(md?.caption, 1000); kind = "media"; mtype = type;
