@@ -61,7 +61,9 @@ export function QrConnectionCard({ salonId, provider, instance, botHere, onChang
     try {
       const result = await call("status");
       setState((prev) => prev ? { ...prev, status: result.status ?? prev.status, phone_number: result.phoneNumber ?? prev.phone_number } : prev);
+      // A conexão com botões gera o QR alguns segundos depois do "Conectar": ele chega pela consulta.
       if (result.status === "connected" || result.status === "disconnected") setQrCode(null);
+      else if (result.qrcode) setQrCode(result.qrcode);
       setError(null);
     } catch { setError(`Não foi possível consultar a conexão ${copy.title}.`); }
     finally { polling.current = false; }

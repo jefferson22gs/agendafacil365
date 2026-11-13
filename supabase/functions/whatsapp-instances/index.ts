@@ -111,6 +111,13 @@ serve(async (req) => {
       const st = await wa.status();
       const status = whaileysStatusOf(st), phoneNumber = whaileysPhone(st) ?? (status === "connected" ? instance.phone_number : null);
       await persist(instance.id, { status, phone_number: phoneNumber, qrcode: null });
+      // Contato que chega só com LID: o motor descobre o número real entre os clientes conhecidos (limite 50, em memória).
+      // ponytail: só os 50 clientes mais recentes; cliente antigo só por LID cai na Caixa de entrada sem robô.
+      if (status === "connected") {
+        const { data: recent } = await db.from("clients").select("phone_normalized").eq("salon_id", tenant).not("phone_normalized", "is", null).order("updated_at", { ascending: false }).limit(50);
+        const phones = (recent ?? []).map(c => String(c.phone_normalized).replace(/\D/g, "")).filter(p => /^\d{12,13}$/.test(p));
+        if (phones.length) await wa.knownPhones(phones).catch(() => null);
+      }
       return jsonResponse({ success: true, state: st.state, status, phoneNumber, qrcode: status === "qrcode" ? st.qr : null, instance: { instanceName: instance.instance_name, owner: phoneNumber ? `${phoneNumber}@s.whatsapp.net` : null } });
     }
     // API oficial: não há QR, webhook da Evolution nem grupos; o estado vem da Meta (número registrado e qualidade).
