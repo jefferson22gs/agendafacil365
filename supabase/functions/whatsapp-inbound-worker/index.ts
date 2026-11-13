@@ -32,10 +32,10 @@ serve(async req => {
     authorizeWorker(req);
     const db=serviceClient();
     const started=Date.now();
-    const names=new Map<string,Promise<string|null>>();
+    const names=new Map<string,Promise<{name:string;provider:string}|null>>();
     // API oficial: "digitando…" sai no envio (outbox, com o id da mensagem do cliente). Aqui só Evolution.
     const instanceName=(id:string,salonId:string)=>{
-      if(!names.has(id)) names.set(id,Promise.resolve(db.from("whatsapp_instances").select("instance_name,provider").eq("id",id).eq("salon_id",salonId).maybeSingle()).then(r=>r.data&&r.data.provider!=="meta"?r.data.instance_name:null,()=>null));
+      if(!names.has(id)) names.set(id,Promise.resolve(db.from("whatsapp_instances").select("instance_name,provider").eq("id",id).eq("salon_id",salonId).maybeSingle()).then(r=>r.data&&r.data.provider!=="meta"?{name:r.data.instance_name,provider:r.data.provider}:null,()=>null));
       return names.get(id)!;
     };
     let processed=0;
@@ -49,7 +49,7 @@ serve(async req => {
         let typed=false;
         const typing=()=>{
           if(typed) return; typed=true;
-          background(instanceName(event.instance_id,event.salon_id).then(name=>name?sendTyping(evolutionClient(),name,event.sender_phone,6_000):undefined).catch(()=>undefined));
+          background(instanceName(event.instance_id,event.salon_id).then(i=>i?sendTyping(evolutionClient(i.provider),i.name,event.sender_phone,6_000):undefined).catch(()=>undefined));
         };
         const reply=await chatbotReply({db,salonId:event.salon_id,phone:event.sender_phone,eventId:event.id,preview:false,typing,name:typeof payload.name==="string"?payload.name:undefined},String(payload.text??""),{selection:typeof payload.selection==="string"?payload.selection:null,media:payload.media??null,quoted:typeof payload.quotedMessageId==="string"?payload.quotedMessageId:null});
         // Persistência atômica, dedup por origem. Envio só pelo outbox (claim/gate/begin_send), nunca direto.

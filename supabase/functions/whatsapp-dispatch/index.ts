@@ -14,15 +14,17 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
  * mensagem original está na tabela Message dela; quando nada chega, lemos MessageUpdate[].status em
  * /chat/findMessages (where.key.id) e promovemos "Enviada" -> "Entregue"/"Lida". Best effort, nunca derruba o envio.
  */
-export async function checkDeliveries(db: SupabaseClient, api = evolutionClient()): Promise<number> {
+export async function checkDeliveries(db: SupabaseClient, api?: ReturnType<typeof evolutionClient>): Promise<number> {
   const { data, error } = await db.rpc("whatsapp_delivery_candidates", { p_limit: 20 });
   if (error || !Array.isArray(data)) return 0;
   let promoted = 0;
-  for (const row of data as { salon_id: string; instance_id: string; instance_name: string; provider_message_id: string }[]) {
+  for (const row of data as { salon_id: string; instance_id: string; instance_name: string; provider_message_id: string; provider?: string }[]) {
     // API oficial (id "wamid."): entregue/lida chegam pelo webhook da Meta; não existe consulta na Evolution.
     if (row.provider_message_id.startsWith("wamid.")) continue;
     try {
-      const remote = await api.request("messages", row.instance_name, { where: { key: { id: row.provider_message_id } }, page: 1, offset: 5 });
+      // A conexão que enviou (Evolution ou QR Code com botões) responde pelo próprio servidor.
+      const client = api ?? evolutionClient(row.provider ?? "evolution");
+      const remote = await client.request("messages", row.instance_name, { where: { key: { id: row.provider_message_id } }, page: 1, offset: 5 });
       for (const u of deliveryUpdates(messageRecords(remote))) {
         if (u.id !== row.provider_message_id || u.status === "sent") continue;
         const { error: e } = await db.rpc("whatsapp_record_delivery", { p_salon_id: row.salon_id, p_instance_id: row.instance_id, p_message_id: u.id, p_status: u.status });

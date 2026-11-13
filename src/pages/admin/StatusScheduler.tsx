@@ -150,13 +150,11 @@ const StatusScheduler = () => {
             setSalonId(salon.id);
             if (salon.timezone) setTimezone(salon.timezone);
 
-            // Status só é publicado pela conexão QR Code (a API oficial da Meta não tem Status).
-            const { data: instanceData } = await supabase
-                .from('whatsapp_instances')
-                .select('*')
-                .eq('salon_id', salon.id)
-                .eq('provider', 'evolution')
-                .maybeSingle();
+            // Status só sai por QR Code (Evolution ou com botões): a mesma regra do servidor escolhe a conexão.
+            const { data: statusId } = await supabase.rpc('whatsapp_instance_for' as never, { p_salon_id: salon.id, p_purpose: 'status' } as never);
+            const { data: instanceData } = statusId
+                ? await supabase.from('whatsapp_instances').select('*').eq('id', statusId as string).maybeSingle()
+                : { data: null };
 
             if (instanceData) {
                 setInstance(instanceData as WhatsAppInstance);

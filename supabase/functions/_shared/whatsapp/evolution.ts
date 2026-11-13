@@ -62,8 +62,20 @@ export class EvolutionClient {
     catch { throw new WhatsAppError(sending ? "send_uncertain" : "provider_unavailable", 502); }
   }
 }
-export function evolutionClient() {
-  return new EvolutionClient(requiredEnv("EVOLUTION_API_KEY"), requiredEnv("EVOLUTION_API_URL"));
+/**
+ * Cliente da conexão por QR Code. O serviço whaileys (QR Code com botões) expõe o mesmo contrato HTTP da Evolution;
+ * a escolha vem do `provider` gravado na instância, nunca de uma URL enviada pelo navegador.
+ */
+export function evolutionClient(provider: string = "evolution") {
+  if (provider !== "evolution" && provider !== "whaileys") throw new WhatsAppError("configuration_missing", 503);
+  const prefix = provider === "whaileys" ? "WHAILEYS" : "EVOLUTION";
+  return new EvolutionClient(requiredEnv(`${prefix}_API_KEY`), requiredEnv(`${prefix}_API_URL`));
+}
+/** O serviço de botões está configurado neste projeto (secrets WHAILEYS_API_URL e WHAILEYS_API_KEY)? */
+export function whaileysConfigured(): boolean {
+  // deno-lint-ignore no-explicit-any
+  const env = (globalThis as any).Deno?.env;
+  return !!env?.get?.("WHAILEYS_API_URL") && !!env?.get?.("WHAILEYS_API_KEY");
 }
 /** Número aceito para envio individual: só dígitos, 8–15 (nunca JID de grupo/canal). */
 export const privateNumber = (n: unknown): n is string => typeof n === "string" && /^[1-9]\d{7,14}$/.test(n);

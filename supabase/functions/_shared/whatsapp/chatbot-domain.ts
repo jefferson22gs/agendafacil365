@@ -40,7 +40,8 @@ export type GuidedRenderMode = "poll" | "hybrid" | "numbered" | "native" | "butt
 export interface AutomationRow {
   booking: boolean; interactive: boolean;
   /** API oficial (Meta): botões e lista "☰ Menu" nativos sempre funcionam, então o modo vira "native". */
-  provider: "evolution" | "meta";
+  /** whaileys = QR Code com botões: mesmos botões e listas da oficial, pelo serviço whaileys. */
+  provider: "evolution" | "meta" | "whaileys";
   /** Fluxo guiado (Typebot). Colunas da MIGRATION_TYPEBOT_EVOLUTION_237.sql; ausentes = desligado. */
   guided: boolean; renderMode: GuidedRenderMode; welcome: string | null; confirmation: string | null; info: string | null; handoffHours: number;
 }
@@ -54,7 +55,7 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
     // Coluna provider ausente (migração Meta pendente) = Evolution.
     // Conexão escolhida pelo dono para o robô: oficial = botões; QR Code = enquete/números.
     const provider = Promise.resolve(ctx.db.rpc("whatsapp_bot_provider", { p_salon_id: ctx.salonId }))
-      .then(r => (r.data === "meta" ? "meta" : "evolution") as AutomationRow["provider"], () => "evolution" as const);
+      .then(r => (r.data === "meta" || r.data === "whaileys" ? r.data : "evolution") as AutomationRow["provider"], () => "evolution" as const);
     p = Promise.all([read(GUIDED_COLUMNS), provider]).then(async ([r, prov]) => {
       // 42703 = coluna inexistente (migração ainda não aplicada): fallback resiliente às colunas antigas.
       if (r.error && String(r.error.code) === "42703") r = await read("chatbot_booking_enabled,interactive_enabled");
@@ -70,7 +71,9 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
         // API oficial: "buttons" = só botões (3 por mensagem, "Ver mais"); qualquer outro modo = botões até 3 e lista "☰ Menu".
         // QR Code (Evolution): botões e listas são descartados pelo WhatsApp sem aviso. Atende 100% em texto numerado
         // (ou enquete, se o dono escolheu "Opções clicáveis"): mesmo fluxo, mesmas etapas, cliente responde o número.
-        renderMode: (prov === "meta" ? (mode === "buttons" ? "buttons" : "native") : mode === "poll" ? "poll" : "numbered") as GuidedRenderMode,
+        // QR Code com botões (whaileys): botões e lista como a oficial, com os números repetidos no corpo ("hybrid"),
+        // para o cliente responder digitando se o WhatsApp dele não mostrar os botões.
+        renderMode: (prov === "meta" ? (mode === "buttons" ? "buttons" : "native") : prov === "whaileys" ? (mode === "buttons" ? "buttons" : mode === "poll" ? "poll" : "hybrid") : mode === "poll" ? "poll" : "numbered") as GuidedRenderMode,
         welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
         handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
       };

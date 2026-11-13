@@ -85,7 +85,7 @@ export function GuidedFlowCard() {
             <Switch id="guided-enabled" aria-describedby="guided-enabled-hint" checked={s.guided_flow_enabled} disabled={!migrated} onCheckedChange={v => setS(p => ({ ...p, guided_flow_enabled: v }))} />
           </div>
           <div className="space-y-2">
-            <p className="rounded-xl bg-muted p-3 text-sm">O fluxo é o mesmo nas duas conexões, do menu até o Pix ou o link de pagamento. <strong>API oficial:</strong> botões e listas clicáveis. <strong>QR Code:</strong> o WhatsApp não mostra botões, então cada etapa chega em texto numerado (ou enquete, se escolher abaixo) e o cliente responde o número. A conexão que atende é escolhida em Conexão &gt; Quem atende os clientes no automático.</p>
+            <p className="rounded-xl bg-muted p-3 text-sm">O fluxo é o mesmo nas duas conexões, do menu até o Pix ou o link de pagamento. <strong>API oficial:</strong> botões e listas clicáveis. <strong>QR Code:</strong> o WhatsApp não mostra botões, então cada etapa chega em texto numerado (ou enquete, se escolher abaixo) e o cliente responde o número. <strong>QR Code com botões:</strong> botões e listas como na oficial, com os números no texto como reserva. A conexão que atende é escolhida em Conexão &gt; Quem atende os clientes no automático.</p>
             <Label htmlFor="guided-mode">Como as opções aparecem</Label>
             <Select value={s.guided_render_mode} onValueChange={v => setS(p => ({ ...p, guided_render_mode: v as RenderMode }))} disabled={!migrated}>
               <SelectTrigger id="guided-mode" className="min-h-11"><SelectValue /></SelectTrigger>

@@ -109,7 +109,8 @@ export async function processOutboxItem(db: SupabaseClient, filter?: ClaimFilter
       await finish("accepted", undefined, r.id);
       return true;
     }
-    const api = evolutionClient();
+    // Evolution ou QR Code com botões (whaileys): mesmo contrato, servidor e chave de cada um.
+    const api = evolutionClient(instance.provider);
     const remote = objectValue(await api.request("state", instance.instance_name));
     const inner = remote.instance && typeof remote.instance === "object" ? objectValue(remote.instance) : remote;
     if ((inner.state ?? remote.state) !== "open") { await finish("pending", "disconnected"); return true; }

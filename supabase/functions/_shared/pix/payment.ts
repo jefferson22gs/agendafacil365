@@ -128,7 +128,7 @@ export async function receivePaymentProof(ctx: PixContext, appointmentId: string
   } else {
     try {
       // ponytail: op "mediaBase64" adicionada em evolution.ts pelo atendente; cast cai fora quando estiver no union.
-      result = await evolutionClient().request("mediaBase64" as EvolutionOperation, instance.instance_name, {
+      result = await evolutionClient(instance.provider).request("mediaBase64" as EvolutionOperation, instance.instance_name, {
         message: { key: { id: messageId, remoteJid: `${phone.slice(1)}@s.whatsapp.net`, fromMe: false } }, convertToMp4: false,
       }) as typeof result;
     } catch { return { ok: false, reason: "download_failed" }; }

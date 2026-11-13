@@ -45,7 +45,7 @@ serve(async (req) => {
     const meta = prov?.provider === "meta" ? String(prov.meta_phone_number_id ?? "") : null;
     // API oficial: o histórico chega todo pelo webhook (não há "buscar mensagens"); sincronizar não importa nada.
     if (action === "sync" && meta !== null) return jsonResponse({ success: true, imported: 0 });
-    const api = evolutionClient();
+    const api = evolutionClient(prov?.provider === "whaileys" ? "whaileys" : "evolution");
 
     if (action === "sync") {
       // Puxa as mensagens recentes desta conversa (Evolution v2 /chat/findMessages). Não aciona o chatbot.

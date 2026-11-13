@@ -42,7 +42,7 @@ export default function Broadcast() {
     if (!id) return null;
     const { data, error } = await db.from("whatsapp_instances").select("status,provider").eq("id", id).maybeSingle();
     if (error) throw error;
-    return data as { status: string; provider: "evolution" | "meta" } | null;
+    return data as { status: string; provider: "evolution" | "meta" | "whaileys" } | null;
   }});
   const suppressed = useQuery({ queryKey: ["wa-suppressed", salonId], enabled: !!salonId, queryFn: async () => {
     const [s, c] = await Promise.all([

@@ -18,7 +18,7 @@ serve(async (req) => {
     const name = body.instance;
     if (typeof name !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(name)) throw new WhatsAppError("invalid_request");
     const db = serviceClient();
-    const { data: instance, error } = await db.from("whatsapp_instances").select("id,salon_id,instance_name,phone_number").eq("instance_name", name).maybeSingle();
+    const { data: instance, error } = await db.from("whatsapp_instances").select("id,salon_id,instance_name,phone_number,provider").eq("instance_name", name).maybeSingle();
     if (error) throw new WhatsAppError("persistence_failed", 503);
     if (!instance) throw new WhatsAppError("unauthorized", 401);
     const { data: secrets, error: secretError } = await db.rpc("whatsapp_instance_secret", { p_instance_id: instance.id });
@@ -56,10 +56,10 @@ serve(async (req) => {
       if (inboxError) throw new WhatsAppError("persistence_failed", 503);
     }
     if (event === "send.message") return jsonResponse({ accepted: inbox.length });
-    // O dono escolhe UMA conexão para o robô (WhatsApp > Conexão). Se for a oficial, mensagens no número do QR Code
-    // ficam só na Caixa de entrada para a equipe, sem resposta automática duplicada.
+    // O dono escolhe UMA conexão para o robô (WhatsApp > Conexão). Este webhook atende as duas por QR Code
+    // (Evolution e a com botões): só a escolhida aciona o robô; a outra fica na Caixa de entrada para a equipe.
     const { data: botProvider } = await db.rpc("whatsapp_bot_provider", { p_salon_id: instance.salon_id });
-    if (botProvider && botProvider !== "evolution") return jsonResponse({ accepted: 0, reason: "bot_on_official" });
+    if (botProvider && botProvider !== (instance.provider ?? "evolution")) return jsonResponse({ accepted: 0, reason: "bot_on_other_connection" });
     let accepted = 0;
     // Anti-loop: o próprio número do salão (dono da instância) nunca vira conversa do robô.
     const own = ownNumber(instance.phone_number, body.sender);

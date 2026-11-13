@@ -56,16 +56,18 @@ export function safeEqual(a: string, b: string): boolean {
   for (let i = 0; i < Math.max(aa.length, bb.length); i++) diff |= (aa[i] ?? 0) ^ (bb[i] ?? 0);
   return diff === 0;
 }
-export interface SalonInstance { id: string; salon_id: string; instance_name: string; status: string; phone_number: string | null; provider: "evolution" | "meta" }
+/** evolution = QR Code; whaileys = QR Code com botões (mesmo contrato HTTP); meta = API oficial. */
+export type WhatsAppProvider = "evolution" | "meta" | "whaileys";
+export interface SalonInstance { id: string; salon_id: string; instance_name: string; status: string; phone_number: string | null; provider: WhatsAppProvider }
 /**
- * Conexão do salão para a finalidade (o salão pode ter API oficial + QR Code):
- * chat = oficial se houver; marketing = QR Code se houver; status = só QR Code; evolution = a conexão QR Code (tela Conexão).
+ * Conexão do salão para a finalidade (o salão pode ter oficial + QR Code + QR Code com botões):
+ * chat = a escolhida para o robô; marketing/status = QR Code; evolution/whaileys = aquela conexão (tela Conexão).
  */
-export type InstancePurpose = "chat" | "marketing" | "status" | "evolution";
+export type InstancePurpose = "chat" | "marketing" | "status" | "evolution" | "whaileys";
 export async function salonInstance(db: SupabaseClient, salonId: string, purpose: InstancePurpose = "chat"): Promise<SalonInstance> {
   const cols = "id,salon_id,instance_name,status,phone_number,provider";
   let query;
-  if (purpose === "evolution") query = db.from("whatsapp_instances").select(cols).eq("salon_id", salonId).eq("provider", "evolution").maybeSingle();
+  if (purpose === "evolution" || purpose === "whaileys") query = db.from("whatsapp_instances").select(cols).eq("salon_id", salonId).eq("provider", purpose).maybeSingle();
   else {
     const { data: id, error: pickError } = await db.rpc("whatsapp_instance_for", { p_salon_id: salonId, p_purpose: purpose });
     if (pickError) throw new WhatsAppError("persistence_failed", 503);
