@@ -14,7 +14,9 @@ p, li { color: var(--fg); }
 .meta { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
 .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 a { color: var(--accent); }
-a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+code { font-size: .9em; }
 ul, ol { padding-left: 1.25rem; }
 footer { margin-top: 48px; padding-bottom: 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
 table { width: 100%; border-collapse: collapse; font-size: 15px; }

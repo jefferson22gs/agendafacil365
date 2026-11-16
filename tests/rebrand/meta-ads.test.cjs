@@ -35,3 +35,17 @@ test('Conversions API: só eventos permitidos e origem do site; e-mail e telefon
   assert.match(src, /skipped: "not_configured"/, 'sem segredos não faz nada');
   assert.match(read('supabase/config.toml'), /\[functions\.meta-capi\]\s*\r?\nverify_jwt = false/);
 });
+
+test('Política de Privacidade (public/privacidade.html): Pixel e CAPI declarados, retirada de consentimento e links reais', () => {
+  const p = read('public/privacidade.html');
+  const has = (src, s, msg) => assert.ok(src.includes(s), msg ?? s);
+  assert.ok(!p.includes('Não usamos cookies de publicidade'), 'política não pode negar o Pixel que está no ar');
+  for (const s of ['Pixel da Meta', 'API de Conversões da Meta', 'hash SHA-256', '<h2 id="cookies">', 'facebook.com/privacy/policy']) has(p, s);
+  has(p, "localStorage.setItem('af365_ads_consent', 'denied')", 'mesma chave do site');
+  has(read('src/lib/metaPixel.ts'), 'const KEY = "af365_ads_consent"');
+  for (const f of ['privacidade', 'termos', 'exclusao-de-dados']) assert.ok(fs.existsSync(path.join(root, 'public', f + '.html')), f);
+  has(read('src/components/ConsentBanner.tsx'), 'href="/privacidade#cookies"');
+  const reg = read('src/pages/Register.tsx');
+  has(reg, '<a href="/termos"'); has(reg, '<a href="/privacidade"');
+  assert.ok(!/<Link to="\/(privacidade|termos)"/.test(reg), 'HTML estático não é rota do React');
+});

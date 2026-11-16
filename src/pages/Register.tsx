@@ -278,8 +278,12 @@ const Register = () => {
                 )}
               </Button>
 
-              {/* BLOQUEIO DE PUBLICAÇÃO: Termos de Uso e Política de Privacidade ainda não existem.
-                  Os links "#" foram removidos; inserir os documentos aprovados juridicamente antes do lançamento. */}
+              {/* Documentos legais são HTML estáticos em public/ (fora do React Router): <a>, não <Link>. */}
+              <p className="text-center text-xs text-muted-foreground">
+                Ao criar a conta, você concorda com os{" "}
+                <a href="/termos" target="_blank" rel="noopener" className="text-primary underline">Termos de Uso</a> e declara que leu a{" "}
+                <a href="/privacidade" target="_blank" rel="noopener" className="text-primary underline">Política de Privacidade</a>.
+              </p>
             </form>
 
             <p className="text-center mt-6 text-sm text-muted-foreground">
