@@ -49,6 +49,9 @@ verify_jwt = false
 [functions.whatsapp-reply]
 verify_jwt = false
 
+[functions.meta-capi]
+verify_jwt = false
+
 [functions.manager-assistant]
 verify_jwt = false
 

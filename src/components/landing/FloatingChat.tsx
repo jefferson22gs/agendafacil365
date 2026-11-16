@@ -3,6 +3,7 @@ import { BRAND } from "@/config/brand";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Sparkles } from "lucide-react";
 import { DEVELOPER_INFO, getSupportWhatsAppLink } from "@/config/contact";
+import { track } from '@/lib/metaPixel';
 
 const quickMessages = [
     "Quero conhecer o sistema",
@@ -230,7 +231,7 @@ export const FloatingChat = () => {
 
                             {/* WhatsApp Link */}
                             <a
-                                href={getSupportWhatsAppLink('demo')}
+                                href={getSupportWhatsAppLink('demo')} onClick={() => track('Contact')}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="block p-3 bg-success text-center text-success-foreground text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"

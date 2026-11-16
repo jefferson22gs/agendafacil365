@@ -12,11 +12,17 @@ import { FloatingChat } from "@/components/landing/FloatingChat";
 import { VideoSection } from "@/components/landing/VideoSection";
 import { InnovationSection } from "@/components/landing/InnovationSection";
 import { IS_DEMO } from "@/config/demo";
+import { useEffect } from "react";
+import { initPixel } from "@/lib/metaPixel";
+import { ConsentBanner } from "@/components/ConsentBanner";
 
 // TestimonialsSection agora é "Como funciona" (sem depoimentos).
 const Index = () => {
+  // Pixel só no site de vendas (não no painel nem nas páginas dos salões, onde estão os clientes deles).
+  useEffect(() => { if (!IS_DEMO) initPixel(); }, []);
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
+      {!IS_DEMO && <ConsentBanner />}
       <Navbar />
       <main>
         <HeroSection />

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Criativos AgendaFácil 365</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Fonte única das peças de anúncio. Exportadas por marketing/ads/render.py (Playwright). */
+  :root { --blue: #2563EB; --sky: #38BDF8; --ink: #0F172A; --muted: #475569; --green: #16A34A; --wa: #25D366; --paper: #F8FAFC; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #ccc; }
+  .ad { position: relative; overflow: hidden; color: var(--ink); background: var(--paper); display: flex; flex-direction: column; }
+  .story { width: 1080px; height: 1920px; padding: 150px 84px 260px; } /* zonas seguras do Status/Stories: 14% topo, 20% base */
+  .square { width: 1080px; height: 1080px; padding: 72px; }
+  .logo { display: flex; align-items: center; gap: 20px; font-weight: 800; font-size: 44px; letter-spacing: -0.02em; }
+  .logo svg { width: 84px; height: 84px; }
+  .square .logo { font-size: 36px; } .square .logo svg { width: 68px; height: 68px; }
+  h1 { font-weight: 800; letter-spacing: -0.035em; line-height: 1.02; }
+  .story h1 { font-size: 112px; margin-top: 80px; }
+  .square h1 { font-size: 76px; margin-top: 44px; }
+  .hl { color: var(--blue); }
+  .sub { color: var(--muted); font-weight: 500; line-height: 1.3; }
+  .story .sub { font-size: 46px; margin-top: 40px; }
+  .square .sub { font-size: 34px; margin-top: 24px; }
+  .cta { margin-top: auto; align-self: flex-start; background: var(--blue); color: #fff; font-weight: 700; border-radius: 999px; }
+  .story .cta { font-size: 50px; padding: 36px 64px; }
+  .square .cta { font-size: 38px; padding: 26px 48px; }
+  .badge { display: inline-block; background: #DCFCE7; color: #166534; font-weight: 700; border-radius: 999px; }
+  .story .badge { font-size: 36px; padding: 16px 32px; margin-top: 28px; }
+  .square .badge { font-size: 28px; padding: 12px 24px; margin-top: 20px; }
+  /* Conversa de WhatsApp desenhada (sem print de app real) */
+  .chat { background: #EFE7DD; border-radius: 40px; padding: 36px; display: flex; flex-direction: column; gap: 22px; }
+  .story .chat { margin-top: 70px; }
+  .square .chat { margin-top: 36px; padding: 26px; gap: 14px; border-radius: 30px; }
+  .msg { background: #fff; border-radius: 24px; padding: 24px 30px; font-size: 38px; line-height: 1.3; max-width: 86%; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
+  .square .msg { font-size: 28px; padding: 18px 22px; border-radius: 18px; }
+  .msg.me { background: #D9FDD3; align-self: flex-end; }
+  .msg b { font-weight: 700; }
+  .btns { display: flex; gap: 14px; margin-top: 18px; }
+  .btns span { flex: 1; text-align: center; background: #F0F2F5; color: #027EB5; font-weight: 600; border-radius: 16px; padding: 16px; font-size: 32px; }
+  .square .btns span { font-size: 24px; padding: 12px; }
+  .list { margin-top: 60px; display: flex; flex-direction: column; gap: 34px; }
+  .list li { list-style: none; display: flex; gap: 26px; align-items: center; font-size: 48px; font-weight: 600; }
+  .list li i { flex: none; width: 76px; height: 76px; border-radius: 22px; background: #DBEAFE; color: var(--blue); display: grid; place-items: center; font-style: normal; font-size: 42px; }
+  .price { margin-top: 56px; font-size: 52px; font-weight: 700; }
+  .price small { display: block; font-size: 34px; color: var(--muted); font-weight: 500; margin-top: 10px; }
+  .ad > * { position: relative; z-index: 1; }
+  .ad > .bubble-bg { position: absolute; border-radius: 50%; opacity: .55; z-index: 0; }
+  .cta { flex: none; }
+  .story .cta { margin-top: auto; } .square .cta { margin-top: auto; }
+  .story .chat + .cta, .story .price + .cta { margin-top: 64px; }
+  .badge { align-self: flex-start; }
+</style>
+</head>
+<body>
+<template id="logo"><div class="logo"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="108" fill="#2563EB"/><g transform="translate(106 98)"><path fill="#fff" fill-rule="evenodd" d="M236 30H288V286H236V246C213 273 180 286 140 286C69 286 12 229 12 158C12 87 69 30 140 30C179 30 213 46 236 70Z M205 140H236V120L274 158L236 196V176H205A72 72 0 1 1 205 140Z"/><path d="M136 108V158L172 180" fill="none" stroke="#fff" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/></g></svg>Agenda Fácil 365</div></template>
+
+<!-- A: dor da agenda pelo WhatsApp (Status/Stories) -->
+<section class="ad story" id="a-story">
+  <div class="bubble-bg" style="width:700px;height:700px;background:#DBEAFE;right:-260px;top:-180px"></div>
+  <div data-logo></div>
+  <h1>Pare de agendar<br><span class="hl">pelo WhatsApp<br>na mão.</span></h1>
+  <p class="sub">O robô agenda, confirma e lembra seus clientes sozinho, 24 horas.</p>
+  <div class="chat">
+    <div class="msg me">Oi! Tem horário pra corte amanhã?</div>
+    <div class="msg"><b>Claro!</b> Escolha o horário:<div class="btns"><span>09:00</span><span>10:30</span><span>14:00</span></div></div>
+    <div class="msg">✅ Agendado para amanhã às 10:30. Te lembro 1 dia antes!</div>
+  </div>
+  <span class="cta">Teste grátis por 30 dias</span>
+</section>
+
+<!-- B: falta e retorno (Status/Stories) -->
+<section class="ad story" id="b-story">
+  <div class="bubble-bg" style="width:760px;height:760px;background:#DCFCE7;left:-300px;bottom:180px"></div>
+  <div data-logo></div>
+  <h1>Menos faltas.<br><span class="hl">Mais clientes<br>voltando.</span></h1>
+  <ul class="list">
+    <li><i>⏰</i>Lembrete automático no WhatsApp</li>
+    <li><i>🔁</i>Aviso de retorno do procedimento</li>
+    <li><i>💳</i>Cobrança por Pix e cartão</li>
+    <li><i>📱</i>App com a logo do seu salão</li>
+  </ul>
+  <p class="price">A partir de R$ 33,33/mês<small>no plano anual · 30 dias grátis, sem cartão</small></p>
+  <span class="cta">Comece grátis</span>
+</section>
+
+<!-- C: feed quadrado -->
+<section class="ad square" id="c-square">
+  <div class="bubble-bg" style="width:520px;height:520px;background:#DBEAFE;right:-160px;top:-160px"></div>
+  <div data-logo></div>
+  <h1>Sua agenda cheia.<br><span class="hl">Seus clientes voltando sozinhos.</span></h1>
+  <p class="sub">Para salões, barbearias, estética e clínicas.</p>
+  <span class="badge">30 dias grátis</span>
+  <span class="cta">Testar agora</span>
+</section>
+
+<!-- D: feed quadrado com conversa -->
+<section class="ad square" id="d-square">
+  <div data-logo></div>
+  <h1 style="font-size:64px">O robô que <span class="hl">agenda por você</span> no WhatsApp</h1>
+  <div class="chat">
+    <div class="msg me">Quero remarcar minha escova</div>
+    <div class="msg">Sem problema! Qual dia fica melhor?<div class="btns"><span>Quinta</span><span>Sexta</span><span>Sábado</span></div></div>
+  </div>
+  <span class="cta">Teste grátis por 30 dias</span>
+</section>
+
+<script>
+  const logo = document.getElementById('logo').content;
+  document.querySelectorAll('[data-logo]').forEach(el => el.replaceWith(logo.cloneNode(true)));
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { safeNext } from "@/lib/safeNext";
+import { initPixel, track } from "@/lib/metaPixel";
 import { Logo } from "@/components/icons/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,8 @@ const Register = () => {
       navigate(next);
     }
   }, [user, navigate, next]);
+  // Quem chega direto do anúncio no cadastro também é medido (se já aceitou os cookies na landing).
+  useEffect(() => { initPixel(); }, []);
 
   useEffect(() => {
     // Carregar lista de vendedores (apenas ativos)
@@ -95,6 +98,7 @@ const Register = () => {
     );
 
     if (!error) {
+      track("CompleteRegistration", { email: formData.email, phone: formData.phone });
       navigate(next);
     }
 

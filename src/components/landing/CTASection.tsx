@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getSupportWhatsAppLink } from "@/config/contact";
+import { track } from '@/lib/metaPixel';
 
 const trust = ["30 dias grátis", "Sem cartão de crédito", "Sem taxa de adesão", "Contrato digital", "Cancele quando quiser"];
 
@@ -33,7 +34,7 @@ export const CTASection = () => {
               variant="outline"
               className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white focus-visible:ring-white focus-visible:ring-offset-brand-navy"
             >
-              <a href={getSupportWhatsAppLink('demo')} target="_blank" rel="noopener noreferrer">
+              <a href={getSupportWhatsAppLink('demo')} onClick={() => track('Contact')} target="_blank" rel="noopener noreferrer">
                 <Calendar aria-hidden />
                 Agendar demonstração
               </a>
