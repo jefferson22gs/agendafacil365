@@ -69,6 +69,22 @@ Para editar: altere `creatives.html` e rode `python marketing/ads/render.py`.
 **Títulos:** Teste grátis por 30 dias · Agenda online + WhatsApp · Feito para salões e barbearias
 **Botão:** Cadastre-se (Campanha 1) · Enviar mensagem (Campanha 2)
 
+## Estado na conta act_4432277893700877 (16/11/2026)
+
+| Item | ID | Status |
+|---|---|---|
+| Campanha Cadastros (R$ 30/dia) | 52568346467407 | PAUSADA |
+| Conjunto "Donos de beleza BR" (otimiza CompleteRegistration, até 24/11) | 52568346531607 | PAUSADO, em análise |
+| Campanha Conversas WhatsApp (R$ 20/dia) | 52568346543607 | PAUSADA, sem conjunto |
+| Imagens dos 4 criativos | biblioteca da conta | enviadas |
+
+Público estimado: 3,5 a 4,1 milhões de pessoas.
+
+Para concluir (anúncios exigem uma Página do Facebook):
+1. Criar a Página "Agenda Fácil 365" no Facebook. Pela API não dá.
+2. No Gerenciador de Negócios (Código Base): Contas > Páginas > adicionar a Página. Depois Usuários do sistema > agendafacil365-bot > Atribuir ativos > Página, com controle total.
+3. Rodar com a Página: `META_PROXY=socks5h://127.0.0.1:1080 META_ADS_TOKEN=... node marketing/ads/create-campaigns.cjs --page <PAGE_ID>`. O token fica em `C:\Users\jefferson\.meta-ads-agendafacil365.env`, fora do repositório. O script reaproveita o que já existe.
+
 ## Antes de ativar (checklist)
 - [ ] Pixel e Conversions API ligados e eventos aparecendo em "Testar eventos"
 - [ ] Domínio verificado
