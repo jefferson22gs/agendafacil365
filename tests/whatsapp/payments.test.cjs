@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '../..');
 const file = path.join(root, 'supabase/functions/_shared/payments/gateways.ts');
 const g = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-  { exports: g, require: () => ({}), Response, AbortSignal, URLSearchParams });
+  { exports: g, require: () => ({}), Response, AbortSignal, URLSearchParams, btoa });
 
 /** fetch falso: registra a chamada e responde conforme a URL. */
 function fake(routes) {
@@ -102,6 +102,41 @@ test('InfinitePay: link pela InfiniteTag; só confirma com transaction_nsu + slu
   const s = await g.checkCharge(http, I, { id: charge().id, externalId: null, ref: hint.ref });
   assert.deepEqual([s.paid, s.paidCents, s.method], [true, 4590, 'pix']);
   assert.deepEqual(calls.at(-1).body, { handle: 'studio-x', order_nsu: charge().id, transaction_nsu: 'tx1', slug: 'slug1' });
+});
+
+test('Stone (Pagar.me): Basic com sk_, link com order_code = nosso id; confirma só pedido pago com o mesmo code', async () => {
+  const S = { provider: 'pagarme', secret: 'sk_test_ABCDEFGHIJKLMNOP1234', sandbox: true };
+  assert.equal(g.validSecret('pagarme', 'sk_ABCDEFGHIJKLMNOP1234'), true); assert.equal(g.validSecret('pagarme', 'pk_ABCDEFGHIJKLMNOP1234'), false, 'chave pública recusada');
+  await assert.rejects(() => g.testAccount(fake({}).http, { ...S, sandbox: false }), e => e.code === 'invalid_credentials', 'sk_test_ fora do sandbox');
+  const ok = fake({ '/orders?size=1': [200, { data: [] }] });
+  await g.testAccount(ok.http, S);
+  assert.match(ok.calls[0].url, /^https:\/\/api\.pagar\.me\/core\/v5\/orders\?size=1$/, 'pedidos só existem em api.pagar.me; a chave define o ambiente');
+  assert.equal(ok.calls[0].headers.Authorization, `Basic ${Buffer.from(`${S.secret}:`).toString('base64')}`);
+  const { http, calls } = fake({ '/paymentlinks': [200, { id: 'pl_1', url: 'https://payment-link.pagar.me/pl_1', status: 'active' }], '/orders?code=': [200, { data: [{ id: 'or_1', code: charge().id, status: 'paid', charges: [{ status: 'paid', paid_amount: 4500, payment_method: 'pix' }] }] }] });
+  const c = await g.createCharge(http, S, charge('pix'));
+  assert.deepEqual([c.checkoutUrl, c.externalId, c.pixCode], ['https://payment-link.pagar.me/pl_1', 'pl_1', null]);
+  const b = calls[0].body;
+  assert.match(calls[0].url, /^https:\/\/sdx-api\.pagar\.me\/core\/v5\/paymentlinks$/, 'link de teste no sdx-api');
+  assert.equal(calls[0].headers['Idempotency-Key'], charge().id);
+  assert.deepEqual([b.type, b.order_code, b.max_paid_sessions, b.cart_settings.items[0].amount], ['order', charge().id, 1, 4500]);
+  assert.deepEqual(b.payment_settings.accepted_payment_methods, ['pix']); assert.ok(b.payment_settings.pix_settings.expires_in >= 600);
+  assert.ok(b.payment_settings.statement_descriptor.length <= 13 && /^[A-Za-z0-9 ]+$/.test(b.payment_settings.statement_descriptor));
+  const card = (await g.createCharge(http, S, charge('card')), calls[1].body.payment_settings);
+  assert.deepEqual(card.accepted_payment_methods, ['credit_card']); assert.equal(card.credit_card_settings.installments[0].total, 4500);
+  const s = await g.checkCharge(http, S, { id: charge().id, externalId: 'pl_1', ref: {} });
+  assert.deepEqual([s.paid, s.paidCents, s.method, s.externalId], [true, 4500, 'pix', 'or_1']);
+  assert.match(calls.at(-1).url, new RegExp(`/orders\\?code=${charge().id}`));
+  const other = fake({ '/orders?code=': [200, { data: [{ id: 'or_2', code: 'OUTRO', status: 'paid', charges: [{ status: 'paid', paid_amount: 4500 }] }] }], '/paymentlinks/pl_1': [200, { total_paid_sessions: 0 }] });
+  assert.equal((await g.checkCharge(other.http, S, { id: charge().id, externalId: 'pl_1', ref: {} })).paid, false, 'pedido de outro code não vale');
+  const pending = fake({ '/orders?code=': [200, { data: [{ id: 'or_3', code: charge().id, status: 'pending', charges: [{ status: 'pending' }] }] }] });
+  assert.equal((await g.checkCharge(pending.http, S, { id: charge().id, externalId: 'pl_1', ref: {} })).paid, false);
+  const viaLink = fake({ '/orders?code=': [200, { data: [] }], '/paymentlinks/pl_1': [200, { total_paid_sessions: 1, cart_settings: { total_cost: 4500 } }] });
+  assert.deepEqual(JSON.parse(JSON.stringify(await g.checkCharge(viaLink.http, S, { id: charge().id, externalId: 'pl_1', ref: {} }))), { paid: true, paidCents: 4500, externalId: 'pl_1' }, 'reserva pelo link de 1 venda');
+  assert.equal(g.webhookHint('pagarme', { type: 'order.paid', data: { id: 'or_1', code: charge().id } }, new URLSearchParams('p=pagarme')).chargeId, charge().id);
+  assert.equal(g.webhookHint('pagarme', { type: 'charge.paid', data: { order: { code: charge().id } } }, new URLSearchParams('p=pagarme')).chargeId, charge().id);
+  assert.equal(g.webhookHint('pagarme', { data: { code: 'X' } }, new URLSearchParams('p=pagarme')).chargeId, undefined, 'code que não é nosso id é ignorado');
+  const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261116000100_pagarme_provider.sql'), 'utf8');
+  for (const t of ['salon_payment_settings', 'gateway_secrets', 'payment_charges']) assert.match(sql, new RegExp(`ADD CONSTRAINT ${t}_provider_check[\\s\\S]{0,160}'pagarme'`), t);
 });
 
 test('erros: 5xx/rede = indisponível (tenta depois); 4xx = recusado com motivo; 401 = credencial', async () => {

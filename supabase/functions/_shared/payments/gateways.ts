@@ -1,13 +1,13 @@
-// Cobrança com a conta do PRÓPRIO salão: Mercado Pago, Asaas, PagBank e InfinitePay.
+// Cobrança com a conta do PRÓPRIO salão: Mercado Pago, Asaas, PagBank, InfinitePay e Stone (Pagar.me).
 // Sem rede direta: tudo passa por `http` (fetch injetável) para testar sem internet.
 // Regra de ouro: webhook só avisa; pagamento é confirmado consultando o provedor (`check`).
 // Pix com copia-e-cola direto só no Mercado Pago (Asaas/PagBank exigem CPF do cliente para isso):
 // nos demais o cliente paga Pix ou cartão numa página segura do provedor (link).
 
-export type Provider = "mercadopago" | "asaas" | "pagbank" | "infinitepay";
+export type Provider = "mercadopago" | "asaas" | "pagbank" | "infinitepay" | "pagarme";
 export type Method = "pix" | "card";
-export const PROVIDERS: Provider[] = ["mercadopago", "asaas", "pagbank", "infinitepay"];
-export const PROVIDER_LABEL: Record<Provider, string> = { mercadopago: "Mercado Pago", asaas: "Asaas", pagbank: "PagBank", infinitepay: "InfinitePay" };
+export const PROVIDERS: Provider[] = ["mercadopago", "asaas", "pagbank", "infinitepay", "pagarme"];
+export const PROVIDER_LABEL: Record<Provider, string> = { mercadopago: "Mercado Pago", asaas: "Asaas", pagbank: "PagBank", infinitepay: "InfinitePay", pagarme: "Stone (Pagar.me)" };
 
 export class GatewayError extends Error {
   constructor(public code: "invalid_credentials" | "provider_rejected" | "provider_unavailable" | "not_supported" | "invalid_request", public detail?: string) { super(code); }
@@ -27,6 +27,10 @@ const BASE = {
   asaas: (s: boolean) => (s ? "https://api-sandbox.asaas.com/v3" : "https://api.asaas.com/v3"),
   pagbank: (s: boolean) => (s ? "https://sandbox.api.pagseguro.com" : "https://api.pagseguro.com"),
   infinitepay: () => "https://api.checkout.infinitepay.io",
+  // Gateway online da Stone: o Ton (maquininha) não tem API pública de cobrança.
+  // Links de teste ficam em sdx-api; pedidos (consulta) só existem em api.pagar.me, onde a chave define o ambiente.
+  pagarme: (s: boolean) => (s ? "https://sdx-api.pagar.me/core/v5" : "https://api.pagar.me/core/v5"),
+  pagarmeCore: () => "https://api.pagar.me/core/v5",
 } as const;
 const UA = "AgendaFacil365/1.0 (+https://agendafacil365.com.br)";
 const reais = (cents: number) => Math.round(cents) / 100;
@@ -45,6 +49,8 @@ export function validSecret(provider: Provider, secret: string): boolean {
   if (s.length < 20 || s.length > 600 || /\s/.test(s)) return false;
   if (provider === "mercadopago") return /^(APP_USR|TEST)-[\w-]+$/.test(s);
   if (provider === "asaas") return /^\$?aact_[\w+/=:$-]+$/.test(s);
+  // Pagar.me: só a Chave Secreta (sk_…); a pública (pk_…) não cria cobrança.
+  if (provider === "pagarme") return /^sk_(test_)?[A-Za-z0-9]{16,}$/.test(s);
   return /^[\w.-]+$/.test(s);
 }
 export const normalizeHandle = (tag: string) => tag.trim().replace(/^\$/, "").toLowerCase();
@@ -73,6 +79,8 @@ const headers = (a: Account, extra: Record<string, string> = {}): Record<string,
   const h: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json", "User-Agent": UA, ...extra };
   if (a.provider === "asaas") h.access_token = a.secret.trim();
   else if (a.provider === "infinitepay") { if (a.secret.trim()) h["X-Api-Key"] = a.secret.trim(); }
+  // Pagar.me: Basic com a chave secreta como usuário e senha vazia.
+  else if (a.provider === "pagarme") h.Authorization = `Basic ${btoa(`${a.secret.trim()}:`)}`;
   else h.Authorization = `Bearer ${a.secret.trim()}`;
   return h;
 };
@@ -94,6 +102,12 @@ export async function testAccount(http: Http, a: Account): Promise<{ ok: true; a
   if (a.provider === "asaas") {
     const { data } = await call(http, `${BASE.asaas(a.sandbox)}/myAccount/commercialInfo/`, { method: "GET", headers: headers(a) });
     return { ok: true, account: str(get(data, "companyName")) ?? str(get(data, "name")) ?? undefined };
+  }
+  if (a.provider === "pagarme") {
+    // sk_test_ só funciona no sandbox (sdx-api); a de produção só na API real. Recusa a combinação errada antes da rede.
+    if (/^sk_test_/.test(a.secret.trim()) !== a.sandbox) throw new GatewayError("invalid_credentials", "environment_mismatch");
+    await call(http, `${BASE.pagarmeCore()}/orders?size=1`, { method: "GET", headers: headers(a) });
+    return { ok: true };
   }
   // PagBank: sem endpoint de conta com token simples; a chave pública de cartão exige token válido.
   await call(http, `${BASE.pagbank(a.sandbox)}/public-keys/card`, { method: "GET", headers: headers(a) });
@@ -158,6 +172,26 @@ export async function createCharge(http: Http, a: Account, c: ChargeInput): Prom
     if (!pay || !id) throw new GatewayError("provider_rejected", "no_checkout_url");
     return { externalId: id, checkoutUrl: pay, pixCode: null };
   }
+  if (a.provider === "pagarme") {
+    // Pix copia e cola pela API exige CPF do cliente; o Link de Pagamento coleta na página segura da Stone.
+    // order_code = nosso id: a consulta acha o pedido pago sem depender do aviso.
+    const minutes = Math.max(10, Math.min(1440, Math.round((c.expiresAt.getTime() - Date.now()) / 60_000)));
+    const body = {
+      type: "order", name: clip(desc, 64), order_code: c.id, is_building: false, expires_in: minutes, max_paid_sessions: 1,
+      payment_settings: {
+        accepted_payment_methods: [c.method === "card" ? "credit_card" : "pix"],
+        statement_descriptor: clip(desc.normalize("NFD").replace(/[^A-Za-z0-9 ]/g, ""), 13) || "AGENDAFACIL",
+        ...(c.method === "card"
+          ? { credit_card_settings: { operation_type: "auth_and_capture", installments: [{ number: 1, total: c.amountCents }] } }
+          : { pix_settings: { expires_in: minutes * 60 } }),
+      },
+      cart_settings: { items: [{ name: clip(desc, 64), description: desc, amount: c.amountCents, default_quantity: 1 }] },
+    };
+    const { data } = await call(http, `${BASE.pagarme(a.sandbox)}/paymentlinks`, { method: "POST", headers: headers(a, { "Idempotency-Key": c.id }), body: JSON.stringify(body) });
+    const url = str(get(data, "url")), id = str(get(data, "id"));
+    if (!url || !/^https:\/\//.test(url) || !id) throw new GatewayError("provider_rejected", "no_checkout_url");
+    return { externalId: id, checkoutUrl: url, pixCode: null };
+  }
   // InfinitePay: link de checkout (Pix + cartão na mesma página). Sem Pix por API.
   if (!a.handle) throw new GatewayError("invalid_credentials");
   const body = {
@@ -201,6 +235,22 @@ export async function checkCharge(http: Http, a: Account, ch: { id: string; exte
     }
     return none;
   }
+  if (a.provider === "pagarme") {
+    // Pedido criado pelo link carrega code = order_code = nosso id. Só conta pedido pago com cobrança paga.
+    const { data } = await call(http, `${BASE.pagarmeCore()}/orders?code=${encodeURIComponent(ch.id)}&size=10`, { method: "GET", headers: headers(a) });
+    const orders = ((get(data, "data") as Record<string, unknown>[] | undefined) ?? []).filter(o => o?.code === ch.id);
+    for (const o of orders) {
+      const paid = ((get(o, "charges") as Record<string, unknown>[] | undefined) ?? []).find(x => x?.status === "paid");
+      if (o.status === "paid" && paid) {
+        return { paid: true, paidCents: Number(get(paid, "paid_amount") ?? get(paid, "amount") ?? 0), method: String(get(paid, "payment_method")).toLowerCase() === "pix" ? "pix" : "card", externalId: str(get(o, "id")) ?? undefined };
+      }
+    }
+    if (orders.length || !ch.externalId) return { ...none, failed: orders.length > 0 && orders.every(o => ["failed", "canceled"].includes(String(o?.status))) };
+    // Reserva: se a conta não repassar o order_code ao pedido, o próprio link (1 venda no máximo) diz se foi pago.
+    const { data: link } = await call(http, `${BASE.pagarme(a.sandbox)}/paymentlinks/${encodeURIComponent(ch.externalId)}`, { method: "GET", headers: headers(a) });
+    if (Number(get(link, "total_paid_sessions") ?? 0) < 1) return none;
+    return { paid: true, paidCents: Number(get(link, "cart_settings", "total_cost") ?? 0), externalId: ch.externalId };
+  }
   // InfinitePay: só confirma com transaction_nsu + slug (vêm no webhook ou no redirect).
   const tx = str(ch.ref.transaction_nsu), slug = str(ch.ref.slug);
   if (!tx || !slug || !a.handle) return none;
@@ -221,6 +271,8 @@ export function webhookHint(provider: Provider, body: unknown, query: URLSearchP
   if (provider === "mercadopago") return { chargeId: charge, externalId: s(get(body, "data", "id")) ?? s(query.get("data.id")) ?? s(query.get("id")) };
   if (provider === "asaas") return { chargeId: charge ?? uuid(get(body, "payment", "externalReference")) ?? uuid(get(body, "checkout", "externalReference")), externalId: s(get(body, "payment", "checkoutSession")) ?? s(get(body, "checkout", "id")) };
   if (provider === "pagbank") return { chargeId: charge ?? uuid(get(body, "reference_id")), externalId: s(get(body, "checkout_id")) };
+  // Pagar.me (order.paid / charge.paid): o pedido do link traz code = nosso id.
+  if (provider === "pagarme") return { chargeId: charge ?? uuid(get(body, "data", "code")) ?? uuid(get(body, "data", "order", "code")) };
   const tx = s(get(body, "transaction_nsu")), slug = s(get(body, "invoice_slug")) ?? s(get(body, "slug"));
   return { chargeId: charge ?? uuid(get(body, "order_nsu")), ref: tx && slug ? { transaction_nsu: tx, slug } : undefined };
 }

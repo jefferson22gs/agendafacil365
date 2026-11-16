@@ -11,7 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useWhatsAppSalon, whatsappDb } from "@/pages/admin/whatsapp/api";
 
-type Provider = "pix_manual" | "mercadopago" | "asaas" | "pagbank" | "infinitepay";
+type Provider = "pix_manual" | "mercadopago" | "asaas" | "pagbank" | "infinitepay" | "pagarme";
+// Avisos da Stone (Pagar.me) são configurados na conta do salão; a consulta a cada minuto cobre quem não configurar.
+const PAGARME_WEBHOOK = `${String(import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/$/, "")}/functions/v1/payment-webhook?p=pagarme`;
 type Method = "pix" | "card";
 interface Settings { whatsapp_enabled: boolean; provider: Provider; methods: Method[]; pay_at_salon: boolean; sandbox: boolean; infinitepay_handle: string | null; credential_hint: string | null; credential_ok_at: string | null }
 const DEFAULTS: Settings = { whatsapp_enabled: false, provider: "pix_manual", methods: ["pix"], pay_at_salon: true, sandbox: false, infinitepay_handle: null, credential_hint: null, credential_ok_at: null };
@@ -36,6 +38,10 @@ export const PROVIDERS: { id: Provider; name: string; tagline: string; auto: boo
     keyLabel: "API Key (opcional)", keyPlaceholder: "inchk_… (pode deixar vazio)", link: "https://app.infinitepay.io",
     steps: ["Abra o app ou a Conta Web da InfinitePay.", "Em Configurações do Checkout, ligue Habilitar checkout integrado.", "Copie sua InfiniteTag (aparece como $seunome) e cole abaixo, sem o $.", "A API Key é opcional: só se quiser opções avançadas."],
     tip: "A InfinitePay não tem ambiente de teste: o valor mínimo é R$ 1,00." },
+  { id: "pagarme", name: "Stone (Pagar.me)", tagline: "Pix e cartão em página segura da Stone, com o dinheiro na sua conta Pagar.me. Confirma sozinho.", auto: true, pix: "Página segura", card: true,
+    keyLabel: "Chave Secreta", keyPlaceholder: "sk_… (ou sk_test_… para testar)", link: "https://dash.pagar.me",
+    steps: ["A maquininha Ton não tem integração para cobrar online. A cobrança online da Stone é feita pela Pagar.me, empresa do mesmo grupo: se ainda não tem conta, crie em pagar.me.", "Entre na Dashboard da Pagar.me com a conta que recebe os pagamentos.", "No menu de desenvolvimento, abra Chaves (Chaves de API) e copie a Chave Secreta de produção (começa com sk_). Nunca use a Chave Pública (pk_).", "Em Webhooks, crie um aviso com o endereço mostrado abaixo do campo da chave e marque os eventos order.paid e charge.paid.", "Confira se Pix e cartão estão habilitados na conta."],
+    tip: "Para testar sem dinheiro de verdade, cole a chave de teste (sk_test_…): o modo de teste é ligado sozinho. No teste, Pix até R$ 500 é aprovado automaticamente." },
 ];
 
 /** WhatsApp > Cobrança: ligar a cobrança pelo bot, escolher o provedor e conectar a conta (com tutorial). */
@@ -163,12 +169,16 @@ export function PaymentSettingsCard() {
               <div className="space-y-1.5"><Label htmlFor="pay-secret">{info.keyLabel}</Label>
                 <Input id="pay-secret" type="password" value={secret} onChange={e => setSecret(e.target.value)} placeholder={connected && saved?.credential_hint ? `Salva: ${saved.credential_hint} (cole outra para trocar)` : info.keyPlaceholder} autoComplete="off" spellCheck={false} />
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck size={14} aria-hidden />Guardada só no servidor, numa área protegida do banco. Esta tela nunca mostra a chave de novo, só os últimos 4 caracteres.</p></div>
-              {s.provider !== "infinitepay" && <label className="flex min-h-11 items-center gap-2 text-sm"><Checkbox checked={s.sandbox} onCheckedChange={v => setS({ ...s, sandbox: v === true })} />Modo de teste (sandbox) — só para testar, não recebe dinheiro de verdade</label>}
+              {s.provider === "pagarme" && <div className="space-y-1.5"><Label htmlFor="pay-webhook">Endereço do webhook (cole na Pagar.me)</Label>
+                <Input id="pay-webhook" value={PAGARME_WEBHOOK} readOnly onFocus={e => e.currentTarget.select()} spellCheck={false} />
+                <p className="text-xs text-muted-foreground">Eventos: order.paid e charge.paid. Sem o aviso, o sistema confere os pagamentos a cada minuto.</p></div>}
+              {s.provider !== "infinitepay" && s.provider !== "pagarme" && <label className="flex min-h-11 items-center gap-2 text-sm"><Checkbox checked={s.sandbox} onCheckedChange={v => setS({ ...s, sandbox: v === true })} />Modo de teste (sandbox) — só para testar, não recebe dinheiro de verdade</label>}
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" data-tour="payment-connect" disabled={connect.isPending || (s.provider === "infinitepay" ? !handle.trim() : !secret.trim())} className="min-h-11">{connect.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Conectar e testar</Button>
                 {connected && <Button type="button" variant="outline" className="min-h-11" disabled={connect.isPending} onClick={() => connect.mutate("test")}>Testar de novo</Button>}
               </div>
               {connected && <p role="status" className="flex items-center gap-2 text-sm text-success"><CheckCircle2 size={16} aria-hidden />Conectado{saved?.credential_hint ? ` (${saved.credential_hint})` : ""}{saved?.sandbox ? " · modo de teste" : ""}.</p>}
+              {connected && saved?.sandbox && <p role="alert" className="rounded-xl bg-warning/15 p-3 text-sm">Modo de teste: os clientes não pagam de verdade. Troque pela chave de produção antes de cobrar.</p>}
             </form>
           )}
         </CardContent>

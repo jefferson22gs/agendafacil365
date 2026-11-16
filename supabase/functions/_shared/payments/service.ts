@@ -21,6 +21,8 @@ export async function accountOf(db: SupabaseClient, salonId: string, s: Pick<Pay
   if (error) throw new GatewayError("provider_unavailable", "secret_read");
   const row = (Array.isArray(data) ? data[0] : data) as { secret?: string } | null;
   if (s.provider === "infinitepay") return s.handle ? { provider: s.provider, secret: row?.secret === "-" ? "" : row?.secret ?? "", sandbox: false, handle: s.handle } : null;
+  // Pagar.me: o ambiente é o da chave (sk_test_ = sandbox), nunca a caixinha da tela.
+  if (s.provider === "pagarme") return row?.secret ? { provider: s.provider, secret: row.secret, sandbox: row.secret.startsWith("sk_test_") } : null;
   return row?.secret ? { provider: s.provider, secret: row.secret, sandbox: s.sandbox } : null;
 }
 

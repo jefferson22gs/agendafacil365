@@ -9,6 +9,7 @@ import { accountOf, functionsUrl } from "../_shared/payments/service.ts";
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 const MESSAGES: Record<string, string> = {
   invalid_credentials: "O provedor recusou a chave. Confira se copiou a chave de PRODUÇÃO inteira, sem espaços.",
+  pagarme_invalid: "A Stone (Pagar.me) recusou a chave. Use a Chave Secreta (sk_…) da conta, não a pública (pk_…).",
   provider_unavailable: "O provedor não respondeu agora. Tente de novo em instantes.",
   provider_rejected: "O provedor recusou a operação. Confira se a conta está aprovada e com Pix ativo.",
   invalid_request: "Dados inválidos.",
@@ -25,7 +26,8 @@ serve(async (req) => {
   const salonId = String(body.salonId);
   const provider = body.provider as Provider;
   if (!PROVIDERS.includes(provider)) return json({ success: false, error: "invalid_request", message: MESSAGES.invalid_request }, 400);
-  const sandbox = body.sandbox === true && provider !== "infinitepay";
+  // Pagar.me: ambiente sai da própria chave (sk_test_ = sandbox).
+  const sandbox = provider === "pagarme" ? String(body.secret ?? "").trim().startsWith("sk_test_") : body.sandbox === true && provider !== "infinitepay";
 
   try {
     if (body.action === "test") {
@@ -34,7 +36,7 @@ serve(async (req) => {
       const account = await accountOf(db, salonId, { provider, sandbox, handle: st?.infinitepay_handle ?? null });
       if (!account) return json({ success: false, error: "missing", message: "Nenhuma chave salva para este provedor." });
       const r = await testAccount(fetch, account);
-      await db.from("salon_payment_settings").update({ credential_ok_at: new Date().toISOString(), sandbox, credential_hint: provider === "infinitepay" ? `$${account.handle}` : hint(account.secret) }).eq("salon_id", salonId).eq("provider", provider);
+      await db.from("salon_payment_settings").update({ credential_ok_at: new Date().toISOString(), sandbox: account.sandbox, credential_hint: provider === "infinitepay" ? `$${account.handle}` : hint(account.secret) }).eq("salon_id", salonId).eq("provider", provider);
       return json({ success: true, account: r.account ?? null });
     }
     if (body.action !== "save") return json({ success: false, error: "invalid_request" }, 400);
@@ -65,6 +67,6 @@ serve(async (req) => {
     return json({ success: true, account: r.account ?? null, hint: provider === "infinitepay" ? `$${handle}` : hint(secret) });
   } catch (e) {
     const code = e instanceof GatewayError ? e.code : "provider_unavailable";
-    return json({ success: false, error: code, message: MESSAGES[code] ?? MESSAGES.provider_unavailable });
+    return json({ success: false, error: code, message: (provider === "pagarme" && code === "invalid_credentials" ? MESSAGES.pagarme_invalid : MESSAGES[code]) ?? MESSAGES.provider_unavailable });
   }
 });

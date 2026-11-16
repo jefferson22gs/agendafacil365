@@ -3,9 +3,9 @@ import type { Article } from "../../types";
 export const whatsappPaymentArticles: Article[] = [
   {
     id: "whatsapp-payments-setup",
-    version: 1,
+    version: 2,
     title: "Como cobrar pelo WhatsApp (Pix e cartão)",
-    summary: "Ligue a cobrança no robô e conecte Mercado Pago, Asaas, PagBank ou InfinitePay para confirmar pagamentos sozinho.",
+    summary: "Ligue a cobrança no robô e conecte Mercado Pago, Asaas, PagBank, InfinitePay ou Stone (Pagar.me) para confirmar pagamentos sozinho.",
     category: "whatsapp",
     difficulty: "fácil",
     minutes: 5,
@@ -15,7 +15,8 @@ export const whatsappPaymentArticles: Article[] = [
       { text: "Abra Configurações no menu e escolha a aba Cobrança." },
       { text: "Ligue Cobrar pelo WhatsApp. Desligado, o robô não oferece pagamento e o cliente paga no salão." },
       { text: "Escolha como recebe. Pix pela chave do salão usa a Chave PIX de Configurações e você confere o comprovante." },
-      { text: "Para confirmar sozinho, escolha Mercado Pago, Asaas, PagBank ou InfinitePay e siga o passo a passo da tela para pegar a chave." },
+      { text: "Para confirmar sozinho, escolha Mercado Pago, Asaas, PagBank, InfinitePay ou Stone (Pagar.me) e siga o passo a passo da tela para pegar a chave." },
+      { text: "Na Stone (Pagar.me), cole a Chave Secreta (sk_…) e cadastre na Pagar.me o endereço de webhook mostrado na tela, com os eventos order.paid e charge.paid." },
       { text: "Cole a chave e clique em Conectar e testar. O WhatsApp só começa a cobrar depois que o teste dá certo." },
       { text: "Marque o que oferecer (Pix, cartão, pagar no salão) e clique em Salvar cobrança." },
       { text: "Quando o cliente paga, o horário pendente vira confirmado, você recebe o aviso Pagamento recebido e o cliente recebe a confirmação no WhatsApp." },
@@ -24,7 +25,8 @@ export const whatsappPaymentArticles: Article[] = [
       "O dinheiro cai direto na conta do salão no provedor escolhido; o Agenda Fácil não intermedia o pagamento.",
       "A chave fica guardada só no servidor. Na tela aparecem só os últimos 4 caracteres.",
       "Mercado Pago manda o Pix copia e cola dentro da conversa. Nos outros, o cliente paga numa página segura do provedor.",
+      "A maquininha Ton não tem integração para cobrança online. Para receber online pela Stone, use a conta Pagar.me (mesmo grupo).",
     ],
-    keywords: ["cobrança", "pagamento", "pix", "cartão", "mercado pago", "asaas", "pagbank", "pagseguro", "infinitepay", "cobrar", "zap", "whatsapp"],
+    keywords: ["cobrança", "pagamento", "pix", "cartão", "mercado pago", "asaas", "pagbank", "pagseguro", "infinitepay", "stone", "pagar.me", "pagarme", "ton", "cobrar", "zap", "whatsapp"],
   },
 ];

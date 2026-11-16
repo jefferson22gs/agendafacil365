@@ -485,7 +485,7 @@ async function payNow(c: Ctx, method: "pix" | "card"): Promise<Out> {
   c.s.data.pay = { ...p, chargeId: ch.id };
   const head = ch.pixCode
     ? `💠 *Pix de ${brl(ch.amountCents / 100)}*\nCopie o código da próxima mensagem e cole no app do seu banco, em *Pix copia e cola*. Vale por 1 hora.`
-    : `🔒 *Pagamento de ${brl(ch.amountCents / 100)}*\nPague com ${ch.method === "card" ? "cartão" : "Pix ou cartão"} na página segura do ${PROVIDER_LABEL[st.provider as keyof typeof PROVIDER_LABEL]}:\n${ch.url}`;
+    : `🔒 *Pagamento de ${brl(ch.amountCents / 100)}*\nPague com ${ch.method === "card" ? "cartão" : ch.method === "pix" ? "Pix" : "Pix ou cartão"} na página segura do ${PROVIDER_LABEL[st.provider as keyof typeof PROVIDER_LABEL]}:\n${ch.url}`;
   const card = menu(c, "PAYMENT", "Pagamento", "Assim que o pagamento cair, eu confirmo seu horário aqui automaticamente. ✅", [{ id: "pay_check", title: "🔄 Já paguei", value: { pay: "check" } }], 0, "Responda com o número da opção.");
   card.messages = [{ type: "text", text: head }, ...(ch.pixCode ? [{ type: "text" as const, text: ch.pixCode }] : []), ...card.messages];
   card.model = `pay_${ch.method}`;
