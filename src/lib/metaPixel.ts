@@ -3,7 +3,8 @@
 // ponytail: só PageView, Lead, CompleteRegistration e Contact; adicionar outros eventos quando houver campanha que os use.
 type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...a: unknown[]) => void; queue: unknown[]; loaded: boolean; version: string; push: unknown };
 
-const PIXEL_ID = String(import.meta.env.VITE_META_PIXEL_ID ?? "").trim();
+// ID do Pixel é público (vai no HTML de qualquer site que o usa). A variável sobrescreve; o modo demo nunca carrega.
+const PIXEL_ID = import.meta.env.MODE === "demo" || import.meta.env.MODE === "training" ? "" : String(import.meta.env.VITE_META_PIXEL_ID || "1447922076809128").trim();
 const KEY = "af365_ads_consent";
 export type Consent = "granted" | "denied" | null;
 export type MetaEvent = "PageView" | "Lead" | "CompleteRegistration" | "Contact";

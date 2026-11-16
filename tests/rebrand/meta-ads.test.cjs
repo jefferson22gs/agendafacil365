@@ -3,8 +3,9 @@ const test = require('node:test'), assert = require('node:assert/strict'), fs = 
 const root = path.resolve(__dirname, '../..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
-test('Pixel: carrega só com VITE_META_PIXEL_ID e consentimento; evento com event_id para deduplicar', () => {
+test('Pixel: carrega só com consentimento, nunca na demo; evento com event_id para deduplicar', () => {
   const src = read('src/lib/metaPixel.ts');
+  assert.ok(src.includes('import.meta.env.MODE === "demo" || import.meta.env.MODE === "training" ? ""'), 'demo e treinamento sem Pixel');
   assert.match(src, /readConsent\(\) === "granted"\) start\(\)/, 'abertura só carrega com aceite anterior');
   assert.match(src, /if \(!pixelEnabled\(\) \|\| readConsent\(\) !== "granted"\) return;/, 'sem aceite, nenhum evento');
   assert.match(src, /eventID: eventId/); assert.match(src, /eventId, url: location\.href/, 'mesmo id no servidor');
