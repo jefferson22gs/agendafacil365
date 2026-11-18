@@ -101,15 +101,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // loading só termina com papéis carregados: antes, a rota com requiredRole via "sem permissão" e redirecionava.
+    // catch: sessão corrompida/rede fora não pode deixar a tela presa no carregamento.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      }
-      setLoading(false);
-    });
+      if (session?.user) await fetchUserData(session.user.id);
+    }).catch((error) => console.error('Error restoring session:', error)).finally(() => setLoading(false));
 
     return () => subscription.unsubscribe();
   }, []);
