@@ -22,7 +22,7 @@ export const servicesTour: TourDef = {
     {
       target: "services-icon",
       title: "Escolha um ícone",
-      body: "O ícone ajuda o cliente a reconhecer o serviço na página de agendamento.",
+      body: "O ícone ajuda o cliente a reconhecer o serviço na página de agendamento. Use as abas (Cabelo, Unhas, Estética, Saúde, Pet…) para achar o do seu ramo.",
       fallbackBody: "Abra o formulário em \"Novo Serviço\" para ver os campos.",
     },
     {

@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/page-header";
 import { Tables } from "@/integrations/supabase/types";
 import { Switch } from "@/components/ui/switch";
 import { ReturnDaysPicker } from "@/components/admin/ReturnDaysPicker";
+import { SERVICE_ICON_GROUPS, iconName } from "@/features/services/serviceIcons";
 import { DEFAULT_RETURN_TEMPLATE, RETURN_TEMPLATE_VARS, RETURNS_MIGRATION_NOTICE, humanDays, returnsAvailable, type ServiceReturnConfig } from "@/lib/procedureReturns";
 
 type Service = Tables<"services"> & ServiceReturnConfig;
@@ -37,7 +38,10 @@ const Services = () => {
     icon: "✂️",
   });
 
-  const icons = ["✂️", "🧔", "💈", "💆", "👦", "📐", "🪒", "💇"];
+  // Abre no segmento do ícone atual (editar "💅" já mostra Unhas).
+  const groupOf = (icon: string) => SERVICE_ICON_GROUPS.find(g => g.icons.some(([e]) => e === icon))?.id ?? SERVICE_ICON_GROUPS[0].id;
+  const [iconGroup, setIconGroup] = useState(SERVICE_ICON_GROUPS[0].id);
+  useEffect(() => { if (dialogOpen) setIconGroup(groupOf(formData.icon)); }, [dialogOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchData();
@@ -238,16 +242,26 @@ const Services = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2" data-tour="services-icon">
-                  <Label id="services-icon-label">Ícone</Label>
+                <div className="min-w-0 space-y-2" data-tour="services-icon">
+                  <Label id="services-icon-label">Ícone <span className="font-normal text-muted-foreground">· {iconName(formData.icon)}</span></Label>
+                  {/* Abas por segmento: cada negócio acha os ícones do seu ramo sem rolar uma lista enorme. */}
+                  <div className="flex min-w-0 flex-wrap gap-1" role="tablist" aria-label="Segmentos de ícones">
+                    {SERVICE_ICON_GROUPS.map(g => (
+                      <button key={g.id} type="button" role="tab" aria-selected={iconGroup === g.id} onClick={() => setIconGroup(g.id)}
+                        className={`min-h-11 shrink-0 rounded-lg px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${iconGroup === g.id ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"}`}>
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="services-icon-label">
-                    {icons.map((icon) => (
+                    {(SERVICE_ICON_GROUPS.find(g => g.id === iconGroup) ?? SERVICE_ICON_GROUPS[0]).icons.map(([icon, name]) => (
                       <button
                         key={icon}
                         type="button"
                         onClick={() => setFormData({ ...formData, icon })}
                         aria-pressed={formData.icon === icon}
-                        aria-label={`Ícone ${icon}`}
+                        aria-label={name}
+                        title={name}
                         className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                           w-11 h-11 rounded-lg text-xl flex items-center justify-center transition-all
                           ${formData.icon === icon
@@ -256,7 +270,7 @@ const Services = () => {
                           }
                         `}
                       >
-                        {icon}
+                        <span aria-hidden>{icon}</span>
                       </button>
                     ))}
                   </div>
