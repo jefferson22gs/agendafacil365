@@ -28,7 +28,7 @@ const Professionals = () => {
     email: "",
     phone: "",
     specialty: "",
-    commission_rate: 0,
+    commission_rate: "",
   });
 
   useEffect(() => {
@@ -81,13 +81,20 @@ const Professionals = () => {
       return;
     }
 
+    // Vazio = 0%; aceita vírgula ("12,5").
+    const commission = formData.commission_rate.trim() === "" ? 0 : Number(formData.commission_rate.replace(",", "."));
+    if (!Number.isFinite(commission) || commission < 0 || commission > 100) {
+      toast.error("Comissão deve ser de 0 a 100%");
+      return;
+    }
+
     try {
       const professionalData = {
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
         specialty: formData.specialty || null,
-        commission_rate: formData.commission_rate,
+        commission_rate: commission,
         salon_id: salonId,
       };
 
@@ -124,7 +131,7 @@ const Professionals = () => {
       email: professional.email || "",
       phone: professional.phone || "",
       specialty: professional.specialty || "",
-      commission_rate: professional.commission_rate || 0,
+      commission_rate: professional.commission_rate ? String(professional.commission_rate) : "",
     });
     setDialogOpen(true);
   };
@@ -154,7 +161,7 @@ const Professionals = () => {
       email: "",
       phone: "",
       specialty: "",
-      commission_rate: 0,
+      commission_rate: "",
     });
   };
 
@@ -255,13 +262,14 @@ const Professionals = () => {
                   <Label htmlFor="commission">Comissão (%)</Label>
                   <Input
                     id="commission"
-                    type="number"
-                    min="0"
-                    max="100"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.commission_rate}
-                    onChange={(e) => setFormData({ ...formData, commission_rate: Number(e.target.value) })}
-                    placeholder="0"
+                    onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value.replace(/[^0-9.,]/g, "").slice(0, 6) })}
+                    placeholder="Ex.: 40"
+                    aria-describedby="commission-help"
                   />
+                  <p id="commission-help" className="text-xs text-muted-foreground">De 0 a 100. Deixe vazio para sem comissão.</p>
                 </div>
               </div>
               <div className="flex justify-end gap-3">

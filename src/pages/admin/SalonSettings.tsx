@@ -19,6 +19,7 @@ import { useMarkLinkShared } from "@/features/training/useFirstSteps";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DEFAULT_TENANT_COLOR, publicOrigin, safeHexColor } from "@/config/brand";
 import { PageHeader } from "@/components/ui/page-header";
+import { isStoredFile } from "@/lib/storageUrl";
 
 interface SalonData {
   id?: string;
@@ -915,12 +916,21 @@ const SalonSettings = () => {
                     </TabsList>
 
                     <TabsContent value="link" className="space-y-2">
-                      <Input
-                        id="logo_url"
-                        value={salon.logo_url}
-                        onChange={(e) => setSalon({ ...salon, logo_url: e.target.value })}
-                        placeholder="https://..."
-                      />
+                      {/* Logo enviado/fotografado: não exibe o endereço do armazenamento; o campo só serve para colar um link externo. */}
+                      {isStoredFile(salon.logo_url) ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                          <span className="text-sm text-muted-foreground">Logo enviado pelo sistema ✓</span>
+                          <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={() => setSalon({ ...salon, logo_url: "" })}>Usar um link externo</Button>
+                        </div>
+                      ) : (
+                        <Input
+                          id="logo_url"
+                          value={salon.logo_url}
+                          onChange={(e) => setSalon({ ...salon, logo_url: e.target.value })}
+                          placeholder="https://..."
+                          autoComplete="off"
+                        />
+                      )}
                     </TabsContent>
 
                     <TabsContent value="upload" className="space-y-2">

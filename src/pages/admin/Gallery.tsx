@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { isStoredFile } from "@/lib/storageUrl";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -391,23 +392,39 @@ const GalleryPage = () => {
                       <div className="space-y-2">
                         <Label htmlFor="gallery-before-url">Link Imagem Antes</Label>
                         <div className="flex gap-2">
-                          <Input
-                            id="gallery-before-url"
-                            value={formData.before_image_url}
-                            onChange={(e) => setFormData({ ...formData, before_image_url: e.target.value })}
-                            placeholder="https://..."
-                          />
+                          {isStoredFile(formData.before_image_url) ? (
+                            <div className="flex flex-1 flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                              <span className="text-sm text-muted-foreground">Foto antes enviada ✓</span>
+                              <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={() => setFormData({ ...formData, before_image_url: "" })}>Usar um link externo</Button>
+                            </div>
+                          ) : (
+                            <Input
+                              id="gallery-before-url"
+                              value={formData.before_image_url}
+                              onChange={(e) => setFormData({ ...formData, before_image_url: e.target.value })}
+                              placeholder="https://..."
+                              autoComplete="off"
+                            />
+                          )}
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="gallery-after-url">Link Imagem Depois</Label>
                         <div className="flex gap-2">
-                          <Input
-                            id="gallery-after-url"
-                            value={formData.after_image_url}
-                            onChange={(e) => setFormData({ ...formData, after_image_url: e.target.value })}
-                            placeholder="https://..."
-                          />
+                          {isStoredFile(formData.after_image_url) ? (
+                            <div className="flex flex-1 flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                              <span className="text-sm text-muted-foreground">Foto depois enviada ✓</span>
+                              <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={() => setFormData({ ...formData, after_image_url: "" })}>Usar um link externo</Button>
+                            </div>
+                          ) : (
+                            <Input
+                              id="gallery-after-url"
+                              value={formData.after_image_url}
+                              onChange={(e) => setFormData({ ...formData, after_image_url: e.target.value })}
+                              placeholder="https://..."
+                              autoComplete="off"
+                            />
+                          )}
                         </div>
                       </div>
                     </TabsContent>

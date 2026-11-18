@@ -1093,22 +1093,43 @@ const PublicSalon = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with salon branding */}
+      {/* Barra fixa fina: nome e WhatsApp sempre à mão sem roubar a tela dos serviços. */}
+      <div
+        className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl"
+        style={{ borderColor: `${primaryColor}20` }}
+      >
+        <div className="container flex h-14 items-center gap-3 px-4">
+          <SalonLogo salon={salon} className="h-9 w-9 shrink-0 rounded-xl border text-xs" />
+          <p className="min-w-0 flex-1 truncate font-display text-base font-semibold text-foreground">{salon.name}</p>
+          {hasPortal && (
+            <a href={`/s/${salon.slug}/meus-agendamentos`} aria-label="Meus agendamentos" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ borderColor: `${primaryColor}55`, color: primaryText }}>
+              <CalendarCheck size={18} aria-hidden />
+            </a>
+          )}
+          {salon.whatsapp && (
+            <a href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" aria-label={`Falar com ${salon.name} no WhatsApp`} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ backgroundColor: '#25D366', color: '#000000' }}>
+              <MessageCircle size={20} aria-hidden />
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Apresentação do salão: rola junto com a página (antes ficava fixa e ocupava até 40% da tela). */}
       <header
-        className="sticky top-0 z-30 backdrop-blur-xl border-b border-border"
+        className="border-b border-border"
         style={{
           background: `linear-gradient(135deg, ${primaryColor}10 0%, transparent 100%)`,
           borderColor: `${primaryColor}20`
         }}
       >
-        <div className="container px-4 py-6">
+        <div className="container px-4 py-4 sm:py-6">
           {/* Centered Salon Header */}
           <div className="flex flex-col items-center text-center">
             {/* Logo */}
-            <SalonLogo salon={salon} className="h-20 w-20 rounded-2xl shadow-lg mb-4 border-2 text-2xl" />
+            <SalonLogo salon={salon} className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl shadow-lg mb-3 border-2 text-2xl" />
 
             {/* Salon Name */}
-            <h1 className="font-display text-2xl font-bold text-foreground mb-1">
+            <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-1">
               {salon.name}
             </h1>
 
@@ -1125,7 +1146,7 @@ const PublicSalon = () => {
             )}
 
             {/* Info Pills */}
-            <div className="flex flex-wrap justify-center gap-2 mb-4">
+            <div className="flex flex-wrap justify-center gap-2">
               {/* Working Hours */}
               <div
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
@@ -1147,30 +1168,13 @@ const PublicSalon = () => {
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap justify-center gap-2">
-              {/* Área do cliente: aparece quando este aparelho já abriu o link pessoal do WhatsApp. */}
-              {hasPortal && (
-                <a href={`/s/${salon.slug}/meus-agendamentos`} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ borderColor: `${primaryColor}55`, color: primaryText }}>
-                  <CalendarCheck size={18} aria-hidden />
-                  <span>Meus agendamentos</span>
-                </a>
-              )}
-              {/* WhatsApp Button */}
-              {salon.whatsapp && (
-                <a
-                  href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
-                  style={{ backgroundColor: '#25D366', color: '#000000' }}
-                >
-                  <MessageCircle size={18} />
-                  <span>WhatsApp</span>
-                </a>
-              )}
-
-            </div>
+            {/* Área do cliente: aparece quando este aparelho já abriu o link pessoal do WhatsApp (ícone também na barra fixa). */}
+            {hasPortal && (
+              <a href={`/s/${salon.slug}/meus-agendamentos`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ borderColor: `${primaryColor}55`, color: primaryText }}>
+                <CalendarCheck size={18} aria-hidden />
+                <span>Meus agendamentos</span>
+              </a>
+            )}
           </div>
         </div>
       </header>
@@ -1186,7 +1190,7 @@ const PublicSalon = () => {
         </div>
       )}
 
-      <main className="container px-4 py-6 sm:py-8 max-w-2xl mx-auto">
+      <main className="container px-4 py-4 sm:py-8 max-w-2xl mx-auto">
         {/* App do salão: instalar + notificações (só no início do fluxo, para não atrapalhar o agendamento) */}
         {step === 1 && (
           <SalonAppCard
@@ -1199,7 +1203,7 @@ const PublicSalon = () => {
         )}
 
         {/* Progress Steps */}
-        <ol className="flex items-center justify-between mb-8" aria-label="Etapas do agendamento">
+        <ol className="flex items-center justify-between mb-4 sm:mb-8" aria-label="Etapas do agendamento">
           {steps.map((s, index) => (
             <li key={s.number} className="flex items-center" aria-current={step === s.number ? "step" : undefined}>
               <div className="flex flex-col items-center">
@@ -1237,14 +1241,14 @@ const PublicSalon = () => {
           {/* Step 1: Select Services & Products */}
           {step === 1 && (
             <div className="animate-fade-in">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-1 sm:mb-2">
                 Monte seu pedido
               </h2>
-              <p className="text-muted-foreground mb-6">Selecione serviços e produtos que deseja</p>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">Selecione serviços e produtos que deseja</p>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products' | 'packages' | 'gallery')} className="w-full">
                 {/* Em 360px os 4 rótulos com ícone ao lado estouravam a largura: ícone empilha no mobile */}
-                <TabsList className="grid w-full grid-cols-4 mb-6 h-auto">
+                <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-6 h-auto">
                   <TabsTrigger value="services" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-1 sm:px-3 text-xs sm:text-sm">
                     <Scissors size={16} aria-hidden="true" />
                     Serviços
