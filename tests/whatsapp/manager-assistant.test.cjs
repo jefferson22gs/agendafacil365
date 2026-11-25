@@ -105,7 +105,7 @@ test('roteamento: gestor antes do cliente; #gestor não autentica; áudio de cli
   assert.match(src, /actor: ctx\.phone, channel: "whatsapp"/);
   const code = src.slice(start, pre).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
   assert.doesNotMatch(code, /#gestor/i, '#gestor sozinho nunca concede acesso');
-  assert.match(src, /type === "audio"\) return \{ text: "", provider: "deterministic", model: "audio_ignored" \}/);
+  assert.ok(src.includes('if (audio && !personalMedia) return { text: "", provider: "deterministic", model: "audio_ignored" }'));
   const inbound = load(path.join(root, 'supabase/functions/_shared/whatsapp/inbound.ts'));
   const m = inbound.parseIncoming({ key: { remoteJid: '5511912345678@s.whatsapp.net', id: 'AUD1', fromMe: false }, message: { audioMessage: { mimetype: 'audio/ogg; codecs=opus' } } });
   assert.equal(m.media.type, 'audio');

@@ -13,10 +13,10 @@ import { useWhatsAppSalon, whatsappDb } from "@/pages/admin/whatsapp/api";
 import { GuidedFlowSimulator } from "./GuidedFlowSimulator";
 
 export type RenderMode = "poll" | "buttons" | "hybrid" | "numbered" | "native";
-interface Settings { guided_flow_enabled: boolean; guided_render_mode: RenderMode; guided_welcome_message: string; guided_confirmation_message: string; guided_info_text: string; guided_handoff_hours: number }
-const COLUMNS = "guided_flow_enabled,guided_render_mode,guided_welcome_message,guided_confirmation_message,guided_info_text,guided_handoff_hours";
+interface Settings { guided_flow_enabled: boolean; guided_render_mode: RenderMode; guided_welcome_message: string; guided_confirmation_message: string; guided_info_text: string; guided_handoff_hours: number; guided_personal_mode: boolean; guided_owner_name: string }
+const COLUMNS = "guided_flow_enabled,guided_render_mode,guided_welcome_message,guided_confirmation_message,guided_info_text,guided_handoff_hours,guided_personal_mode,guided_owner_name";
 // Iguais aos defaults de MIGRATION_TYPEBOT_EVOLUTION_237.sql.
-const DEFAULTS: Settings = { guided_flow_enabled: false, guided_render_mode: "poll", guided_welcome_message: "", guided_confirmation_message: "", guided_info_text: "", guided_handoff_hours: 2 };
+const DEFAULTS: Settings = { guided_flow_enabled: false, guided_render_mode: "poll", guided_welcome_message: "", guided_confirmation_message: "", guided_info_text: "", guided_handoff_hours: 2, guided_personal_mode: false, guided_owner_name: "" };
 const MODES: { value: RenderMode; label: string; hint: string }[] = [
   { value: "poll", label: "Enquete clicável (QR Code)", hint: "No QR Code, cada etapa chega como uma enquete de toque único, com até 9 opções (1️⃣ 2️⃣ 3️⃣…). O cliente também pode responder o número. Na API oficial, vira botões e lista." },
   { value: "buttons", label: "Só botões (API oficial)", hint: "Na API oficial: só botões, até 3 por mensagem, com ➡️ Ver mais e horários por turno. No QR Code o WhatsApp não mostra botões: vira texto numerado automaticamente." },
@@ -46,6 +46,7 @@ export function GuidedFlowCard() {
         guided_flow_enabled: row.guided_flow_enabled === true, guided_render_mode: (["poll", "buttons", "hybrid", "numbered", "native"].includes(String(row.guided_render_mode)) ? row.guided_render_mode : "poll") as RenderMode,
         guided_welcome_message: str(row.guided_welcome_message), guided_confirmation_message: str(row.guided_confirmation_message), guided_info_text: str(row.guided_info_text),
         guided_handoff_hours: Number(row.guided_handoff_hours) || 2,
+        guided_personal_mode: row.guided_personal_mode === true, guided_owner_name: str(row.guided_owner_name),
       } };
     },
   });
@@ -55,6 +56,7 @@ export function GuidedFlowCard() {
     mutationFn: async () => {
       const nul = (v: string) => (v.trim() ? v.trim() : null);
       const { error } = await whatsappDb.from("whatsapp_automation_settings").upsert({
+        guided_personal_mode: s.guided_personal_mode, guided_owner_name: nul(s.guided_owner_name),
         salon_id: salonId, guided_flow_enabled: s.guided_flow_enabled, guided_render_mode: s.guided_render_mode, guided_welcome_message: nul(s.guided_welcome_message),
         guided_confirmation_message: nul(s.guided_confirmation_message), guided_info_text: nul(s.guided_info_text), guided_handoff_hours: s.guided_handoff_hours, updated_at: new Date().toISOString(),
       }, { onConflict: "salon_id" });
@@ -79,10 +81,18 @@ export function GuidedFlowCard() {
           <CardDescription>Menu principal, agendamento passo a passo, remarcação e cancelamento pelo próprio cliente, com botões, listas e atalhos numéricos na Evolution API 2.3.7.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          {!migrated && <p role="alert" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">Execute <code>MIGRATION_TYPEBOT_EVOLUTION_237.sql</code> no Supabase para ativar esta aba. Até lá, o atendente clássico continua respondendo.</p>}
+          {!migrated && <p role="alert" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">Aplique as migrações do fluxo guiado e do modo WhatsApp pessoal no Supabase para editar estas configurações.</p>}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0"><Label htmlFor="guided-enabled" className="font-medium">Fluxo guiado por botões/opções</Label><p id="guided-enabled-hint" className="text-sm text-muted-foreground">Ligado, toda conversa começa no menu principal. Desligado, o atendente por IA responde como antes.</p></div>
             <Switch id="guided-enabled" aria-describedby="guided-enabled-hint" checked={s.guided_flow_enabled} disabled={!migrated} onCheckedChange={v => setS(p => ({ ...p, guided_flow_enabled: v }))} />
+          </div>
+          <div className="space-y-2 rounded-xl border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="guided-personal">Uso meu WhatsApp pessoal</Label>
+              <Switch id="guided-personal" aria-describedby="guided-personal-hint" checked={s.guided_personal_mode} disabled={!migrated || !s.guided_flow_enabled} onCheckedChange={v => setS(p => ({ ...p, guided_personal_mode: v }))} />
+            </div>
+            <p id="guided-personal-hint" className="text-sm text-muted-foreground">Oferece “Quero agendar” ou “Falar com você”. Na segunda opção, o robô fica em silêncio até você selecionar “Devolver para IA” na conversa. Mensagens pessoais também aparecem na caixa de entrada do salão.</p>
+            {s.guided_personal_mode && <><Label htmlFor="guided-owner">Nome no botão (opcional)</Label><Input id="guided-owner" maxLength={40} placeholder="Primeiro nome do seu perfil" value={s.guided_owner_name} onChange={e => setS(p => ({ ...p, guided_owner_name: e.target.value }))} /></>}
           </div>
           <div className="space-y-2">
             <p className="rounded-xl bg-muted p-3 text-sm">O fluxo é o mesmo nas duas conexões, do menu até o Pix ou o link de pagamento. <strong>API oficial:</strong> botões e listas clicáveis. <strong>QR Code:</strong> o WhatsApp não mostra botões, então cada etapa chega em texto numerado (ou enquete, se escolher abaixo) e o cliente responde o número. <strong>QR Code com botões:</strong> botões e listas como na oficial, com os números no texto como reserva. A conexão que atende é escolhida em Conexão &gt; Quem atende os clientes no automático.</p>
@@ -107,7 +117,7 @@ export function GuidedFlowCard() {
             <Label htmlFor="guided-info">Endereço e horário de funcionamento (opção 4 do menu)</Label>
             <Textarea id="guided-info" rows={3} maxLength={1500} disabled={!migrated} placeholder="Vazio: usa o endereço e os horários cadastrados no estabelecimento." value={s.guided_info_text} onChange={e => setS(p => ({ ...p, guided_info_text: e.target.value }))} />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div hidden={s.guided_personal_mode} className={s.guided_personal_mode ? "hidden" : "flex flex-wrap items-center gap-2"}>
             <Label htmlFor="guided-handoff">Pausa quando o cliente pede atendente (horas)</Label>
             <Input id="guided-handoff" type="number" inputMode="numeric" min={1} max={72} className="min-h-11 w-24" aria-invalid={!validHours} disabled={!migrated}
               value={Number.isFinite(s.guided_handoff_hours) ? s.guided_handoff_hours : ""} onChange={e => setS(p => ({ ...p, guided_handoff_hours: e.target.valueAsNumber }))} />

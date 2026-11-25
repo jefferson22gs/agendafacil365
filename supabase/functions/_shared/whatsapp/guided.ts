@@ -237,11 +237,29 @@ async function creditsOf(c: Ctx): Promise<Credit[]> {
 
 async function mainMenu(c: Ctx, greet = true, page = 0): Promise<Out> {
   c.s.data = {};
-  const [known, pkgs] = await Promise.all([c.s.name ? Promise.resolve(c.s.name) : knownClient(c), activePackages(c)]);
+  const [known, pkgs] = await Promise.all([c.s.name ? Promise.resolve(c.s.name) : knownClient(c), c.cfg.personal ? [] : activePackages(c)]);
   const name = c.s.name = known;
   const vars = { salao: c.salon.name, nome: name ?? "", primeiro_nome: firstName(name) };
   const hello = c.cfg.welcome ? fillTemplate(c.cfg.welcome, vars) : `Olá${name ? `, ${firstName(name)}` : ""}! 👋 Bem-vindo(a) ao *${c.salon.name}*.`;
   const body = greet ? `${hello}\nComo posso ajudar?` : "O que você quer fazer?";
+  if (c.cfg.personal) {
+    let owner = c.cfg.ownerName;
+    if (!owner) {
+      const salon = await c.ctx.db.from("salons").select("owner_id").eq("id", c.ctx.salonId).single();
+      if (salon.error) fail();
+      if (salon.data?.owner_id) {
+        const profile = await c.ctx.db.from("profiles").select("full_name").eq("user_id", salon.data.owner_id).maybeSingle();
+        if (profile.error) fail();
+        owner = profile.data?.full_name;
+      }
+    }
+    const title = `Falar com ${owner?.trim().split(/\s+/)[0] || "atendente"}`;
+    const renderMode = c.cfg.provider === "evolution" ? "numbered" : "hybrid";
+    return menu({ ...c, cfg: { ...c.cfg, renderMode } }, "MAIN_MENU", "Atendimento", Array.from(title).length > BUTTON_TEXT ? `${body}\n${title}?` : body, [
+      { id: "menu_book", title: "Quero agendar", value: { go: "book" } },
+      { id: "menu_human", title: Array.from(title).slice(0, BUTTON_TEXT).join(""), value: { go: "human" } },
+    ], 0, "Escolha 1 ou 2.");
+  }
   // "Pacotes" só aparece quando o salão tem pacote ativo.
   const pack: Option[] = pkgs.length ? [{ id: "menu_packages", title: "🎁 Pacotes", description: "Assine e use seus créditos", value: { go: "packages" } }] : [];
   const bare = (o: Option[]) => o.map(x => ({ ...x, description: undefined }));
@@ -714,7 +732,7 @@ function infoMenu(c: Ctx): Out {
 
 async function handoff(c: Ctx): Promise<Out> {
   const { ctx } = c;
-  const until = new Date(Date.now() + c.cfg.handoffHours * 3_600_000).toISOString();
+  const until = c.cfg.personal ? null : new Date(Date.now() + c.cfg.handoffHours * 3_600_000).toISOString();
   c.s.step = "HUMAN_HANDOFF"; c.s.data = {}; c.s.takeoverUntil = until;
   if (!ctx.preview) {
     // taken_over_by nulo = pausa automática (gera push "Assistente pediu ajuda"); o dono pode devolver antes pela central.
@@ -722,8 +740,9 @@ async function handoff(c: Ctx): Promise<Out> {
     if (error) fail();
     // Sino do painel (admin_notifications). Falha aqui não impede a resposta ao cliente.
     const who = c.s.name ?? ctx.name ?? "Cliente";
-    await ctx.db.from("admin_notifications").insert({ salon_id: ctx.salonId, type: "whatsapp_handoff", title: "💬 Cliente pediu atendente", message: `${who} (${ctx.phone}) quer falar com uma pessoa no WhatsApp. O assistente ficará pausado por ${c.cfg.handoffHours}h.`, client_name: who, client_phone: ctx.phone, metadata: { phone: ctx.phone, until } });
+    await ctx.db.from("admin_notifications").insert({ salon_id: ctx.salonId, type: "whatsapp_handoff", title: "💬 Cliente pediu atendente", message: `${who} (${ctx.phone}) quer falar com uma pessoa no WhatsApp. ${until ? `O assistente ficará pausado por ${c.cfg.handoffHours}h.` : "Use Devolver para IA na conversa para retomar o assistente."}`, client_name: who, client_phone: ctx.phone, metadata: { phone: ctx.phone, until } });
   }
+  if (c.cfg.personal) return { messages: [], model: "guided_handoff", handoff: true };
   const text = `Certo! Um atendente da equipe do *${c.salon.name}* vai assumir esta conversa em instantes. 🙋\n\nO assistente automático fica pausado por ${c.cfg.handoffHours}h. Se preferir voltar ao atendimento automático antes, digite *0*.`;
   // Enquete precisa de 2 opções e, pausado, o robô só aceita "voltar": em modo enquete vai texto.
   const messages: OutMessage[] = c.cfg.renderMode === "buttons" ? quickButtons(c, text.replace(", digite *0*.", ", toque no botão abaixo."), [{ id: "menu_main", title: "🤖 Voltar ao robô" }]) : [{ type: "text", text }];
@@ -771,6 +790,14 @@ async function handle(c: Ctx, input: Input, deps: GuidedDeps): Promise<Out> {
     if (!req) return say(c, "IDLE", "Esse pedido de avaliação já foi respondido. Obrigado! 💜", "rate_closed");
     c.s.data = { rate: { id: req.appointment_id, label: req.service ?? "atendimento" } };
     return rateSave(c, Number(clicked));
+  }
+  // Antes da escolha, texto pessoal não vai para a IA nem inicia um agendamento por engano.
+  if (c.cfg.personal && step === "IDLE" && !sel && !s.data.menu) return mainMenu(c);
+  if (c.cfg.personal && step === "MAIN_MENU" && s.data.menu?.ids?.join(",") === "menu_book,menu_human") {
+    const choice = resolveChoice(s.data.menu, text, sel);
+    if (choice === 1 || cmd === "human") return handoff(c);
+    if (choice === 0 || cmd === "book") { push(c, step); return selectService(c); }
+    return mainMenu(c, false);
   }
   // Comandos globais e ids fixos do menu principal valem em qualquer etapa.
   if (cmd === "human" || sel === "menu_human") return handoff(c);
@@ -982,11 +1009,14 @@ async function repeat(c: Ctx): Promise<Out> {
  * pagamento PIX em andamento no atendente clássico): o caminho antigo assume.
  */
 export async function guidedReply(ctx: BotContext, input: Input, deps: GuidedDeps = {}, humanPaused = false): Promise<GuidedReply | null> {
-  if (input.media) return null;
   const [cfg, loaded] = await Promise.all([automationOf(ctx), loadSession(ctx, deps)]);
   if (!cfg.guided || loaded === "unavailable") return null;
   const s = loaded;
   const now = Date.now();
+  if (cfg.personal && !s.takeoverUntil && (humanPaused || (ctx.preview && s.step === "HUMAN_HANDOFF"))) {
+    return { text: "", provider: "deterministic", model: "guided_paused", messages: [], session: s };
+  }
+  if (input.media && (!cfg.personal || !["IDLE", "MAIN_MENU", "HUMAN_HANDOFF"].includes(s.step))) return null;
   // Pausa feita pelo dono na central (sem prazo do fluxo): o caminho clássico silencia.
   if (humanPaused && !s.takeoverUntil) return null;
   // Transbordo humano com prazo: enquanto vale, silêncio; vencido, libera e volta ao menu.

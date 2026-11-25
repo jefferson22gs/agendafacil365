@@ -44,6 +44,8 @@ export interface AutomationRow {
   provider: "evolution" | "meta" | "whaileys";
   /** Fluxo guiado (Typebot). Colunas da MIGRATION_TYPEBOT_EVOLUTION_237.sql; ausentes = desligado. */
   guided: boolean; renderMode: GuidedRenderMode; welcome: string | null; confirmation: string | null; info: string | null; handoffHours: number;
+  /** Número pessoal do dono: menu de 2 botões (agendar / falar com o dono); nome exibido no botão (null = do perfil). */
+  personal: boolean; ownerName: string | null;
 }
 const GUIDED_COLUMNS = "chatbot_booking_enabled,interactive_enabled,guided_flow_enabled,guided_render_mode,guided_welcome_message,guided_confirmation_message,guided_info_text,guided_handoff_hours";
 const autoCache = new WeakMap<BotContext, Promise<AutomationRow>>();
@@ -56,7 +58,8 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
     // Conexão escolhida pelo dono para o robô: oficial = botões; QR Code = enquete/números.
     const provider = Promise.resolve(ctx.db.rpc("whatsapp_bot_provider", { p_salon_id: ctx.salonId }))
       .then(r => (r.data === "meta" || r.data === "whaileys" ? r.data : "evolution") as AutomationRow["provider"], () => "evolution" as const);
-    p = Promise.all([read(GUIDED_COLUMNS), provider]).then(async ([r, prov]) => {
+    p = Promise.all([read(`${GUIDED_COLUMNS},guided_personal_mode,guided_owner_name`), provider]).then(async ([r, prov]) => {
+      if (r.error?.code === "42703") r = await read(GUIDED_COLUMNS);
       // 42703 = coluna inexistente (migração ainda não aplicada): fallback resiliente às colunas antigas.
       if (r.error && String(r.error.code) === "42703") r = await read("chatbot_booking_enabled,interactive_enabled");
       const { data: raw, error } = r;
@@ -76,6 +79,7 @@ export function automationOf(ctx: BotContext): Promise<AutomationRow> {
         renderMode: (prov === "meta" ? (mode === "buttons" ? "buttons" : "native") : prov === "whaileys" ? (mode === "buttons" ? "buttons" : mode === "poll" ? "poll" : "hybrid") : mode === "poll" ? "poll" : "numbered") as GuidedRenderMode,
         welcome: str(data?.guided_welcome_message), confirmation: str(data?.guided_confirmation_message), info: str(data?.guided_info_text),
         handoffHours: Math.min(72, Math.max(1, Number(data?.guided_handoff_hours) || 2)),
+        personal: data?.guided_personal_mode === true, ownerName: str(data?.guided_owner_name),
       };
     });
     p.catch(() => autoCache.delete(ctx));

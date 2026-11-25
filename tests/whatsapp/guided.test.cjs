@@ -99,11 +99,12 @@ test('horário de funcionamento a partir de working_hours', () => {
 const SALON = '00000000-0000-4000-8000-000000000010', SVC = '00000000-0000-4000-8000-000000000030', PRO = '00000000-0000-4000-8000-000000000020';
 // provider: quem atende o robô. Botões/lista/enquete só valem na oficial ('meta') ou em enquete ('poll') no QR Code;
 // QR Code com qualquer outro modo vira texto numerado (coberto em parity.test.cjs).
-function db({ guided: on = true, mode = 'hybrid', pros = 1, client = null, booking = true, sessionTable = true, provider = mode === 'poll' || mode === 'numbered' ? 'evolution' : 'meta' } = {}) {
+function db({ guided: on = true, personal = false, owner = null, mode = 'hybrid', pros = 1, client = null, booking = true, sessionTable = true, provider = mode === 'poll' || mode === 'numbered' ? 'evolution' : 'meta' } = {}) {
   const calls = [], upserts = [], inserts = [];
   const rows = {
-    salons: { name: 'Studio X', timezone: 'America/Sao_Paulo', address: 'Rua A, 1', city: 'SP', pix_key: null, slug: 'studio-x', phone: null, working_hours: null, opening_time: '09:00:00', closing_time: '18:00:00' },
-    whatsapp_automation_settings: { chatbot_booking_enabled: booking, interactive_enabled: true, guided_flow_enabled: on, guided_render_mode: mode, guided_welcome_message: null, guided_confirmation_message: null, guided_info_text: null, guided_handoff_hours: 2 },
+    profiles: { full_name: 'Ana Silva' },
+    salons: { owner_id: 'owner', name: 'Studio X', timezone: 'America/Sao_Paulo', address: 'Rua A, 1', city: 'SP', pix_key: null, slug: 'studio-x', phone: null, working_hours: null, opening_time: '09:00:00', closing_time: '18:00:00' },
+    whatsapp_automation_settings: { guided_personal_mode: personal, guided_owner_name: owner, chatbot_booking_enabled: booking, interactive_enabled: true, guided_flow_enabled: on, guided_render_mode: mode, guided_welcome_message: null, guided_confirmation_message: null, guided_info_text: null, guided_handoff_hours: 2 },
     services: [{ id: SVC, name: 'Corte Degradê', price: 45, duration_minutes: 40 }, { id: 'svc2', name: 'Barba', price: 30, duration_minutes: 20 }],
     professionals: Array.from({ length: pros }, (_, i) => ({ id: i ? `pro${i}` : PRO, name: i ? `Pro ${i}` : 'Ana', specialty: null })), professional_services: [],
     clients: client, whatsapp_chatbot_sessions: null, appointments: [],
@@ -172,6 +173,24 @@ test('texto livre: IA responde curto e a etapa é reapresentada; sem IA, só rep
   const r = await guided.guidedReply(ctx(d), { text: 'vocês fazem luzes?' }, { ai: async () => ({ text: 'Fazemos sim, a partir de R$ 120.' }) });
   assert.equal(r.model, 'guided_ai_fallback'); assert.match(r.text, /^Fazemos sim[\s\S]*1\. Corte Degradê/); assert.equal(r.session.step, 'SELECT_SERVICE');
   const r2 = await send(d, 'blablabla'); assert.equal(r2.model, 'guided_repeat'); assert.match(r2.text, /Não entendi/);
+});
+
+test('número pessoal: só duas escolhas, nome do titular, seleção por toque ou número e pausa até liberação pela central', async () => {
+  for (const provider of ['meta', 'whaileys', 'evolution']) {
+    const d = db({ personal: true, mode: 'poll', provider, owner: provider === 'meta' ? 'Bia' : null });
+    const r = await send(d, 'bom dia');
+    const titles = ['Quero agendar', `Falar com ${provider === 'meta' ? 'Bia' : 'Ana'}`];
+    assert.deepEqual(plain(r.session.data.menu.labels), titles);
+    if (provider === 'evolution') assert.equal(r.messages[0].type, 'text');
+    else assert.deepEqual(plain(r.messages[0].payload.body.buttons.map(b => b.displayText)), titles);
+    assert.equal((await send(d, 'assunto pessoal')).session.step, 'MAIN_MENU');
+    const handoff = await send(d, provider === 'evolution' ? '2' : '', provider === 'evolution' ? null : 'menu_human');
+    assert.equal(handoff.session.takeoverUntil, null); assert.equal(handoff.handoff, true); assert.equal(handoff.messages.length, 0);
+    assert.ok(d.upserts.some(u => u.table === 'whatsapp_conversation_state' && u.row.human_takeover));
+    for (const text of ['0', 'menu', 'oi', 'quero agendar']) assert.equal((await guided.guidedReply(ctx(d), { text }, {}, true)).messages.length, 0);
+    assert.equal((await send(d, 'oi')).session.step, 'MAIN_MENU', 'central liberou a conversa');
+    assert.equal((await send(d, provider === 'evolution' ? '1' : '', provider === 'evolution' ? null : 'menu_book')).session.step, 'SELECT_SERVICE');
+  }
 });
 
 test('atendente: pausa com prazo, aviso no painel, silêncio até vencer, "0" libera', async () => {

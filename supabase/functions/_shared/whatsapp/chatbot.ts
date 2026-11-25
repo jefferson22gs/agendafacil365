@@ -124,7 +124,11 @@ export async function chatbotReply(ctx: BotContext, text: string, input: Omit<In
     }
   }
   // Áudio de cliente continua sem resposta automática, como antes (não é comprovante nem texto).
-  if ((input.media as { type?: unknown } | null | undefined)?.type === "audio") return { text: "", provider: "deterministic", model: "audio_ignored" };
+  const audio = (input.media as { type?: unknown } | null | undefined)?.type === "audio";
+  // Comprovantes seguem a conferência normal; áudio pessoal abre as duas opções.
+  const mediaSettings = audio ? await automationOf(ctx) : null;
+  const personalMedia = !!(mediaSettings?.guided && mediaSettings.personal);
+  if (audio && !personalMedia) return { text: "", provider: "deterministic", model: "audio_ignored" };
   const pre = await preload(ctx);
   const st = pre.st;
   const paused = !!st?.human_takeover && !ctx.preview;
@@ -142,18 +146,19 @@ export async function chatbotReply(ctx: BotContext, text: string, input: Omit<In
   // comandos do dono (Insights) e rajadas seguem o caminho clássico. Pausa humana: o próprio fluxo decide (prazo).
   // Comprovante (mídia) segue o caminho clássico; texto durante a espera do comprovante volta para o fluxo guiado.
   const legacyBusy = !!flow && (flow.step === "payment" || (flow.step === "proof" && flow.menu?.step === "proof_pick"));
-  if ((ctx.preview || !!pre.cfg?.enabled) && !pre.flooded && intent !== "opt_out" && !legacyBusy && !input.media) {
+  if ((ctx.preview || !!pre.cfg?.enabled) && !pre.flooded && intent !== "opt_out" && !legacyBusy && (!input.media || personalMedia)) {
     if (!ctx.preview) { const admin = await adminReply(ctx, text, pre.recipient); if (admin) return admin; }
     const ai = async (t: string) => {
       const r = await baseReply(ctx, t, pre);
       return r.provider === "deterministic" && r.startBooking === undefined ? null : { text: r.text, startBooking: r.startBooking };
     };
-    const g = await guidedReply(ctx, { text, selection: input.selection ?? null, quoted: input.quoted ?? null }, { ai, session: (input.session as GuidedSession | null | undefined) ?? null }, !!st?.human_takeover && !ctx.preview);
+    const g = await guidedReply(ctx, { text, media: input.media, selection: input.selection ?? null, quoted: input.quoted ?? null }, { ai, session: (input.session as GuidedSession | null | undefined) ?? null }, !!st?.human_takeover && !ctx.preview);
     if (g) {
       if (g.flowState !== undefined) await saveFlow(ctx, g.flowState);
       return { text: g.text, provider: g.provider, model: g.model, messages: g.messages, handoff: g.handoff, session: g.session };
     }
   }
+  if (audio) return { text: "", provider: "deterministic", model: "audio_ignored" };
   // CONFIRMAR dentro do fluxo de menus é a confirmação do resumo; fora dele segue a regra antiga (pending_action v1).
   if (!paused && (intent === "none" || (intent === "confirm" && flow)) && (ctx.preview || !!pre.cfg?.enabled)) {
     if (!ctx.preview && pre.flooded) return { text: "", provider: "deterministic", model: "rate_limited" };
